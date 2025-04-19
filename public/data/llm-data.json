@@ -1,135 +1,21 @@
 {
-  "Gemini 2.0 Flash-Lite": {
-    "pricing": {
-      "input": 0.075,
-      "output": 0.3
-    },
-    "co2eFactor": 0
-  },
-  "Mistral 3.1 Small": {
-    "pricing": {
-      "input": 0.1,
-      "output": 0.3
-    },
-    "co2eFactor": 0
-  },
-  "Gemini 2.0 Flash": {
-    "pricing": {
-      "input": 0.1,
-      "output": 0.4
-    },
-    "co2eFactor": 0
-  },
-  "ChatGPT 4.1-nano": {
-    "pricing": {
-      "input": 0.1,
-      "output": 0.4
-    },
-    "co2eFactor": 0
-  },
-  "DeepSeek v3 (old)": {
-    "pricing": {
-      "input": 0.14,
-      "output": 0.28
-    },
-    "co2eFactor": 0
-  },
-  "ChatGPT 4o-mini": {
-    "pricing": {
-      "input": 0.15,
-      "output": 0.6
-    },
-    "co2eFactor": 0
-  },
-  "DeepSeek v3": {
-    "pricing": {
-      "input": 0.27,
-      "output": 1.1
-    },
-    "co2eFactor": 0
-  },
-  "Grok 3-mini": {
-    "pricing": {
-      "input": 0.3,
-      "output": 0.5
-    },
-    "co2eFactor": 0
-  },
-  "ChatGPT 4.1-mini": {
-    "pricing": {
-      "input": 0.4,
-      "output": 1.6
-    },
-    "co2eFactor": 0
-  },
-  "DeepSeek r1": {
-    "pricing": {
-      "input": 0.55,
-      "output": 2.19
-    },
-    "co2eFactor": 0
-  },
-  "ChatGPT o3-mini": {
-    "pricing": {
-      "input": 1.1,
-      "output": 4.4
-    },
-    "co2eFactor": 0
-  },
-  "Gemini 2.5 Pro": {
-    "pricing": {
-      "input": 1.25,
-      "output": 10
-    },
-    "co2eFactor": 0
-  },
-  "ChatGPT 4.1": {
-    "pricing": {
-      "input": 2,
-      "output": 8
-    },
-    "co2eFactor": 0
-  },
-  "ChatGPT 4o": {
-    "pricing": {
-      "input": 2.5,
-      "output": 10
-    },
-    "co2eFactor": 0
-  },
-  "Claude 3.5 Sonnet": {
-    "pricing": {
-      "input": 3,
-      "output": 15
-    },
-    "co2eFactor": 0
-  },
-  "Grok 3": {
-    "pricing": {
-      "input": 3,
-      "output": 15
-    },
-    "co2eFactor": 0
-  },
-  "ChatGPT o1": {
-    "pricing": {
-      "input": 15,
-      "output": 60
-    },
-    "co2eFactor": 0
-  },
-  "ChatGPT 4.5": {
-    "pricing": {
-      "input": 75,
-      "output": 150
-    },
-    "co2eFactor": 0
-  },
-  "O1 Pro": {
-    "pricing": {
-      "input": 150,
-      "output": 600
-    },
-    "co2eFactor": 0
-  }
+  "Gemini 2.0 Flash-Lite": {"pricing": {"input": 7.5e-05, "output": 0.0003}, "co2eFactor": 0.00018, "avgOutputTokens": 8192},
+  "Mistral 3.1 Small": {"pricing": {"input": 0.0001, "output": 0.0003}, "co2eFactor": 0.0002, "avgOutputTokens": 4096},
+  "Gemini 2.0 Flash": {"pricing": {"input": 0.0001, "output": 0.0004}, "co2eFactor": 0.00018, "avgOutputTokens": 8192},
+  "ChatGPT 4.1-nano": {"pricing": {"input": 0.0001, "output": 0.0004}, "co2eFactor": 0.0002, "avgOutputTokens": 200},
+  "DeepSeek v3 (old)": {"pricing": {"input": 0.00014, "output": 0.00028}, "co2eFactor": 0.0002, "avgOutputTokens": 8192},
+  "ChatGPT 4o-mini": {"pricing": {"input": 0.00015, "output": 0.0006}, "co2eFactor": 0.0002, "avgOutputTokens": 16384},
+  "DeepSeek v3": {"pricing": {"input": 0.00027, "output": 0.0011}, "co2eFactor": 0.0002, "avgOutputTokens": 8192},
+  "Grok 3-mini": {"pricing": {"input": 0.0003, "output": 0.0005}, "co2eFactor": 0.0002, "avgOutputTokens": 200},
+  "ChatGPT 4.1-mini": {"pricing": {"input": 0.0004, "output": 0.0016}, "co2eFactor": 0.0002, "avgOutputTokens": 200},
+  "DeepSeek r1": {"pricing": {"input": 0.00055, "output": 0.00219}, "co2eFactor": 0.0002, "avgOutputTokens": 8192},
+  "ChatGPT o3-mini": {"pricing": {"input": 0.0011, "output": 0.0044}, "co2eFactor": 0.0002, "avgOutputTokens": 200},
+  "Gemini 2.5 Pro": {"pricing": {"input": 0.00125, "output": 0.01}, "co2eFactor": 0.00018, "avgOutputTokens": 65536},
+  "ChatGPT 4.1": {"pricing": {"input": 0.002, "output": 0.008}, "co2eFactor": 0.0002, "avgOutputTokens": 4096},
+  "ChatGPT 4o": {"pricing": {"input": 0.0025, "output": 0.01}, "co2eFactor": 0.0002, "avgOutputTokens": 16384},
+  "Claude 3.5 Sonnet": {"pricing": {"input": 0.003, "output": 0.015}, "co2eFactor": 0.00018, "avgOutputTokens": 4096},
+  "Grok 3": {"pricing": {"input": 0.003, "output": 0.015}, "co2eFactor": 0.0002, "avgOutputTokens": 8192},
+  "ChatGPT o1": {"pricing": {"input": 0.015, "output": 0.06}, "co2eFactor": 0.0002, "avgOutputTokens": 32768},
+  "ChatGPT 4.5": {"pricing": {"input": 0.075, "output": 0.15}, "co2eFactor": 0.0002, "avgOutputTokens": 200},
+  "O1 Pro": {"pricing": {"input": 0.15, "output": 0.6}, "co2eFactor": 0.0002, "avgOutputTokens": 200}
 }
