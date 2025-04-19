@@ -1,7 +1,10 @@
 {
   "name": "ai-insight-dashboard",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "description": "Simple Dev Tools – A product of Hello.World Consulting.",
+  "author": "Jonathan Reed",
+  "license": "MIT",
   "scripts": {
     "dev": "npm run fetch-data && next dev",
     "build": "npm run fetch-data && next build",
@@ -27,5 +30,8 @@
     "postcss": "^8.5.3",
     "tailwindcss": "3.3.0",
     "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18.18.0"
   }
 }
