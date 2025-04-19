@@ -1,0 +1,32 @@
+node_modules
+.next
+out
+dist
+coverage
+.DS_Store
+npm-debug.log*
+.env
+.env.*
+.vscode/
+.idea/
+*.log
+*.local
+*.swp
+*.swo
+*.zip
+*.tgz
+*.bak
+*.tmp
+build/
+# Mac system files
+.DS_Store
+# Windows system files
+Thumbs.db
+# Test output
+coverage/
+# Editor directories and files
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+# Misc
+*.pid

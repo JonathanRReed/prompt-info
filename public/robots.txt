@@ -1,0 +1,39 @@
+# robots.txt for https://helloworldfirm.com/
+# Last updated: March 16, 2025
+
+# Allow all robots complete access by default
+User-agent: *
+Allow: /
+
+# Disallow common private areas
+Disallow: /cgi-bin/
+Disallow: /wp-admin/
+Disallow: /admin/
+Disallow: /private/
+Disallow: /temp/
+Disallow: /includes/
+Disallow: /login/
+Disallow: /backend/
+Disallow: /dashboard/
+
+# Prevent crawling of search results
+Disallow: /search/
+Disallow: /*?s=
+Disallow: /*?q=
+
+# Specific rules for Google
+User-agent: Googlebot
+Allow: /*.js$
+Allow: /*.css$
+
+# Specific rules for Bing
+User-agent: Bingbot
+Allow: /*.js$
+Allow: /*.css$
+
+# Add crawl delay for some bots
+User-agent: Slurp
+Crawl-delay: 10
+
+# Sitemap location
+Sitemap: https://helloworldfirm.com/sitemap.xml
