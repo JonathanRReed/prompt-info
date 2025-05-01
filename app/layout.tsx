@@ -30,11 +30,14 @@ export default function RootLayout({ children, }: { children: ReactNode }) {
                 <span className="font-semibold text-lg text-white">A product of <span className="text-[#a259ff] font-bold">Hello.World Consulting</span></span>
               </div>
               <div className="text-sm italic text-purple-300">Made by Jonathan Reed</div>
-              <div className="flex items-center gap-2">
-                <img src="/jonathan.avif" alt="Jonathan Reed" className="w-7 h-7 rounded-full object-cover object-center border-2 border-[#a259ff]" />
-                <a href="https://helloworldfirm.com" className="text-[#4dfff0] hover:underline font-medium flex items-center gap-1" target="_blank" rel="noopener noreferrer">
+              <div className="flex flex-col gap-2">
+                <a href="https://helloworldfirm.com" className="text-[#a259ff] hover:underline font-medium flex items-center gap-2" target="_blank" rel="noopener noreferrer">
                   <img src="/logo.avif" alt="Logo" className="w-5 h-5 rounded-full object-cover object-center" />
                   helloworldfirm.com
+                </a>
+                <a href="https://JonathanRReed.com" className="text-[#a259ff] hover:underline font-medium flex items-center gap-2" target="_blank" rel="noopener noreferrer">
+                  <img src="/jonathan.avif" alt="Jonathan Reed" className="w-5 h-5 rounded-full object-cover object-center border-2 border-[#a259ff]" />
+                  JonathanRReed.com
                 </a>
               </div>
               <div className="text-xs text-gray-400 mt-2">2025 &copy; All Rights Reserved</div>
