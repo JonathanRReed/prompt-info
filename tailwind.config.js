@@ -15,7 +15,7 @@ module.exports = {
         accentPurple: '#9933ff'
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Nebula Sans', 'Inter', 'sans-serif'],
       }
     }
   },
