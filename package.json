@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.20",
+    "@supabase/supabase-js": "^2.57.4",
     "axios": "^1.4.0",
     "gpt-3-encoder": "^1.1.4",
     "gpt-tokenizer": "^2.9.0",

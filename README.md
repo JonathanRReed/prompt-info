@@ -32,6 +32,25 @@ A modern, neon-themed dashboard for prompt/token insights and developer producti
    npm start
    ```
 
+## Supabase configuration
+
+The pricing and model metadata can be sourced directly from Supabase. Configure the following environment variables before starting the app:
+
+| Variable | Description |
+| --- | --- |
+| `SUPABASE_URL` | The project URL from your Supabase dashboard. |
+| `SUPABASE_ANON_KEY` | The anonymous/public API key. |
+| `SUPABASE_PRICING_TABLE` *(optional)* | The table or view that stores pricing data. Defaults to `model_pricing`. |
+
+Each row in the table should describe a model. The API expects, at minimum, a column that identifies the model (`model`, `name`, or `model_name`) and can optionally include:
+
+- Pricing details (`input_cost`, `output_cost`, or a JSON column named `pricing` containing `input` and `output`).
+- Emissions information (`co2e_factor`).
+- Average output token estimates (`avg_output_tokens`).
+- Free-form metadata such as `provider`, `description`, or any other custom columns. Any remaining columns are exposed to the UI as read-only metadata.
+
+If the Supabase configuration is missing or the query fails, the app automatically falls back to the bundled dataset at `public/data/llm-data.json` so the UI remains functional.
+
 ---
 
 For more info, visit [helloworldfirm.com](https://helloworldfirm.com)

@@ -1,52 +1,25 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import PromptInput from '../components/PromptInput';
 import ModelSelect from '../components/ModelSelect';
 import { encode, decode } from 'gpt-tokenizer';
+import { usePricingData } from '../hooks/usePricingData';
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState('');
   const [tokens, setTokens] = useState<number[]>([]);
-  const [decodedTokens, setDecodedTokens] = useState<{str: string, id: number}[]>([]);
+  const [decodedTokens, setDecodedTokens] = useState<{ str: string; id: number }[]>([]);
   const [cost, setCost] = useState<number | null>(null);
   const [co2e, setCo2e] = useState<number | null>(null);
   const [co2eFallback, setCo2eFallback] = useState(false);
-  const [pricing, setPricing] = useState<any>(null);
-
-  useEffect(() => {
-    // Fetch pricing from the local JSON file
-    fetch('/data/llm-data.json')
-      .then(res => res.json())
-      .then(data => {
-        setPricing(data);
-      });
-  }, []);
-
-  useEffect(() => {
-    if (!pricing || !model || !tokens.length) {
-      setCost(null);
-      setCo2e(null);
-      return;
-    }
-    const entry = pricing[model];
-    // Cost: use new structure
-    let validCost = null;
-    if (entry && entry.pricing && typeof entry.pricing.input === 'number' && !isNaN(entry.pricing.input)) {
-      validCost = (tokens.length / 1000) * entry.pricing.input;
-    }
-    setCost(validCost);
-    // Carbon: use new structure
-    let factor = 0.0002; // fallback
-    let usedFallback = false;
-    if (entry && typeof entry.co2eFactor === 'number' && !isNaN(entry.co2eFactor)) {
-      factor = entry.co2eFactor;
-    } else {
-      usedFallback = true;
-    }
-    setCo2e(tokens.length * factor);
-    setCo2eFallback(usedFallback);
-  }, [pricing, model, tokens]);
+  const {
+    pricing,
+    models: modelOptions,
+    loading: pricingLoading,
+    source: pricingSource,
+    error: pricingError,
+  } = usePricingData();
 
   const tokenizerName = 'Universal GPT Tokenizer (gpt-tokenizer)';
 
@@ -60,6 +33,90 @@ export default function Home() {
     setTokens(tks);
     setDecodedTokens(tks.map(t => ({ str: decode([t]), id: t })));
   }, [prompt]);
+
+  useEffect(() => {
+    if (modelOptions.length === 0) {
+      if (model !== '') {
+        setModel('');
+      }
+      return;
+    }
+
+    if (!model || !modelOptions.includes(model)) {
+      setModel(modelOptions[0]);
+    }
+  }, [modelOptions, model]);
+
+  const activeModel = modelOptions.includes(model) ? model : modelOptions[0] ?? '';
+  const selectedEntry = activeModel && pricing ? pricing[activeModel] : undefined;
+
+  useEffect(() => {
+    if (!pricing || !activeModel || tokens.length === 0) {
+      setCost(null);
+      setCo2e(null);
+      return;
+    }
+
+    if (!selectedEntry) {
+      setCost(null);
+      setCo2e(tokens.length * 0.0002);
+      setCo2eFallback(true);
+      return;
+    }
+
+    let validCost: number | null = null;
+    const inputRate = selectedEntry.pricing?.input;
+
+    if (typeof inputRate === 'number' && !Number.isNaN(inputRate)) {
+      validCost = (tokens.length / 1000) * inputRate;
+    }
+
+    setCost(validCost);
+
+    let factor = 0.0002;
+    let usedFallback = true;
+    const entryFactor = selectedEntry.co2eFactor;
+
+    if (typeof entryFactor === 'number' && !Number.isNaN(entryFactor)) {
+      factor = entryFactor;
+      usedFallback = false;
+    }
+
+    setCo2e(tokens.length * factor);
+    setCo2eFallback(usedFallback);
+  }, [pricing, activeModel, selectedEntry, tokens]);
+
+  const metadataEntries = useMemo(() => {
+    if (!selectedEntry?.metadata) {
+      return [] as Array<[string, string]>;
+    }
+
+    return Object.entries(selectedEntry.metadata).reduce<Array<[string, string]>>((acc, [key, value]) => {
+      if (value === null || value === undefined) {
+        return acc;
+      }
+
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed) {
+          acc.push([key, trimmed]);
+        }
+        return acc;
+      }
+
+      if (typeof value === 'number') {
+        acc.push([key, value.toString()]);
+        return acc;
+      }
+
+      if (typeof value === 'boolean') {
+        acc.push([key, value ? 'true' : 'false']);
+        return acc;
+      }
+
+      return acc;
+    }, []);
+  }, [selectedEntry]);
 
   let slices: number[][] = [];
   if (tokens.length <= 10) {
@@ -84,8 +141,21 @@ export default function Home() {
         <div className="w-full max-w-xl mx-auto px-6 py-10 rounded-3xl shadow-2xl bg-[rgba(10,15,41,0.65)] backdrop-blur-3xl border border-[rgba(162,89,255,0.22)]" style={{boxShadow: '0 4px 48px 0 #a259ff44', WebkitBackdropFilter: 'blur(36px)', backdropFilter: 'blur(36px)'}}>
           <h1 className="text-3xl md:text-4xl font-bold mb-6 text-center bg-gradient-to-r from-[#a259ff] via-[#4dfff0] to-[#ff4dcb] bg-clip-text text-transparent drop-shadow-lg">Prompt Info</h1>
           <PromptInput value={prompt} onChange={setPrompt} />
-          <div className="my-4">
-            <ModelSelect onChange={setModel} />
+          <div className="my-4 space-y-2">
+            <ModelSelect
+              models={modelOptions}
+              value={activeModel}
+              onChange={setModel}
+              loading={pricingLoading}
+            />
+            {pricingSource === 'fallback' && !pricingError && (
+              <div className="text-xs text-yellow-300 text-center">
+                Using bundled pricing data. Add Supabase credentials for live updates.
+              </div>
+            )}
+            {pricingError && (
+              <div className="text-xs text-red-300 text-center">{pricingError}</div>
+            )}
           </div>
           <div className="mb-4 text-xs font-mono text-blue-200 text-center">
             Tokenizer: <b>Universal GPT Tokenizer (gpt-tokenizer)</b>
@@ -130,16 +200,46 @@ export default function Home() {
                 ))}
               </div>
             )}
-            <div className="text-lg mt-2 text-center">
-              <span className="mr-4">Total tokens: <b>{tokens.length}</b></span>
-              {cost !== null && !isNaN(cost) ? (
-                <span>Estimated cost: <b>${cost.toFixed(8)}</b></span>
-              ) : (
-                <span className="text-blue-400">Please input a prompt.</span>
+            <div className="mt-2 text-center space-y-3">
+              <div className="text-lg">
+                <span className="mr-4">Total tokens: <b>{tokens.length}</b></span>
+                {cost !== null && !Number.isNaN(cost) ? (
+                  <span>Estimated cost: <b>${cost.toFixed(8)}</b></span>
+                ) : (
+                  <span className="text-blue-400">Please input a prompt.</span>
+                )}
+              </div>
+              {co2e !== null && !Number.isNaN(co2e) && (
+                <div className="text-lg">
+                  Estimated CO₂e: <b>{co2e.toFixed(4)} g</b>
+                  {co2eFallback && <span className="text-yellow-400" title="Fallback value used">*</span>}
+                </div>
               )}
-              <br />
-              {co2e !== null && !isNaN(co2e) && (
-                <span>Estimated CO₂e: <b>{co2e.toFixed(4)} g</b>{co2eFallback && <span className="text-yellow-400" title="Fallback value used">*</span>}</span>
+              {(selectedEntry?.provider || (selectedEntry?.avgOutputTokens ?? null) || selectedEntry?.description || metadataEntries.length > 0) && (
+                <div className="text-sm text-blue-200 space-y-1">
+                  {selectedEntry?.provider && (
+                    <div>
+                      Provider: <b>{selectedEntry.provider}</b>
+                    </div>
+                  )}
+                  {typeof selectedEntry?.avgOutputTokens === 'number' && !Number.isNaN(selectedEntry.avgOutputTokens) && (
+                    <div>
+                      Avg output tokens: <b>{Math.round(selectedEntry.avgOutputTokens)}</b>
+                    </div>
+                  )}
+                  {selectedEntry?.description && (
+                    <div className="text-xs text-blue-200/90">{selectedEntry.description}</div>
+                  )}
+                  {metadataEntries.length > 0 && (
+                    <div className="text-xs text-blue-200/80 space-y-0.5">
+                      {metadataEntries.map(([key, value]) => (
+                        <div key={key}>
+                          <span className="font-semibold">{key}:</span> {value}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

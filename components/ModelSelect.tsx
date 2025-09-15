@@ -1,31 +1,35 @@
 'use client';
-import { useState, useEffect } from 'react';
+import type { ChangeEvent } from 'react';
 
-export default function ModelSelect({ onChange }: { onChange: (model: string) => void }) {
-  const [models, setModels] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+interface ModelSelectProps {
+  models: string[];
+  value: string;
+  onChange: (model: string) => void;
+  loading: boolean;
+}
 
-  useEffect(() => {
-    fetch('/data/llm-data.json')
-      .then(res => res.json())
-      .then(data => {
-        const keys = Object.keys(data);
-        setModels(keys);
-        if (keys.length) onChange(keys[0]);
-      })
-      .finally(() => setLoading(false));
-  }, [onChange]);
+export default function ModelSelect({ models, value, onChange, loading }: ModelSelectProps) {
+  if (loading) {
+    return <div>Loading models...</div>;
+  }
 
-  if (loading) return <div>Loading models...</div>;
+  if (models.length === 0) {
+    return <div className="text-yellow-300 text-sm text-center">No models available.</div>;
+  }
+
+  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    onChange(event.target.value);
+  };
 
   return (
     <select
-      onChange={e => onChange(e.target.value)}
-      className="bg-sidebar text-gray-100 p-2 rounded"
+      value={value}
+      onChange={handleChange}
+      className="bg-sidebar text-gray-100 p-2 rounded w-full"
     >
-      {models.map(model => (
-        <option key={model} value={model}>
-          {model}
+      {models.map(modelName => (
+        <option key={modelName} value={modelName}>
+          {modelName}
         </option>
       ))}
     </select>
