@@ -3,39 +3,105 @@ import { useState, useEffect } from 'react';
 import PromptInput from '../components/PromptInput';
 import ModelSelect from '../components/ModelSelect';
 import { encode, decode } from 'gpt-tokenizer';
+import { fetchPricing, PricingMap } from '../lib/fetchPricing';
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState('');
   const [tokens, setTokens] = useState<number[]>([]);
   const [decodedTokens, setDecodedTokens] = useState<{str: string, id: number}[]>([]);
-  const [cost, setCost] = useState<number | null>(null);
+  const [cost, setCost] = useState<number | null>(null); // total cost (backward compatible)
+  const [inputCost, setInputCost] = useState<number | null>(null);
+  const [outputCost, setOutputCost] = useState<number | null>(null);
   const [co2e, setCo2e] = useState<number | null>(null);
   const [co2eFallback, setCo2eFallback] = useState(false);
-  const [pricing, setPricing] = useState<any>(null);
+  const [pricing, setPricing] = useState<PricingMap | null>(null);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [modelsLoading, setModelsLoading] = useState<boolean>(true);
+  const [expectedOutTokens, setExpectedOutTokens] = useState<number | null>(null);
 
   useEffect(() => {
-    // Fetch pricing from the local JSON file
-    fetch('/data/llm-data.json')
-      .then(res => res.json())
-      .then(data => {
-        setPricing(data);
-      });
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await fetchPricing();
+        if (mounted) setPricing(data);
+      } catch (e) {
+        console.error('Failed to load pricing from Supabase', e);
+        if (mounted) setPricing({});
+      }
+    })();
+    return () => { mounted = false; };
   }, []);
+
+  // Build model list; if Supabase returned no models, fallback to static JSON
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setModelsLoading(true);
+      try {
+        const keys = pricing ? Object.keys(pricing) : [];
+        if (keys.length > 0) {
+          if (mounted) setAvailableModels(keys);
+          return;
+        }
+        // Fallback to static JSON
+        try {
+          const res = await fetch('/data/llm-data.json');
+          const json = await res.json();
+          const staticKeys = Object.keys(json ?? {});
+          if (mounted) setAvailableModels(staticKeys);
+        } catch (err) {
+          console.warn('Fallback to static model list failed:', err);
+          if (mounted) setAvailableModels([]);
+        }
+      } finally {
+        if (mounted) setModelsLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [pricing]);
+
+  // When model or pricing changes, initialize expectedOutTokens to the model's default if available
+  useEffect(() => {
+    if (!pricing || !model) {
+      setExpectedOutTokens(null);
+      return;
+    }
+    const entry = pricing[model];
+    const defOut = Number(entry?.avgOutputTokens ?? NaN);
+    setExpectedOutTokens(Number.isFinite(defOut) && defOut > 0 ? Math.min(defOut, 131072) : 4096);
+  }, [pricing, model]);
 
   useEffect(() => {
     if (!pricing || !model || !tokens.length) {
       setCost(null);
+      setInputCost(null);
+      setOutputCost(null);
       setCo2e(null);
       return;
     }
     const entry = pricing[model];
-    // Cost: use new structure
-    let validCost = null;
-    if (entry && entry.pricing && typeof entry.pricing.input === 'number' && !isNaN(entry.pricing.input)) {
-      validCost = (tokens.length / 1000) * entry.pricing.input;
+    // Cost breakdown
+    let inCost: number | null = null;
+    let outCost: number | null = null;
+    if (entry && entry.pricing) {
+      const inPricePer1k = Number(entry.pricing.input);
+      const outPricePer1k = Number(entry.pricing.output);
+      const plannedOut = Number(expectedOutTokens ?? entry.avgOutputTokens ?? 0);
+      if (isFinite(inPricePer1k)) {
+        inCost = (tokens.length / 1000) * inPricePer1k;
+      }
+      if (isFinite(outPricePer1k) && isFinite(plannedOut) && plannedOut > 0) {
+        outCost = (plannedOut / 1000) * outPricePer1k;
+      }
     }
-    setCost(validCost);
+    setInputCost(inCost);
+    setOutputCost(outCost);
+    const total = [inCost, outCost].every(v => typeof v === 'number' && !isNaN(v as number))
+      ? (inCost as number) + (outCost as number)
+      : (typeof inCost === 'number' ? inCost : null);
+    setCost(total);
     // Carbon: use new structure
     let factor = 0.0002; // fallback
     let usedFallback = false;
@@ -46,7 +112,7 @@ export default function Home() {
     }
     setCo2e(tokens.length * factor);
     setCo2eFallback(usedFallback);
-  }, [pricing, model, tokens]);
+  }, [pricing, model, tokens, expectedOutTokens]);
 
   const tokenizerName = 'Universal GPT Tokenizer (gpt-tokenizer)';
 
@@ -61,90 +127,187 @@ export default function Home() {
     setDecodedTokens(tks.map(t => ({ str: decode([t]), id: t })));
   }, [prompt]);
 
-  let slices: number[][] = [];
-  if (tokens.length <= 10) {
-    slices = tokens.map((t, i) => [t]);
-  } else {
-    const numSlices = 10;
-    const sliceSize = Math.ceil(tokens.length / numSlices);
-    for (let i = 0; i < numSlices; i++) {
-      slices.push(tokens.slice(i * sliceSize, (i + 1) * sliceSize));
-    }
-  }
+  const referenceTokenWindow = 4096;
+  const hasTokens = tokens.length > 0;
+  const tokenCoverage = hasTokens
+    ? Math.min(100, (tokens.length / referenceTokenWindow) * 100)
+    : 0;
+  // modelOptions and modelsLoading now come from state with fallback
+  const modelOptions = availableModels;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen w-full">
-      <div className="relative flex flex-col items-center justify-center min-h-[70vh] w-full max-w-3xl mx-auto">
-        {/* Glowing, animated background element (bigger, slower) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full opacity-80 blur-[110px] -z-10 animate-pulse-slow pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle at 50% 45%, #a259ff 0%, #4dfff0 40%, #ff4dcb 80%, transparent 100%)'
-          }}
-        />
-        <div className="w-full max-w-xl mx-auto px-6 py-10 rounded-3xl shadow-2xl bg-[rgba(10,15,41,0.65)] backdrop-blur-3xl border border-[rgba(162,89,255,0.22)]" style={{boxShadow: '0 4px 48px 0 #a259ff44', WebkitBackdropFilter: 'blur(36px)', backdropFilter: 'blur(36px)'}}>
-          <h1 className="text-3xl md:text-4xl font-bold mb-6 text-center bg-gradient-to-r from-[#a259ff] via-[#4dfff0] to-[#ff4dcb] bg-clip-text text-transparent drop-shadow-lg">Prompt Info</h1>
-          <PromptInput value={prompt} onChange={setPrompt} />
-          <div className="my-4">
-            <ModelSelect onChange={setModel} />
-          </div>
-          <div className="mb-4 text-xs font-mono text-blue-200 text-center">
-            Tokenizer: <b>Universal GPT Tokenizer (gpt-tokenizer)</b>
-          </div>
-          <div className="bg-[rgba(10,15,41,0.35)] p-6 rounded-xl shadow-lg backdrop-blur-md border border-[rgba(77,255,240,0.18)]">
-            <div className="flex gap-1 mb-4">
-              {slices.map((slice, idx) => (
-                <div
-                  key={idx}
-                  className="flex-1 h-8 rounded transition-all duration-150"
-                  style={{
-                    background:
-                      slice.length === 0
-                        ? '#222'
-                        : `linear-gradient(90deg, #4dfff0 ${(slice.length / (tokens.length <= 10 ? 1 : Math.ceil(tokens.length / 10))) * 100}%, #a259ff 100%)`,
-                    border: '1px solid #4dfff0',
-                    opacity:
-                      (tokens.length <= 10)
-                        ? 0.9
-                        : (Math.min(1, Math.max(0.2, (slice.length / Math.ceil(tokens.length / 10)) + 0.2))),
-                    boxShadow: '0 0 8px #4dfff0b0',
-                  }}
-                  title={
-                    tokens.length <= 10
-                      ? `Token #${idx + 1}`
-                      : `Slice ${idx + 1}: Tokens ${idx * Math.ceil(tokens.length / 10) + 1}-${Math.min((idx + 1) * Math.ceil(tokens.length / 10), tokens.length)} (${slice.length})`
-                  }
-                />
-              ))}
+    <div className="min-h-screen w-full">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-16">
+        <header className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Token planner</p>
+          <h1 className="mt-3 text-4xl font-semibold text-slate-100">Prompt Info</h1>
+          <p className="mt-4 text-base text-slate-400">
+            Understand token count, estimated cost, and carbon footprint before you send your next prompt.
+          </p>
+        </header>
+
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="flex flex-col gap-6 rounded-3xl border border-slate-800/60 bg-slate-900/70 p-6 shadow-[0_40px_90px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-300" htmlFor="prompt-input">
+                Prompt
+              </label>
+              <PromptInput id="prompt-input" value={prompt} onChange={setPrompt} />
             </div>
-            {decodedTokens.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-4 justify-center">
-                {decodedTokens.map((tok, i) => (
-                  <span
-                    key={i}
-                    className="px-1.5 py-1 rounded bg-[#4dfff0]/20 border border-[#4dfff0] text-accentPrimary text-sm font-mono cursor-pointer transition hover:bg-[#4dfff0]/40 hover:text-black flex flex-col items-center shadow-[0_0_8px_#4dfff0b0]"
-                    title={`Token #${i + 1}\nID: ${tok.id}`}
-                  >
-                    <span className="text-base leading-none">{tok.str || <>&nbsp;</>}</span>
-                    <span className="text-[10px] text-blue-300">#{tok.id}</span>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-300" htmlFor="model-select">
+                Model
+              </label>
+              <ModelSelect
+                id="model-select"
+                value={model}
+                onChange={setModel}
+                models={modelOptions}
+                loading={modelsLoading}
+              />
+            </div>
+
+            <p className="text-xs text-slate-400">
+              Tokenizer: <span className="font-semibold text-slate-200">{tokenizerName}</span>
+            </p>
+          </div>
+
+          <aside className="flex flex-col gap-6 rounded-3xl border border-slate-800/60 bg-slate-900/70 p-6 shadow-[0_40px_90px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl">
+            <div className="rounded-3xl border border-slate-800 bg-slate-950/50 px-6 py-6 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Overview</p>
+              <div className="mt-5 space-y-4">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-4xl font-semibold text-white">{tokens.length}</span>
+                  <span className="text-sm text-slate-400">tokens</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>Approx. context usage</span>
+                    <span>{Math.round(tokenCoverage)}%</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-accentPrimary to-slate-500 transition-all"
+                      style={{ width: `${tokenCoverage}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500">Based on a {referenceTokenWindow.toLocaleString()} token window.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/50 px-5 py-5 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="grow space-y-1 text-xs text-slate-400">
+                  <label htmlFor="expected-out" className="font-semibold uppercase tracking-wider text-slate-300">
+                    Expected output tokens
+                  </label>
+                  <p>Blend a likely completion length to model total costs.</p>
+                </div>
+                <input
+                  id="expected-out"
+                  type="range"
+                  min={0}
+                  max={131072}
+                  step={64}
+                  value={Number(expectedOutTokens ?? 0)}
+                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(131072, Number(e.target.value))))}
+                  className="h-1 w-48 cursor-pointer appearance-none rounded-full bg-slate-800 accent-accentPrimary"
+                />
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={131072}
+                  step={64}
+                  value={Number(expectedOutTokens ?? 0)}
+                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(131072, Number(e.target.value))))}
+                  className="w-24 rounded-xl border border-slate-800 bg-slate-900 px-3 py-1.5 text-right text-slate-100 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.8)] focus:border-accentPrimary focus:outline-none focus:ring-2 focus:ring-accentPrimary/30"
+                />
+              </div>
+              <div className="mt-5 grid gap-3 text-sm text-slate-200">
+                <div className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+                  <span className="text-slate-400">Prompt tokens</span>
+                  <span className="text-lg font-semibold text-white">{tokens.length}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+                  <span className="text-slate-400">Output tokens</span>
+                  <span className="text-lg font-semibold text-white">{expectedOutTokens ?? 0}</span>
+                </div>
+                <div className="flex flex-col gap-1 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-sm">
+                  <span className="text-slate-400">Combined tokens</span>
+                  <span className="text-lg font-semibold text-white">
+                    {tokens.length + Number(expectedOutTokens ?? 0)}
                   </span>
-                ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 text-sm text-slate-200">
+              <div className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span>Input cost</span>
+                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">USD</span>
+                </div>
+                <div className="text-2xl font-semibold text-white">
+                  {inputCost !== null && !isNaN(inputCost) ? `$${inputCost.toFixed(6)}` : '—'}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span>Output cost</span>
+                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">USD</span>
+                </div>
+                <div className="text-2xl font-semibold text-white">
+                  {outputCost !== null && !isNaN(outputCost) ? `$${outputCost.toFixed(6)}` : '—'}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span>Total cost</span>
+                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">USD</span>
+                </div>
+                <div className="text-2xl font-semibold text-white">
+                  {cost !== null && !isNaN(cost) ? `$${cost.toFixed(6)}` : '—'}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span>Estimated CO₂e</span>
+                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">grams</span>
+                </div>
+                <div className="text-2xl font-semibold text-white">
+                  {co2e !== null && !isNaN(co2e) ? `${co2e.toFixed(4)} g${co2eFallback ? '*' : ''}` : '—'}
+                </div>
+                {co2eFallback && (
+                  <p className="text-[11px] text-amber-400">Using generic emissions factor. Update pricing data for precise values.</p>
+                )}
+              </div>
+            </div>
+
+            {decodedTokens.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Token breakdown</p>
+                <div className="max-h-48 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/50 p-3 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
+                  <div className="flex flex-wrap gap-2">
+                    {decodedTokens.map((tok, i) => (
+                      <span
+                        key={i}
+                        className="flex flex-col items-center rounded-xl border border-slate-800 bg-slate-900/80 px-2 py-1 text-[13px] font-mono text-slate-300 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.8)]"
+                        title={`Token #${i + 1}\nID: ${tok.id}`}
+                      >
+                        <span className="leading-tight text-white">{tok.str || <>&nbsp;</>}</span>
+                        <span className="text-[10px] text-slate-500">#{tok.id}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
-            <div className="text-lg mt-2 text-center">
-              <span className="mr-4">Total tokens: <b>{tokens.length}</b></span>
-              {cost !== null && !isNaN(cost) ? (
-                <span>Estimated cost: <b>${cost.toFixed(8)}</b></span>
-              ) : (
-                <span className="text-blue-400">Please input a prompt.</span>
-              )}
-              <br />
-              {co2e !== null && !isNaN(co2e) && (
-                <span>Estimated CO₂e: <b>{co2e.toFixed(4)} g</b>{co2eFallback && <span className="text-yellow-400" title="Fallback value used">*</span>}</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+          </aside>
+        </section>
+      </main>
     </div>
   );
 }
