@@ -15,21 +15,20 @@ A modern, neon-themed dashboard for prompt/token insights and developer producti
 1. **Install dependencies:**
 
    ```bash
-   npm install
+   bun install
    ```
 
 2. **Run locally:**
 
    ```bash
-   npm run dev
+   bun run dev
    ```
 
 3. **Build for production:**
 
    ```bash
-
-   npm run build
-   npm start
+   bun run build
+   bun run start
    ```
 
 ---

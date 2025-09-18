@@ -5,14 +5,17 @@
   "description": "Simple Dev Tools – A product of Hello.World Consulting.",
   "author": "Jonathan Reed",
   "license": "MIT",
+  "packageManager": "bun@1.2.22",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "export": "next export"
+    "export": "next export",
+    "lint": "next lint"
   },
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.20",
+    "@supabase/supabase-js": "^2.57.4",
     "axios": "^1.4.0",
     "gpt-3-encoder": "^1.1.4",
     "gpt-tokenizer": "^2.9.0",
@@ -27,6 +30,8 @@
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "autoprefixer": "^10.4.21",
+    "eslint": "8",
+    "eslint-config-next": "^15.5.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3"
