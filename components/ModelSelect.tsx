@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { fetchPricing, PricingMap } from '../lib/fetchPricing';
 
 type ModelSelectProps = {
@@ -10,7 +10,7 @@ type ModelSelectProps = {
   loading?: boolean;
 };
 
-export default function ModelSelect({ onChange, value, id = 'model-select', models: externalModels, loading: externalLoading }: ModelSelectProps) {
+function ModelSelect({ onChange, value, id = 'model-select', models: externalModels, loading: externalLoading }: ModelSelectProps) {
   const [models, setModels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,11 +61,11 @@ export default function ModelSelect({ onChange, value, id = 'model-select', mode
   }, [externalModels, onChange, shouldFetch, value]);
 
   if (isLoading) {
-    return <div className="text-sm text-slate-400">Loading models…</div>;
+    return <div className="text-sm text-rose-subtle">Loading models…</div>;
   }
 
   if (!optionList?.length) {
-    return <div className="text-sm text-amber-400">No models available. Check your pricing data source.</div>;
+    return <div className="text-sm text-rose-gold">No models available. Check your pricing data source.</div>;
   }
 
   const currentValue = value && optionList.includes(value) ? value : optionList[0] ?? '';
@@ -75,13 +75,15 @@ export default function ModelSelect({ onChange, value, id = 'model-select', mode
       id={id}
       value={currentValue}
       onChange={e => onChange(e.target.value)}
-      className="w-full appearance-none rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2 text-slate-100 shadow-[0_10px_40px_-30px_rgba(15,23,42,0.8)] transition focus:border-accentPrimary focus:outline-none focus:ring-4 focus:ring-accentPrimary/30"
+      className="w-full appearance-none rounded-xl border border-rose-highlightMed bg-rose-base px-5 py-3 text-base font-medium text-rose-text transition-all duration-200 focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/30 hover:border-rose-highlightHigh cursor-pointer"
     >
       {optionList.map(model => (
-        <option key={model} value={model}>
+        <option key={model} value={model} className="bg-rose-surface text-rose-text py-2">
           {model}
         </option>
       ))}
     </select>
   );
 }
+
+export default memo(ModelSelect);

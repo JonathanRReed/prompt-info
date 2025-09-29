@@ -96,27 +96,27 @@ export default function CarbonPage() {
   })();
 
   return (
-    <div className="min-h-screen w-full bg-slate-100">
+    <div className="min-h-screen w-full">
       <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-16">
         <header className="space-y-3 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Carbon insight</p>
-          <h1 className="text-4xl font-semibold text-slate-900">Estimate prompt emissions</h1>
-          <p className="text-base text-slate-600">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-subtle">Carbon insight</p>
+          <h1 className="text-4xl font-semibold text-rose-text">Estimate prompt emissions</h1>
+          <p className="text-base text-rose-subtle">
             Quickly approximate the grams of CO₂e tied to your prompt tokens and spot where efficiency wins might live.
           </p>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          <div className="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/40">
+          <div className="flex flex-col gap-6 rounded-3xl border border-rose-highlightMed/60 bg-rose-surface/70 p-6 shadow-[0_40px_90px_-60px_rgba(25,23,36,0.9)] backdrop-blur-xl">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="carbon-prompt">
+              <label className="mb-2 block text-sm font-semibold text-rose-text" htmlFor="carbon-prompt">
                 Prompt
               </label>
               <PromptInput id="carbon-prompt" value={prompt} onChange={setPrompt} />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="carbon-model">
+              <label className="mb-2 block text-sm font-semibold text-rose-text" htmlFor="carbon-model">
                 Model
               </label>
               <ModelSelect
@@ -128,40 +128,40 @@ export default function CarbonPage() {
               />
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            <div className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 px-4 py-3 text-sm text-rose-subtle">
               Emission estimates scale with token count. Keep summaries tight, reuse context where you can, and cache responses for repeated calls.
             </div>
           </div>
 
-          <aside className="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/40">
+          <aside className="flex flex-col gap-6 rounded-3xl border border-rose-highlightMed/60 bg-rose-surface/70 p-6 shadow-[0_40px_90px_-60px_rgba(25,23,36,0.9)] backdrop-blur-xl">
             <div className="space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Emission estimate</p>
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8 text-center shadow-inner">
-                <div className="text-sm font-medium uppercase tracking-[0.3em] text-slate-400">Total CO₂e</div>
-                <div className="mt-3 text-4xl font-semibold text-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-subtle">Emission estimate</p>
+              <div className="rounded-3xl border border-rose-highlightMed bg-rose-overlay/50 px-6 py-8 text-center shadow-[inset_0_-1px_0_rgba(144,140,170,0.08)]">
+                <div className="text-sm font-medium uppercase tracking-[0.3em] text-rose-subtle">Total CO₂e</div>
+                <div className="mt-3 text-4xl font-semibold text-rose-text">
                   {hasEstimate ? `${co2eDisplay!.toFixed(4)} g` : '—'}
                 </div>
                 {co2eFallback && (
-                  <p className="mt-2 text-xs text-amber-500">Using fallback factor until model-specific data is available.</p>
+                  <p className="mt-2 text-xs text-rose-gold">Using fallback factor until model-specific data is available.</p>
                 )}
               </div>
-              <p className="text-sm text-slate-600">{insightMessage}</p>
+              <p className="text-sm text-rose-subtle">{insightMessage}</p>
             </div>
 
-            <dl className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Prompt tokens</dt>
-                <dd className="mt-1 text-2xl font-semibold text-slate-900">{tokensCount}</dd>
+            <dl className="grid gap-3 text-sm text-rose-subtle sm:grid-cols-2">
+              <div className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 px-4 py-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-rose-muted">Prompt tokens</dt>
+                <dd className="mt-1 text-2xl font-semibold text-rose-text">{tokensCount}</dd>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">CO₂e per 1k tokens</dt>
-                <dd className="mt-1 text-2xl font-semibold text-slate-900">
+              <div className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 px-4 py-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-rose-muted">CO₂e per 1k tokens</dt>
+                <dd className="mt-1 text-2xl font-semibold text-rose-text">
                   {perThousand !== null ? `${perThousand.toFixed(4)} g` : '—'}
                 </dd>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:col-span-2">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Model factor</dt>
-                <dd className="mt-1 text-base text-slate-700">
+              <div className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 px-4 py-3 sm:col-span-2">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-rose-muted">Model factor</dt>
+                <dd className="mt-1 text-base text-rose-text">
                   {model && pricing && pricing[model]
                     ? `${pricing[model].co2eFactor.toFixed(6)} g per token`
                     : 'Select a model to view its carbon intensity.'}
@@ -171,17 +171,17 @@ export default function CarbonPage() {
           </aside>
         </section>
 
-        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/40">
-          <h2 className="text-lg font-semibold text-slate-900">Sustainable prompt patterns</h2>
-          <ul className="grid gap-3 text-sm text-slate-600 md:grid-cols-3">
-            <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <span className="font-semibold text-slate-800">Chunk thoughtfully.</span> Break long contexts into reusable snippets instead of resending the full history.
+        <section className="grid gap-4 rounded-3xl border border-rose-highlightMed/60 bg-rose-surface/70 p-6 shadow-[0_40px_90px_-60px_rgba(25,23,36,0.9)] backdrop-blur-xl">
+          <h2 className="text-lg font-semibold text-rose-text">Sustainable prompt patterns</h2>
+          <ul className="grid gap-3 text-sm text-rose-subtle md:grid-cols-3">
+            <li className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 p-4">
+              <span className="font-semibold text-rose-text">Chunk thoughtfully.</span> Break long contexts into reusable snippets instead of resending the full history.
             </li>
-            <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <span className="font-semibold text-slate-800">Cache completions.</span> Store frequent responses so you can serve them without invoking the model again.
+            <li className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 p-4">
+              <span className="font-semibold text-rose-text">Cache completions.</span> Store frequent responses so you can serve them without invoking the model again.
             </li>
-            <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <span className="font-semibold text-slate-800">Monitor output length.</span> Align generation parameters with the shortest useful completion to curb downstream emissions.
+            <li className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 p-4">
+              <span className="font-semibold text-rose-text">Monitor output length.</span> Align generation parameters with the shortest useful completion to curb downstream emissions.
             </li>
           </ul>
         </section>

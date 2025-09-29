@@ -1,7 +1,7 @@
 'use client';
-import React from 'react';
+import { memo } from 'react';
 
-export default function PromptInput({
+function PromptInput({
   value,
   onChange,
   id = 'prompt-input',
@@ -16,7 +16,7 @@ export default function PromptInput({
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder="Enter your prompt here..."
-      className="w-full h-40 resize-y rounded-2xl border border-slate-700 bg-slate-900/70 p-4 text-slate-100 shadow-[0_10px_40px_-30px_rgba(15,23,42,0.8)] transition focus:border-accentPrimary focus:ring-4 focus:ring-accentPrimary/30"
+      className="w-full h-48 resize-y rounded-xl border border-rose-highlightMed bg-rose-base p-5 text-base text-rose-text placeholder:text-rose-muted/60 transition-all duration-200 focus:border-rose-iris focus:ring-2 focus:ring-rose-iris/30 hover:border-rose-highlightHigh"
       spellCheck={false}
       autoCorrect="off"
       autoComplete="off"
@@ -24,3 +24,5 @@ export default function PromptInput({
     />
   );
 }
+
+export default memo(PromptInput);
