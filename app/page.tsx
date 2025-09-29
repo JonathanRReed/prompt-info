@@ -1,9 +1,14 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import PromptInput from '../components/PromptInput';
 import ModelSelect from '../components/ModelSelect';
 import { encode, decode } from 'gpt-tokenizer';
 import { fetchPricing, PricingMap } from '../lib/fetchPricing';
+
+const MAX_OUTPUT_TOKENS = 131072;
+const DEFAULT_OUTPUT_TOKENS = 4096;
+const REFERENCE_TOKEN_WINDOW = 4096;
+const TOKEN_STEP = 64;
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
@@ -70,7 +75,11 @@ export default function Home() {
     }
     const entry = pricing[model];
     const defOut = Number(entry?.avgOutputTokens ?? NaN);
-    setExpectedOutTokens(Number.isFinite(defOut) && defOut > 0 ? Math.min(defOut, 131072) : 4096);
+    setExpectedOutTokens(
+      Number.isFinite(defOut) && defOut > 0 
+        ? Math.min(defOut, MAX_OUTPUT_TOKENS) 
+        : DEFAULT_OUTPUT_TOKENS
+    );
   }, [pricing, model]);
 
   useEffect(() => {
@@ -127,36 +136,35 @@ export default function Home() {
     setDecodedTokens(tks.map(t => ({ str: decode([t]), id: t })));
   }, [prompt]);
 
-  const referenceTokenWindow = 4096;
   const hasTokens = tokens.length > 0;
-  const tokenCoverage = hasTokens
-    ? Math.min(100, (tokens.length / referenceTokenWindow) * 100)
-    : 0;
-  // modelOptions and modelsLoading now come from state with fallback
+  const tokenCoverage = useMemo(
+    () => (hasTokens ? Math.min(100, (tokens.length / REFERENCE_TOKEN_WINDOW) * 100) : 0),
+    [hasTokens, tokens.length]
+  );
   const modelOptions = availableModels;
 
   return (
     <div className="min-h-screen w-full">
-      <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-16">
-        <header className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Token planner</p>
-          <h1 className="mt-3 text-4xl font-semibold text-slate-100">Prompt Info</h1>
-          <p className="mt-4 text-base text-slate-400">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-6 py-20">
+        <header className="text-center space-y-4">
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-rose-iris">Token planner</p>
+          <h1 className="text-5xl font-bold text-rose-text tracking-tight">Prompt Info</h1>
+          <p className="mt-4 text-lg text-rose-subtle max-w-2xl mx-auto leading-relaxed">
             Understand token count, estimated cost, and carbon footprint before you send your next prompt.
           </p>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          <div className="flex flex-col gap-6 rounded-3xl border border-slate-800/60 bg-slate-900/70 p-6 shadow-[0_40px_90px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-300" htmlFor="prompt-input">
+        <section className="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+          <div className="flex flex-col gap-8 rounded-3xl border-2 border-rose-highlightHigh/50 bg-rose-surface p-8 shadow-2xl transition-all hover:border-rose-iris/60">
+            <div className="space-y-3">
+              <label className="block text-sm font-bold text-rose-text tracking-wide" htmlFor="prompt-input">
                 Prompt
               </label>
               <PromptInput id="prompt-input" value={prompt} onChange={setPrompt} />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-300" htmlFor="model-select">
+            <div className="space-y-3">
+              <label className="block text-sm font-bold text-rose-text tracking-wide" htmlFor="model-select">
                 Model
               </label>
               <ModelSelect
@@ -168,137 +176,142 @@ export default function Home() {
               />
             </div>
 
-            <p className="text-xs text-slate-400">
-              Tokenizer: <span className="font-semibold text-slate-200">{tokenizerName}</span>
-            </p>
+            <div className="pt-4 border-t border-rose-highlightMed/30">
+              <p className="text-xs text-rose-muted">
+                Tokenizer: <span className="font-semibold text-rose-foam">{tokenizerName}</span>
+              </p>
+            </div>
           </div>
 
-          <aside className="flex flex-col gap-6 rounded-3xl border border-slate-800/60 bg-slate-900/70 p-6 shadow-[0_40px_90px_-60px_rgba(15,23,42,0.9)] backdrop-blur-xl">
-            <div className="rounded-3xl border border-slate-800 bg-slate-950/50 px-6 py-6 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Overview</p>
-              <div className="mt-5 space-y-4">
+          <aside className="flex flex-col gap-6 rounded-3xl border-2 border-rose-highlightHigh/50 bg-rose-surface p-8 shadow-2xl">
+            <div className="rounded-2xl border border-rose-highlightMed/50 bg-rose-overlay px-7 py-7">
+              <p className="text-xs font-bold uppercase tracking-widest text-rose-iris mb-1">Overview</p>
+              <div className="mt-6 space-y-5">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-4xl font-semibold text-white">{tokens.length}</span>
-                  <span className="text-sm text-slate-400">tokens</span>
+                  <span className="text-5xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
+                  <span className="text-sm font-medium text-rose-subtle uppercase tracking-wider">tokens</span>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs font-medium text-rose-subtle">
                     <span>Approx. context usage</span>
-                    <span>{Math.round(tokenCoverage)}%</span>
+                    <span className="tabular-nums">{Math.round(tokenCoverage)}%</span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-rose-highlightMed/50 shadow-inner">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-accentPrimary to-slate-500 transition-all"
+                      className="h-full rounded-full bg-gradient-to-r from-rose-foam via-rose-iris to-rose-pine transition-all duration-300 ease-out shadow-lg"
                       style={{ width: `${tokenCoverage}%` }}
                     />
                   </div>
-                  <p className="text-[11px] text-slate-500">Based on a {referenceTokenWindow.toLocaleString()} token window.</p>
+                  <p className="text-[11px] text-rose-muted leading-relaxed">Based on a {REFERENCE_TOKEN_WINDOW.toLocaleString()} token window.</p>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/50 px-5 py-5 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
+            <div className="rounded-2xl border border-rose-highlightMed/50 bg-rose-overlay px-6 py-6">
               <div className="flex flex-wrap items-center gap-4">
-                <div className="grow space-y-1 text-xs text-slate-400">
-                  <label htmlFor="expected-out" className="font-semibold uppercase tracking-wider text-slate-300">
+                <div className="grow space-y-2 text-xs text-rose-subtle">
+                  <label htmlFor="expected-out" className="font-bold uppercase tracking-wider text-rose-text">
                     Expected output tokens
                   </label>
-                  <p>Blend a likely completion length to model total costs.</p>
+                  <p className="text-rose-subtle/80 leading-relaxed">Blend a likely completion length to model total costs.</p>
                 </div>
                 <input
                   id="expected-out"
                   type="range"
                   min={0}
-                  max={131072}
-                  step={64}
+                  max={MAX_OUTPUT_TOKENS}
+                  step={TOKEN_STEP}
                   value={Number(expectedOutTokens ?? 0)}
-                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(131072, Number(e.target.value))))}
-                  className="h-1 w-48 cursor-pointer appearance-none rounded-full bg-slate-800 accent-accentPrimary"
+                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
+                  className="h-1.5 w-48 cursor-pointer appearance-none rounded-full bg-rose-highlightMed/60 accent-rose-iris transition-all"
                 />
                 <input
                   type="number"
                   inputMode="numeric"
                   min={0}
-                  max={131072}
-                  step={64}
+                  max={MAX_OUTPUT_TOKENS}
+                  step={TOKEN_STEP}
                   value={Number(expectedOutTokens ?? 0)}
-                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(131072, Number(e.target.value))))}
-                  className="w-24 rounded-xl border border-slate-800 bg-slate-900 px-3 py-1.5 text-right text-slate-100 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.8)] focus:border-accentPrimary focus:outline-none focus:ring-2 focus:ring-accentPrimary/30"
+                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
+                  className="w-28 rounded-xl border border-rose-highlightMed bg-rose-base px-4 py-2 text-right font-semibold text-rose-text tabular-nums focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/40 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
-              <div className="mt-5 grid gap-3 text-sm text-slate-200">
-                <div className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-                  <span className="text-slate-400">Prompt tokens</span>
-                  <span className="text-lg font-semibold text-white">{tokens.length}</span>
+              <div className="mt-6 grid gap-3 text-sm text-rose-text">
+                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-5 py-3.5">
+                  <span className="text-rose-subtle font-medium">Prompt tokens</span>
+                  <span className="text-xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
                 </div>
-                <div className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-                  <span className="text-slate-400">Output tokens</span>
-                  <span className="text-lg font-semibold text-white">{expectedOutTokens ?? 0}</span>
+                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-5 py-3.5">
+                  <span className="text-rose-subtle font-medium">Output tokens</span>
+                  <span className="text-xl font-bold text-rose-text tabular-nums">{expectedOutTokens ?? 0}</span>
                 </div>
-                <div className="flex flex-col gap-1 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-sm">
-                  <span className="text-slate-400">Combined tokens</span>
-                  <span className="text-lg font-semibold text-white">
+                <div className="flex items-center justify-between rounded-xl border-2 border-rose-iris/60 bg-rose-iris/10 px-5 py-3.5">
+                  <span className="text-rose-text font-semibold">Combined tokens</span>
+                  <span className="text-xl font-bold text-rose-iris tabular-nums">
                     {tokens.length + Number(expectedOutTokens ?? 0)}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-3 text-sm text-slate-200">
-              <div className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
-                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  <span>Input cost</span>
-                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">USD</span>
+            <div className="space-y-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Cost Breakdown</p>
+              <div className="grid gap-3 text-sm text-rose-text">
+                <div className="flex flex-col gap-2 rounded-xl border border-rose-highlightMed bg-rose-overlay px-5 py-4">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-muted">
+                    <span>Input cost</span>
+                    <span className="rounded-full bg-rose-highlightHigh/50 px-2.5 py-1 text-[10px] font-bold text-rose-text">USD</span>
+                  </div>
+                  <div className="text-2xl font-bold text-rose-text tabular-nums">
+                    {inputCost !== null && !isNaN(inputCost) ? `$${inputCost.toFixed(6)}` : '—'}
+                  </div>
                 </div>
-                <div className="text-2xl font-semibold text-white">
-                  {inputCost !== null && !isNaN(inputCost) ? `$${inputCost.toFixed(6)}` : '—'}
+                <div className="flex flex-col gap-2 rounded-xl border border-rose-highlightMed bg-rose-overlay px-5 py-4">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-muted">
+                    <span>Output cost</span>
+                    <span className="rounded-full bg-rose-highlightHigh/50 px-2.5 py-1 text-[10px] font-bold text-rose-text">USD</span>
+                  </div>
+                  <div className="text-2xl font-bold text-rose-text tabular-nums">
+                    {outputCost !== null && !isNaN(outputCost) ? `$${outputCost.toFixed(6)}` : '—'}
+                  </div>
                 </div>
-              </div>
-              <div className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
-                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  <span>Output cost</span>
-                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">USD</span>
+                <div className="flex flex-col gap-2 rounded-xl border-2 border-rose-iris/60 bg-rose-iris/15 px-5 py-4">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-text">
+                    <span>Total cost</span>
+                    <span className="rounded-full bg-rose-iris/40 px-2.5 py-1 text-[10px] font-bold text-rose-text">USD</span>
+                  </div>
+                  <div className="text-3xl font-bold text-rose-iris tabular-nums">
+                    {cost !== null && !isNaN(cost) ? `$${cost.toFixed(6)}` : '—'}
+                  </div>
                 </div>
-                <div className="text-2xl font-semibold text-white">
-                  {outputCost !== null && !isNaN(outputCost) ? `$${outputCost.toFixed(6)}` : '—'}
+                <div className="flex flex-col gap-2 rounded-xl border border-rose-love/50 bg-rose-love/10 px-5 py-4">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-love">
+                    <span>Estimated CO₂e</span>
+                    <span className="rounded-full bg-rose-love/30 px-2.5 py-1 text-[10px] font-bold text-rose-text">grams</span>
+                  </div>
+                  <div className="text-2xl font-bold text-rose-text tabular-nums">
+                    {co2e !== null && !isNaN(co2e) ? `${co2e.toFixed(4)} g${co2eFallback ? '*' : ''}` : '—'}
+                  </div>
+                  {co2eFallback && (
+                    <p className="text-[11px] text-rose-gold leading-relaxed">Using generic emissions factor. Update pricing data for precise values.</p>
+                  )}
                 </div>
-              </div>
-              <div className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
-                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  <span>Total cost</span>
-                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">USD</span>
-                </div>
-                <div className="text-2xl font-semibold text-white">
-                  {cost !== null && !isNaN(cost) ? `$${cost.toFixed(6)}` : '—'}
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
-                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  <span>Estimated CO₂e</span>
-                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">grams</span>
-                </div>
-                <div className="text-2xl font-semibold text-white">
-                  {co2e !== null && !isNaN(co2e) ? `${co2e.toFixed(4)} g${co2eFallback ? '*' : ''}` : '—'}
-                </div>
-                {co2eFallback && (
-                  <p className="text-[11px] text-amber-400">Using generic emissions factor. Update pricing data for precise values.</p>
-                )}
               </div>
             </div>
 
             {decodedTokens.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Token breakdown</p>
-                <div className="max-h-48 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/50 p-3 shadow-[inset_0_-1px_0_rgba(148,163,184,0.08)]">
-                  <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Token breakdown</p>
+                <div className="max-h-56 overflow-y-auto rounded-2xl border border-rose-highlightMed bg-rose-overlay p-4 scrollbar-thin scrollbar-thumb-rose-highlightHigh scrollbar-track-rose-base">
+                  <div className="flex flex-wrap gap-2.5">
                     {decodedTokens.map((tok, i) => (
                       <span
                         key={i}
-                        className="flex flex-col items-center rounded-xl border border-slate-800 bg-slate-900/80 px-2 py-1 text-[13px] font-mono text-slate-300 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.8)]"
+                        className="group flex flex-col items-center rounded-lg border border-rose-highlightMed bg-rose-highlightLow px-2.5 py-1.5 text-[13px] font-mono text-rose-subtle transition-all hover:scale-105 hover:border-rose-iris hover:bg-rose-highlightMed"
                         title={`Token #${i + 1}\nID: ${tok.id}`}
                       >
-                        <span className="leading-tight text-white">{tok.str || <>&nbsp;</>}</span>
-                        <span className="text-[10px] text-slate-500">#{tok.id}</span>
+                        <span className="leading-tight font-semibold text-rose-text group-hover:text-rose-foam transition-colors">{tok.str || <>&nbsp;</>}</span>
+                        <span className="text-[10px] text-rose-muted group-hover:text-rose-subtle transition-colors">#{tok.id}</span>
                       </span>
                     ))}
                   </div>
