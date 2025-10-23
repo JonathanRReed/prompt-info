@@ -97,17 +97,17 @@ export default function CarbonPageClient() {
 
   return (
     <div className="min-h-screen w-full">
-      <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-16">
-        <header className="space-y-3 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-subtle">Carbon insight</p>
-          <h1 className="text-4xl font-semibold text-rose-text">Estimate prompt emissions</h1>
-          <p className="text-base text-rose-subtle">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 sm:gap-10 px-4 sm:px-6 py-8 sm:py-12 md:py-16">
+        <header className="space-y-2 sm:space-y-3 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] sm:tracking-[0.24em] text-rose-subtle">Carbon insight</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-rose-text">Estimate prompt emissions</h1>
+          <p className="text-sm sm:text-base text-rose-subtle px-2">
             Quickly approximate the grams of CO₂e tied to your prompt tokens and spot where efficiency wins might live.
           </p>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          <div className="flex flex-col gap-6 rounded-3xl border border-rose-highlightMed/60 bg-rose-surface/70 p-6 shadow-[0_40px_90px_-60px_rgba(25,23,36,0.9)] backdrop-blur-xl">
+        <section className="grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="glass-card flex flex-col gap-5 sm:gap-6 rounded-2xl sm:rounded-3xl border border-rose-highlightMed/60 backdrop-blur-2xl p-5 sm:p-6 shadow-[0_40px_90px_-60px_rgba(0,0,0,0.9)]">
             <div>
               <label className="mb-2 block text-sm font-semibold text-rose-text" htmlFor="carbon-prompt">
                 Prompt
@@ -128,15 +128,15 @@ export default function CarbonPageClient() {
               />
             </div>
 
-            <div className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 px-4 py-3 text-sm text-rose-subtle">
+            <div className="rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg px-4 py-3 text-sm text-rose-subtle">
               Emission estimates scale with token count. Keep summaries tight, reuse context where you can, and cache responses for repeated calls.
             </div>
           </div>
 
-          <aside className="flex flex-col gap-6 rounded-3xl border border-rose-highlightMed/60 bg-rose-surface/70 p-6 shadow-[0_40px_90px_-60px_rgba(25,23,36,0.9)] backdrop-blur-xl">
+          <aside className="glass-card flex flex-col gap-5 sm:gap-6 rounded-2xl sm:rounded-3xl border border-rose-highlightMed/60 backdrop-blur-2xl p-5 sm:p-6 shadow-[0_40px_90px_-60px_rgba(0,0,0,0.9)]">
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-rose-subtle">Emission estimate</p>
-              <div className="rounded-3xl border border-rose-highlightMed bg-rose-overlay/50 px-6 py-8 text-center shadow-[inset_0_-1px_0_rgba(144,140,170,0.08)]">
+              <div className="rounded-3xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg px-6 py-8 text-center shadow-[inset_0_-1px_0_rgba(144,140,170,0.08)]">
                 <div className="text-sm font-medium uppercase tracking-[0.3em] text-rose-subtle">Total CO₂e</div>
                 <div className="mt-3 text-4xl font-semibold text-rose-text">
                   {hasEstimate ? `${co2eDisplay!.toFixed(4)} g` : '—'}
@@ -149,17 +149,17 @@ export default function CarbonPageClient() {
             </div>
 
             <dl className="grid gap-3 text-sm text-rose-subtle sm:grid-cols-2">
-              <div className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 px-4 py-3">
+              <div className="rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg px-4 py-3">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-rose-muted">Prompt tokens</dt>
                 <dd className="mt-1 text-2xl font-semibold text-rose-text">{tokensCount}</dd>
               </div>
-              <div className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 px-4 py-3">
+              <div className="rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg px-4 py-3">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-rose-muted">CO₂e per 1k tokens</dt>
                 <dd className="mt-1 text-2xl font-semibold text-rose-text">
                   {perThousand !== null ? `${perThousand.toFixed(4)} g` : '—'}
                 </dd>
               </div>
-              <div className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 px-4 py-3 sm:col-span-2">
+              <div className="rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg px-4 py-3 sm:col-span-2">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-rose-muted">Model factor</dt>
                 <dd className="mt-1 text-base text-rose-text">
                   {model && pricing && pricing[model]
@@ -171,16 +171,16 @@ export default function CarbonPageClient() {
           </aside>
         </section>
 
-        <section className="grid gap-4 rounded-3xl border border-rose-highlightMed/60 bg-rose-surface/70 p-6 shadow-[0_40px_90px_-60px_rgba(25,23,36,0.9)] backdrop-blur-xl">
+        <section className="glass-card grid gap-4 rounded-3xl border border-rose-highlightMed/60 backdrop-blur-2xl p-6 shadow-[0_40px_90px_-60px_rgba(0,0,0,0.9)]">
           <h2 className="text-lg font-semibold text-rose-text">Sustainable prompt patterns</h2>
           <ul className="grid gap-3 text-sm text-rose-subtle md:grid-cols-3">
-            <li className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 p-4">
+            <li className="rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg p-4">
               <span className="font-semibold text-rose-text">Chunk thoughtfully.</span> Break long contexts into reusable snippets instead of resending the full history.
             </li>
-            <li className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 p-4">
+            <li className="rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg p-4">
               <span className="font-semibold text-rose-text">Cache completions.</span> Store frequent responses so you can serve them without invoking the model again.
             </li>
-            <li className="rounded-2xl border border-rose-highlightMed bg-rose-overlay/50 p-4">
+            <li className="rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg p-4">
               <span className="font-semibold text-rose-text">Monitor output length.</span> Align generation parameters with the shortest useful completion to curb downstream emissions.
             </li>
           </ul>
