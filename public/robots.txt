@@ -1,89 +1,97 @@
-# robots.txt – https://prompt-info.helloworldfirm.com/
-# Generated 2025‑05‑07 · SEO‑optimised, AI‑scraper‑aware
-# ------------------------------------------------------------------
-# ███ 1. MAJOR SEARCH ENGINES (full access) ███
+Sitemap: https://prompt-info.helloworldfirm.com/sitemap.xml
+
+# LLM-friendly documentation for AI agents and language models
+# See: https://llmstxt.org/
+LLMs-File: https://prompt-info.helloworldfirm.com/llms.txt
+
 User-agent: Googlebot
-Allow: /*.js$
-Allow: /*.css$
+Allow: /
 Disallow: /search/
 Disallow: /*?s=
 Disallow: /*?q=
-Sitemap: https://prompt-info.helloworldfirm.com/sitemap.xml
+
+User-agent: Googlebot-Image
+Allow: /
 
 User-agent: Bingbot
-Allow: /*.js$
-Allow: /*.css$
+Allow: /
 Disallow: /search/
 Disallow: /*?s=
 Disallow: /*?q=
 Crawl-delay: 5
 
-User-agent: DuckDuckBot               # DuckDuckGo
-Allow: /*.js$
-Allow: /*.css$
+User-agent: DuckDuckBot
+Allow: /
 Disallow: /search/
 Disallow: /*?s=
 Disallow: /*?q=
 
-# ███ 2. SOCIAL‑PREVIEW BOTS (OG/meta only) ███
 User-agent: FacebookBot
+Allow: /
+
 User-agent: meta-externalagent
+Allow: /
+
 User-agent: LinkedInBot
 Allow: /
 
-# ███ 3. MODEL‑TRAINING & BULK‑AI SCRAPERS (blocked) ███
-User-agent: GPTBot                     # OpenAI model‑training
-Disallow: /
-User-agent: OAI-SearchBot              # OpenAI retrieval indexer
-Disallow: /
-User-agent: ChatGPT-User
-User-agent: ChatGPT-User/2.0
-Disallow: /
-
-User-agent: anthropic-ai               # Anthropic
-User-agent: ClaudeBot
-User-agent: claude-web
-Disallow: /
-
-User-agent: PerplexityBot
-Disallow: /
-User-agent: Perplexity-User/1.0
-Disallow: /
-
-User-agent: Google-Extended            # Gemini training
-Disallow: /
-
-User-agent: Amazonbot                  # Alexa / AI tasks
-Disallow: /
-User-agent: Applebot-Extended          # Apple AI training
-Disallow: /
-
-User-agent: Bytespider                 # ByteDance / TikTok AI
-Disallow: /
-
-User-agent: MistralAI-User/1.0         # Mistral “Le Chat” crawler
-Disallow: /
-
-User-agent: AI2Bot                     # Allen AI / Semantic Scholar
-Disallow: /
-
-User-agent: CCBot                      # Common Crawl
-Disallow: /
-
-User-agent: cohere-ai                  # Cohere
-Disallow: /
-
-# Placeholder — xAI Grok crawler (token unknown as of May‑2025)
-# User-agent: GrokBot
-# Disallow: /
-
-# ███ 4. OTHER SEARCH/ASSIST BOTS (optional block) ███
-User-agent: Applebot                   # Siri / Spotlight search
+User-agent: GPTBot
 Allow: /
 
-# ███ 5. CATCH‑ALL ███
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: claude-web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: MistralAI-User
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: AI2Bot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
 User-agent: *
+Allow: /
 Disallow: /cgi-bin/
+Disallow: /search/
+Disallow: /*?s=
+Disallow: /*?q=
 Disallow: /wp-admin/
 Disallow: /admin/
 Disallow: /backend/
@@ -92,7 +100,3 @@ Disallow: /login/
 Disallow: /private/
 Disallow: /temp/
 Disallow: /includes/
-Disallow: /search/
-Disallow: /*?s=
-Disallow: /*?q=
-Allow: /
