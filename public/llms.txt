@@ -1,0 +1,54 @@
+# Prompt Info
+
+> Prompt Info is a React-based web application for analyzing LLM prompts with real-time token counting, cost estimation across 1000+ AI models, and carbon footprint tracking. Built with Next.js 14, TypeScript, and Tailwind CSS with a Rose Pine theme.
+
+This tool helps developers and AI engineers understand the cost and environmental impact of their LLM prompts before sending them. It uses the GPT tokenizer for accurate token counting and provides detailed breakdowns of input/output costs and CO₂e emissions.
+
+**Tech Stack**: Next.js 14 (App Router), React, TypeScript, Tailwind CSS, GPT-tokenizer library, Supabase for pricing data storage.
+
+**Key Features**:
+- Real-time tokenization with visual token breakdown
+- Cost estimation for 1000+ models (OpenAI, Anthropic, Google, etc.)
+- Carbon footprint calculation (grams of CO₂e per token)
+- BPE (Byte Pair Encoding) token visualizer
+- Adjustable output token estimates for total cost projection
+- Static export for optimal performance
+
+## Pages
+
+- [Home](https://prompt-info.helloworldfirm.com/): Main token counter and cost calculator with comprehensive breakdown
+- [BPE Visualizer](https://prompt-info.helloworldfirm.com/bpe): Interactive Byte Pair Encoding demonstrator showing how text is tokenized
+- [Carbon Calculator](https://prompt-info.helloworldfirm.com/carbon): Dedicated carbon footprint estimator for LLM prompts
+
+## Documentation
+
+- [README](https://github.com/JonathanRReed/prompt-info/blob/main/README.md): Project overview, installation, and usage instructions
+- [Package.json](https://github.com/JonathanRReed/prompt-info/blob/main/package.json): Complete dependency list and build scripts
+
+## Key Components
+
+- [PromptInput](https://github.com/JonathanRReed/prompt-info/blob/main/components/PromptInput.tsx): Textarea component for prompt entry
+- [ModelSelect](https://github.com/JonathanRReed/prompt-info/blob/main/components/ModelSelect.tsx): Dropdown for model selection with 1000+ options
+- [BpeDemo](https://github.com/JonathanRReed/prompt-info/blob/main/components/BpeDemo.tsx): Interactive BPE tokenization visualizer
+- [fetchPricing](https://github.com/JonathanRReed/prompt-info/blob/main/lib/fetchPricing.ts): Supabase integration for model pricing data
+
+## Technical Details
+
+- **Tokenizer**: Uses `gpt-tokenizer` package for universal GPT-compatible tokenization
+- **Pricing Data**: Stored in Supabase with fallback to static JSON file
+- **Cost Calculation**: Separate input/output pricing per 1000 tokens
+- **Carbon Factor**: Model-specific CO₂e factors with 0.0002g fallback
+- **Export**: Static HTML/CSS/JS via Next.js export for CDN deployment
+- **Styling**: Custom Tailwind configuration with Rose Pine color palette
+
+## API References
+
+- [GPT Tokenizer](https://www.npmjs.com/package/gpt-tokenizer): Core tokenization library used
+- [Next.js 14 Documentation](https://nextjs.org/docs): App Router, metadata API, static export
+- [Supabase JS Client](https://supabase.com/docs/reference/javascript/introduction): Database integration
+
+## Optional
+
+- [Tailwind CSS](https://tailwindcss.com/docs): Utility-first CSS framework documentation
+- [Rose Pine Theme](https://rosepinetheme.com/): Color palette inspiration and guidelines
+- [Next.js Image Optimization](https://nextjs.org/docs/app/building-your-application/optimizing/images): Used for logo/avatar assets
