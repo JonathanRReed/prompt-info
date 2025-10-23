@@ -75,10 +75,10 @@ function ModelSelect({ onChange, value, id = 'model-select', models: externalMod
       id={id}
       value={currentValue}
       onChange={e => onChange(e.target.value)}
-      className="w-full appearance-none rounded-xl border border-rose-highlightMed bg-rose-base px-5 py-3 text-base font-medium text-rose-text transition-all duration-200 focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/30 hover:border-rose-highlightHigh cursor-pointer"
+      className="w-full appearance-none rounded-xl border border-rose-highlightMed bg-black/50 backdrop-blur-lg px-5 py-3 text-base font-medium text-rose-text transition-all duration-200 focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/30 hover:border-rose-highlightHigh cursor-pointer"
     >
       {optionList.map(model => (
-        <option key={model} value={model} className="bg-rose-surface text-rose-text py-2">
+        <option key={model} value={model} className="bg-rose-base text-rose-text py-2">
           {model}
         </option>
       ))}

@@ -145,17 +145,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen w-full">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-6 py-20">
-        <header className="text-center space-y-4">
-          <p className="text-xs font-bold uppercase tracking-[0.28em] text-rose-iris">Token planner</p>
-          <h1 className="text-5xl font-bold text-rose-text tracking-tight">Prompt Info</h1>
-          <p className="mt-4 text-lg text-rose-subtle max-w-2xl mx-auto leading-relaxed">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 sm:gap-12 px-4 sm:px-6 py-6 sm:py-8">
+        <header className="text-center space-y-3 sm:space-y-4">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.28em] text-rose-iris">Token planner</p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-rose-text tracking-tight">Prompt Info</h1>
+          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-rose-subtle max-w-2xl mx-auto leading-relaxed px-2">
             Understand token count, estimated cost, and carbon footprint before you send your next prompt.
           </p>
         </header>
 
-        <section className="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <div className="flex flex-col gap-8 rounded-3xl border-2 border-rose-highlightHigh/50 bg-rose-surface p-8 shadow-2xl transition-all hover:border-rose-iris/60">
+        <section className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+          <div className="glass-card flex flex-col gap-6 sm:gap-8 rounded-2xl sm:rounded-3xl border-2 border-rose-highlightHigh/50 backdrop-blur-2xl p-5 sm:p-8 shadow-2xl transition-all hover:border-rose-iris/60">
             <div className="space-y-3">
               <label className="block text-sm font-bold text-rose-text tracking-wide" htmlFor="prompt-input">
                 Prompt
@@ -183,13 +183,13 @@ export default function Home() {
             </div>
           </div>
 
-          <aside className="flex flex-col gap-6 rounded-3xl border-2 border-rose-highlightHigh/50 bg-rose-surface p-8 shadow-2xl">
-            <div className="rounded-2xl border border-rose-highlightMed/50 bg-rose-overlay px-7 py-7">
+          <aside className="glass-card flex flex-col gap-5 sm:gap-6 rounded-2xl sm:rounded-3xl border-2 border-rose-highlightHigh/50 backdrop-blur-2xl p-5 sm:p-8 shadow-2xl">
+            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/40 backdrop-blur-xl px-5 sm:px-7 py-6 sm:py-7">
               <p className="text-xs font-bold uppercase tracking-widest text-rose-iris mb-1">Overview</p>
-              <div className="mt-6 space-y-5">
+              <div className="mt-5 sm:mt-6 space-y-4 sm:space-y-5">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-5xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
-                  <span className="text-sm font-medium text-rose-subtle uppercase tracking-wider">tokens</span>
+                  <span className="text-4xl sm:text-5xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
+                  <span className="text-xs sm:text-sm font-medium text-rose-subtle uppercase tracking-wider">tokens</span>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs font-medium text-rose-subtle">
@@ -207,93 +207,95 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-rose-highlightMed/50 bg-rose-overlay px-6 py-6">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="grow space-y-2 text-xs text-rose-subtle">
+            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/40 backdrop-blur-xl px-5 sm:px-6 py-5 sm:py-6">
+              <div className="space-y-4">
+                <div className="space-y-2 text-xs text-rose-subtle">
                   <label htmlFor="expected-out" className="font-bold uppercase tracking-wider text-rose-text">
                     Expected output tokens
                   </label>
                   <p className="text-rose-subtle/80 leading-relaxed">Blend a likely completion length to model total costs.</p>
                 </div>
-                <input
-                  id="expected-out"
-                  type="range"
-                  min={0}
-                  max={MAX_OUTPUT_TOKENS}
-                  step={TOKEN_STEP}
-                  value={Number(expectedOutTokens ?? 0)}
-                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
-                  className="h-1.5 w-48 cursor-pointer appearance-none rounded-full bg-rose-highlightMed/60 accent-rose-iris transition-all"
-                />
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={MAX_OUTPUT_TOKENS}
-                  step={TOKEN_STEP}
-                  value={Number(expectedOutTokens ?? 0)}
-                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
-                  className="w-28 rounded-xl border border-rose-highlightMed bg-rose-base px-4 py-2 text-right font-semibold text-rose-text tabular-nums focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/40 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    id="expected-out"
+                    type="range"
+                    min={0}
+                    max={MAX_OUTPUT_TOKENS}
+                    step={TOKEN_STEP}
+                    value={Number(expectedOutTokens ?? 0)}
+                    onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
+                    className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-rose-highlightMed/60 accent-rose-iris transition-all"
+                  />
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={MAX_OUTPUT_TOKENS}
+                    step={TOKEN_STEP}
+                    value={Number(expectedOutTokens ?? 0)}
+                    onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
+                    className="w-20 sm:w-28 rounded-xl border border-rose-highlightMed bg-rose-base px-3 sm:px-4 py-2 text-right text-sm sm:text-base font-semibold text-rose-text tabular-nums focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/40 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
               </div>
-              <div className="mt-6 grid gap-3 text-sm text-rose-text">
-                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-5 py-3.5">
-                  <span className="text-rose-subtle font-medium">Prompt tokens</span>
-                  <span className="text-xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
+              <div className="mt-5 sm:mt-6 grid gap-2.5 sm:gap-3 text-sm text-rose-text">
+                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 sm:px-5 py-3 sm:py-3.5">
+                  <span className="text-rose-subtle font-medium text-xs sm:text-sm">Prompt tokens</span>
+                  <span className="text-lg sm:text-xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
                 </div>
-                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-5 py-3.5">
-                  <span className="text-rose-subtle font-medium">Output tokens</span>
-                  <span className="text-xl font-bold text-rose-text tabular-nums">{expectedOutTokens ?? 0}</span>
+                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 sm:px-5 py-3 sm:py-3.5">
+                  <span className="text-rose-subtle font-medium text-xs sm:text-sm">Output tokens</span>
+                  <span className="text-lg sm:text-xl font-bold text-rose-text tabular-nums">{expectedOutTokens ?? 0}</span>
                 </div>
-                <div className="flex items-center justify-between rounded-xl border-2 border-rose-iris/60 bg-rose-iris/10 px-5 py-3.5">
-                  <span className="text-rose-text font-semibold">Combined tokens</span>
-                  <span className="text-xl font-bold text-rose-iris tabular-nums">
+                <div className="flex items-center justify-between rounded-xl border-2 border-rose-iris/60 bg-rose-iris/10 px-4 sm:px-5 py-3 sm:py-3.5">
+                  <span className="text-rose-text font-semibold text-xs sm:text-sm">Combined tokens</span>
+                  <span className="text-lg sm:text-xl font-bold text-rose-iris tabular-nums">
                     {tokens.length + Number(expectedOutTokens ?? 0)}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Cost Breakdown</p>
-              <div className="grid gap-3 text-sm text-rose-text">
-                <div className="flex flex-col gap-2 rounded-xl border border-rose-highlightMed bg-rose-overlay px-5 py-4">
+              <div className="grid gap-2.5 sm:gap-3 text-sm text-rose-text">
+                <div className="flex flex-col gap-2 rounded-xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg px-4 sm:px-5 py-3.5 sm:py-4">
                   <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-muted">
-                    <span>Input cost</span>
-                    <span className="rounded-full bg-rose-highlightHigh/50 px-2.5 py-1 text-[10px] font-bold text-rose-text">USD</span>
+                    <span className="text-[10px] sm:text-xs">Input cost</span>
+                    <span className="rounded-full bg-rose-highlightHigh/50 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold text-rose-text">USD</span>
                   </div>
-                  <div className="text-2xl font-bold text-rose-text tabular-nums">
+                  <div className="text-xl sm:text-2xl font-bold text-rose-text tabular-nums">
                     {inputCost !== null && !isNaN(inputCost) ? `$${inputCost.toFixed(6)}` : '—'}
                   </div>
                 </div>
-                <div className="flex flex-col gap-2 rounded-xl border border-rose-highlightMed bg-rose-overlay px-5 py-4">
+                <div className="flex flex-col gap-2 rounded-xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg px-4 sm:px-5 py-3.5 sm:py-4">
                   <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-muted">
-                    <span>Output cost</span>
-                    <span className="rounded-full bg-rose-highlightHigh/50 px-2.5 py-1 text-[10px] font-bold text-rose-text">USD</span>
+                    <span className="text-[10px] sm:text-xs">Output cost</span>
+                    <span className="rounded-full bg-rose-highlightHigh/50 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold text-rose-text">USD</span>
                   </div>
-                  <div className="text-2xl font-bold text-rose-text tabular-nums">
+                  <div className="text-xl sm:text-2xl font-bold text-rose-text tabular-nums">
                     {outputCost !== null && !isNaN(outputCost) ? `$${outputCost.toFixed(6)}` : '—'}
                   </div>
                 </div>
-                <div className="flex flex-col gap-2 rounded-xl border-2 border-rose-iris/60 bg-rose-iris/15 px-5 py-4">
+                <div className="flex flex-col gap-2 rounded-xl border-2 border-rose-iris/60 bg-rose-iris/15 px-4 sm:px-5 py-3.5 sm:py-4">
                   <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-text">
-                    <span>Total cost</span>
-                    <span className="rounded-full bg-rose-iris/40 px-2.5 py-1 text-[10px] font-bold text-rose-text">USD</span>
+                    <span className="text-[10px] sm:text-xs">Total cost</span>
+                    <span className="rounded-full bg-rose-iris/40 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold text-rose-text">USD</span>
                   </div>
-                  <div className="text-3xl font-bold text-rose-iris tabular-nums">
+                  <div className="text-2xl sm:text-3xl font-bold text-rose-iris tabular-nums">
                     {cost !== null && !isNaN(cost) ? `$${cost.toFixed(6)}` : '—'}
                   </div>
                 </div>
-                <div className="flex flex-col gap-2 rounded-xl border border-rose-love/50 bg-rose-love/10 px-5 py-4">
+                <div className="flex flex-col gap-2 rounded-xl border border-rose-love/50 bg-rose-love/10 px-4 sm:px-5 py-3.5 sm:py-4">
                   <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-love">
-                    <span>Estimated CO₂e</span>
-                    <span className="rounded-full bg-rose-love/30 px-2.5 py-1 text-[10px] font-bold text-rose-text">grams</span>
+                    <span className="text-[10px] sm:text-xs">Estimated CO₂e</span>
+                    <span className="rounded-full bg-rose-love/30 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold text-rose-text">grams</span>
                   </div>
-                  <div className="text-2xl font-bold text-rose-text tabular-nums">
+                  <div className="text-xl sm:text-2xl font-bold text-rose-text tabular-nums">
                     {co2e !== null && !isNaN(co2e) ? `${co2e.toFixed(4)} g${co2eFallback ? '*' : ''}` : '—'}
                   </div>
                   {co2eFallback && (
-                    <p className="text-[11px] text-rose-gold leading-relaxed">Using generic emissions factor. Update pricing data for precise values.</p>
+                    <p className="text-[10px] sm:text-[11px] text-rose-gold leading-relaxed">Using generic emissions factor. Update pricing data for precise values.</p>
                   )}
                 </div>
               </div>
@@ -302,7 +304,7 @@ export default function Home() {
             {decodedTokens.length > 0 && (
               <div className="flex flex-col gap-4">
                 <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Token breakdown</p>
-                <div className="max-h-56 overflow-y-auto rounded-2xl border border-rose-highlightMed bg-rose-overlay p-4 scrollbar-thin scrollbar-thumb-rose-highlightHigh scrollbar-track-rose-base">
+                <div className="max-h-56 overflow-y-auto rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg p-4 scrollbar-thin scrollbar-thumb-rose-highlightHigh scrollbar-track-black">
                   <div className="flex flex-wrap gap-2.5">
                     {decodedTokens.map((tok, i) => (
                       <span

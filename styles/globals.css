@@ -6,10 +6,106 @@
   font-display: swap;
 }
 
-html, body {
-  font-family: 'Nebula Sans', sans-serif;
+:root {
+  --color-rose-base: #191724;
+  --color-rose-surface: #1f1d2e;
+  --color-rose-overlay: #26233a;
+  --color-rose-muted: #6e6a86;
+  --color-rose-subtle: #908caa;
+  --color-rose-text: #e0def4;
+  --color-rose-love: #eb6f92;
+  --color-rose-gold: #f6c177;
+  --color-rose-rose: #ebbcba;
+  --color-rose-pine: #31748f;
+  --color-rose-foam: #9ccfd8;
+  --color-rose-iris: #c4a7e7;
+  --color-rose-highlightLow: #21202e;
+  --color-rose-highlightMed: #403d52;
+  --color-rose-highlightHigh: #524f67;
 }
 
+html, body {
+  font-family: 'Nebula Sans', sans-serif;
+  background-color: #000000;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  html {
+    font-size: 16px;
+  }
+  
+  /* Prevent zoom on input focus on iOS */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Improve touch targets on mobile */
+@media (hover: none) and (pointer: coarse) {
+  button, a, input[type="range"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+[data-theme="light"] {
+  background-color: var(--color-rose-base) !important;
+}
+
+/* Theme-aware glass effects */
+[data-theme="light"] .glass-card {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  border-color: var(--color-rose-highlightMed) !important;
+}
+
+[data-theme="dark"] .glass-card {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Theme-aware input and nested components */
+[data-theme="light"] input[type="text"],
+[data-theme="light"] input[type="number"],
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-theme="light"] .bg-black\/40,
+[data-theme="light"] .bg-black\/30,
+[data-theme="light"] .bg-black\/50 {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+[data-theme="light"] .bg-rose-highlightLow {
+  background-color: var(--color-rose-surface) !important;
+}
+
+[data-theme="light"] .bg-rose-highlightMed {
+  background-color: var(--color-rose-overlay) !important;
+}
+
+[data-theme="light"] input[type="range"] {
+  background-color: var(--color-rose-highlightMed) !important;
+}
+
+/* Scrollbar theming */
+[data-theme="light"] .scrollbar-track-black {
+  --tw-scrollbar-track: var(--color-rose-surface) !important;
+}
+
+/* Special accent backgrounds for light theme */
+[data-theme="light"] .bg-rose-iris\/20,
+[data-theme="light"] .bg-rose-iris\/15,
+[data-theme="light"] .bg-rose-iris\/10 {
+  background-color: rgba(144, 122, 169, 0.2) !important;
+}
+
+[data-theme="light"] .bg-rose-love\/10 {
+  background-color: rgba(180, 99, 122, 0.15) !important;
+}
 
 @tailwind base;
 @tailwind components;

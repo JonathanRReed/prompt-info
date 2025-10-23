@@ -21,8 +21,8 @@ export default function BpeDemo() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-rose-surface/70 rounded-3xl shadow-[0_40px_90px_-60px_rgba(25,23,36,0.9)] p-6 backdrop-blur-xl border border-rose-highlightMed/60">
-      <h1 className="text-3xl font-bold mb-4 text-rose-text">BPE Merge Step Demonstrator</h1>
+    <div className="glass-card max-w-2xl mx-auto rounded-2xl sm:rounded-3xl shadow-[0_40px_90px_-60px_rgba(0,0,0,0.9)] p-5 sm:p-6 backdrop-blur-xl border border-rose-highlightMed/60">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-rose-text">BPE Merge Step Demonstrator</h1>
       <PromptInput value={prompt} onChange={setPrompt} />
       <button
         className="px-6 py-2.5 mt-4 bg-rose-iris text-rose-text font-semibold rounded-xl shadow-lg hover:bg-rose-foam hover:scale-105 transition-all"
@@ -32,7 +32,7 @@ export default function BpeDemo() {
       </button>
       {showTokens && (
         <div className="mt-6">
-          <div className="flex flex-wrap gap-2 justify-center p-4 bg-rose-overlay/50 rounded-2xl border border-rose-highlightMed">
+          <div className="flex flex-wrap gap-2 justify-center p-4 bg-black/40 backdrop-blur-lg rounded-2xl border border-rose-highlightMed">
             {tokens.map((tok, i) => (
               <span key={i} className="px-3 py-2 rounded-xl bg-rose-highlightMed text-rose-text text-lg font-mono shadow-lg border border-rose-highlightHigh">
                 {tok}
@@ -47,7 +47,7 @@ export default function BpeDemo() {
           </p>
         </div>
       )}
-      <div className="mt-8 p-4 bg-rose-overlay/30 rounded-2xl border border-rose-highlightMed text-rose-subtle">
+      <div className="mt-8 p-4 bg-black/30 backdrop-blur-lg rounded-2xl border border-rose-highlightMed text-rose-subtle">
         <b className="text-rose-text">Legend:</b> <br />
         <span className="text-rose-foam">•</span> Enter a prompt and click Show BPE Tokens.<br />
         <span className="text-rose-foam">•</span> Each box is a token (numbered ID).<br />
