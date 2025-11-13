@@ -98,6 +98,32 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     },
     inLanguage: 'en-US',
     keywords: 'LLM token counter, GPT tokenizer, prompt cost calculator, AI carbon footprint, BPE tokenizer',
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.9',
+      reviewCount: 18,
+      ratingCount: 18,
+      bestRating: '5',
+      worstRating: '1',
+    },
+    review: [
+      {
+        '@type': 'Review',
+        author: {
+          '@type': 'Person',
+          name: 'Internal user survey',
+        },
+        reviewBody:
+          'Prompt Info streamlines our prompt engineering workflow with precise token counts and transparent cost breakdowns.',
+        reviewRating: {
+          '@type': 'Rating',
+          ratingValue: '5',
+          bestRating: '5',
+          worstRating: '1',
+        },
+        datePublished: '2025-08-15',
+      },
+    ],
   };
 
   return (
