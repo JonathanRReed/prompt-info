@@ -30,3 +30,4 @@ coverage/
 *.code-workspace
 # Misc
 *.pid
+.todo

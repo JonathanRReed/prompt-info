@@ -4,26 +4,24 @@ import Image from 'next/image'
 import type { Metadata } from 'next'
 import { ThemeProvider } from '../components/ThemeProvider'
 import ThemeSelector from '../components/ThemeSelector'
+import Navigation from '../components/Navigation'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://prompt-info.helloworldfirm.com'),
   title: {
-    default: 'Prompt Info - LLM Token Counter, Cost Calculator & Carbon Footprint Tracker',
+    default: 'Prompt Info - LLM Token Counter & Cost Calculator',
     template: '%s | Prompt Info'
   },
-  description: 'Analyze LLM prompts with real-time token counting, accurate cost estimation across 1000+ models, and carbon footprint tracking. Built for developers and AI engineers.',
+  description: 'Analyze LLM prompts with real-time token counting and accurate cost estimation across 1000+ models. Built for developers and AI engineers.',
   keywords: [
     'LLM token counter',
     'GPT tokenizer',
     'prompt cost calculator',
-    'AI carbon footprint',
     'BPE tokenizer',
     'token visualization',
     'LLM cost estimation',
     'prompt analysis',
     'GPT token count',
-    'AI sustainability',
-    'carbon emissions AI',
     'prompt engineering tools'
   ],
   authors: [
@@ -49,7 +47,7 @@ export const metadata: Metadata = {
     url: 'https://prompt-info.helloworldfirm.com',
     siteName: 'Prompt Info',
     title: 'Prompt Info - LLM Token Counter & Cost Calculator',
-    description: 'Analyze LLM prompts with real-time token counting, cost estimation across 1000+ models, and carbon footprint tracking.',
+    description: 'Analyze LLM prompts with real-time token counting and cost estimation across 1000+ models.',
     images: [
       {
         url: '/logo.avif',
@@ -62,7 +60,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Prompt Info - LLM Token Counter & Cost Calculator',
-    description: 'Analyze LLM prompts with real-time token counting, cost estimation, and carbon footprint tracking.',
+    description: 'Analyze LLM prompts with real-time token counting and cost estimation.',
     creator: '@JonathanRReed',
     images: ['/logo.avif'],
   },
@@ -84,7 +82,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       price: '0',
       priceCurrency: 'USD',
     },
-    description: 'Analyze LLM prompts with real-time token counting, accurate cost estimation across 1000+ models, and carbon footprint tracking.',
+    description: 'Analyze LLM prompts with real-time token counting and accurate cost estimation across 1000+ models.',
     url: 'https://prompt-info.helloworldfirm.com',
     author: {
       '@type': 'Person',
@@ -97,7 +95,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       url: 'https://helloworldfirm.com',
     },
     inLanguage: 'en-US',
-    keywords: 'LLM token counter, GPT tokenizer, prompt cost calculator, AI carbon footprint, BPE tokenizer',
+    keywords: 'LLM token counter, GPT tokenizer, prompt cost calculator, BPE tokenizer',
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: '4.9',
@@ -162,8 +160,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="min-h-screen bg-black p-0 m-0 font-sans text-rose-text antialiased">
         <ThemeProvider>
-          <div className="flex min-h-screen flex-col p-0 m-0">
-            <header className="sticky top-0 z-50 flex w-full justify-end px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex min-h-screen flex-col p-0 m-0 relative overflow-hidden">
+            <div className="page-bg" aria-hidden="true" />
+            <div className="grid-overlay" aria-hidden="true" />
+            <header className="sticky top-0 z-50 flex w-full items-center justify-between px-4 sm:px-6 py-3 sm:py-4 backdrop-blur-lg bg-black/30 border-b border-rose-highlightMed/30">
+              <Navigation />
               <ThemeSelector />
             </header>
             <main className="relative flex flex-1 flex-col items-center justify-center bg-transparent p-0 m-0">
@@ -202,6 +203,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     className="h-4 w-4 sm:h-5 sm:w-5 rounded-full border-2 border-rose-highlightMed object-cover object-center"
                   />
                   JonathanRReed.com
+                </a>
+                <a href="https://ai-news.helloworldfirm.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
+                  AI News
+                </a>
+                <a href="https://ai-stats.jonathanrreed.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
+                  AI Stats
                 </a>
               </div>
               <div className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-rose-muted">2025 &copy; All Rights Reserved</div>

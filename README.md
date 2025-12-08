@@ -8,13 +8,12 @@ Made by Jonathan Reed.
 
 ## Overview
 
-A beautiful, Rose Pine-themed dashboard for analyzing LLM prompts with token counting, cost estimation, and carbon footprint tracking. Built with Next.js, TypeScript, and Tailwind CSS.
+A beautiful, Rose Pine-themed dashboard for analyzing LLM prompts with token counting and cost estimation. Built with Next.js, TypeScript, and Tailwind CSS.
 
 ## Features
 
 - **Token Analysis**: Real-time tokenization with GPT tokenizer and detailed breakdown
 - **Cost Estimation**: Calculate input/output costs across 1000+ LLM models
-- **Carbon Tracking**: Estimate CO₂e emissions per prompt
 - **BPE Visualization**: Interactive Byte Pair Encoding token demonstrator
 - **Rose Pine Theme**: Soothing, carefully crafted color palette
 - **Performance Optimized**: Memoized calculations, proper async handling, static export ready
