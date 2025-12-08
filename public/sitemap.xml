@@ -8,15 +8,15 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://prompt-info.helloworldfirm.com/bpe</loc>
-    <lastmod>2025-01-23</lastmod>
+    <loc>https://prompt-info.helloworldfirm.com/format-comparison</loc>
+    <lastmod>2025-12-08</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://prompt-info.helloworldfirm.com/carbon</loc>
-    <lastmod>2025-01-23</lastmod>
+    <loc>https://prompt-info.helloworldfirm.com/about</loc>
+    <lastmod>2025-12-08</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.6</priority>
   </url>
 </urlset>
