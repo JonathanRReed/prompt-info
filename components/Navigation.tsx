@@ -10,6 +10,8 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: '/', label: 'Token Planner', description: 'Count tokens & estimate costs' },
+  { href: '/format-comparison', label: 'Format Comparison', description: 'Compare TOON, JSON, YAML, XML, CSV' },
+  { href: '/about', label: 'About', description: 'What this site does' },
 ];
 
 export default function Navigation() {

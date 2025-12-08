@@ -129,6 +129,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#000000" />
+        <link rel="preconnect" href="https://bgbqdzmgxkwstjihgeef.supabase.co" />
         <link rel="icon" type="image/svg+xml" href="/Favicon/favicon.svg" />
         <link rel="alternate icon" type="image/png" href="/Favicon/favicon-96x96.png" />
         <link rel="apple-touch-icon" href="/Favicon/apple-touch-icon.png" />
@@ -171,47 +172,55 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               {children}
             </main>
           <footer className="flex w-full flex-col items-center justify-center pb-8 sm:pb-12 px-4">
-            <div className="glass-card mx-auto flex max-w-lg flex-col items-start gap-3 sm:gap-4 rounded-2xl sm:rounded-3xl border border-rose-highlightMed/60 px-6 py-5 sm:px-8 sm:py-6 md:px-10 md:py-8 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] backdrop-blur-xl w-full">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <Image
-                  src="/logo.avif"
-                  alt="Hello.World Consulting logo"
-                  width={32}
-                  height={32}
-                  className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover object-center"
-                />
-                <span className="text-base sm:text-lg font-semibold text-rose-text">A product of <span className="font-bold text-rose-foam">Hello.World Consulting</span></span>
-              </div>
-              <div className="text-xs sm:text-sm italic text-rose-subtle">Made by Jonathan Reed</div>
-              <div className="flex flex-col gap-2">
-                <a href="https://helloworldfirm.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
+            <div className="glass-card mx-auto w-full max-w-5xl rounded-2xl sm:rounded-3xl border border-rose-highlightMed/60 px-6 py-6 sm:px-8 sm:py-7 md:px-10 md:py-8 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+              <div className="flex flex-col gap-3 sm:gap-4">
+                <div className="flex items-center gap-2.5 sm:gap-3">
                   <Image
                     src="/logo.avif"
                     alt="Hello.World Consulting logo"
-                    width={20}
-                    height={20}
-                    className="h-4 w-4 sm:h-5 sm:w-5 rounded-full object-cover object-center"
+                    width={32}
+                    height={32}
+                    className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover object-center"
                   />
-                  helloworldfirm.com
-                </a>
-                <a href="https://JonathanRReed.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
-                  <Image
-                    src="/jonathan.avif"
-                    alt="Jonathan Reed"
-                    width={20}
-                    height={20}
-                    className="h-4 w-4 sm:h-5 sm:w-5 rounded-full border-2 border-rose-highlightMed object-cover object-center"
-                  />
-                  JonathanRReed.com
-                </a>
-                <a href="https://ai-news.helloworldfirm.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
-                  AI News
-                </a>
-                <a href="https://ai-stats.jonathanrreed.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
-                  AI Stats
-                </a>
+                  <span className="text-base sm:text-lg font-semibold text-rose-text">A product of <span className="font-bold text-rose-foam">Hello.World Consulting</span></span>
+                </div>
+                <div className="text-xs sm:text-sm italic text-rose-subtle">Made by Jonathan Reed</div>
+
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-[1.1fr_1fr] items-start">
+                  <div className="flex flex-col gap-2">
+                    <a href="https://helloworldfirm.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
+                      <Image
+                        src="/logo.avif"
+                        alt="Hello.World Consulting logo"
+                        width={20}
+                        height={20}
+                        className="h-5 w-5 rounded-full object-cover object-center"
+                      />
+                      helloworldfirm.com
+                    </a>
+                    <a href="https://JonathanRReed.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
+                      <Image
+                        src="/jonathan.avif"
+                        alt="Jonathan Reed"
+                        width={20}
+                        height={20}
+                        className="h-5 w-5 rounded-full border-2 border-rose-highlightMed object-cover object-center"
+                      />
+                      JonathanRReed.com
+                    </a>
+                  </div>
+                  <div className="flex flex-col gap-2 text-sm sm:text-base font-medium text-rose-foam">
+                    <a className="hover:underline" href="https://ai-news.helloworldfirm.com" target="_blank" rel="noopener noreferrer">
+                      AI News
+                    </a>
+                    <a className="hover:underline" href="https://aistats.jonathanrreed.com" target="_blank" rel="noopener noreferrer">
+                      AI Stats
+                    </a>
+                  </div>
+                </div>
+
+                <div className="text-[10px] sm:text-xs text-rose-muted">2025 &copy; All Rights Reserved</div>
               </div>
-              <div className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-rose-muted">2025 &copy; All Rights Reserved</div>
             </div>
           </footer>
           </div>

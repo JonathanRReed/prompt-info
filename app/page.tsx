@@ -155,7 +155,7 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 sm:gap-14 px-4 sm:px-6 py-8 sm:py-12">
         <header className="grid gap-8 lg:grid-cols-[1.2fr_minmax(0,0.8fr)] items-center">
           <div className="space-y-5">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.28em] text-rose-iris">Prompt intel</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.28em] text-rose-iris">Prompt Info</p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-rose-text leading-tight">
               Measure tokens and cost before you hit send.
             </h1>
