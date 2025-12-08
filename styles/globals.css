@@ -31,6 +31,57 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.page-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 820px at 20% 10%, color-mix(in srgb, var(--color-rose-iris) 15%, transparent) 0%, transparent 55%),
+    radial-gradient(980px 760px at 78% 18%, color-mix(in srgb, var(--color-rose-foam) 12%, transparent) 0%, transparent 52%),
+    radial-gradient(1200px 920px at 50% 72%, color-mix(in srgb, var(--color-rose-rose) 12%, transparent) 0%, transparent 60%),
+    linear-gradient(150deg, color-mix(in srgb, var(--color-rose-base) 92%, #0d0b12 8%) 0%, color-mix(in srgb, var(--color-rose-surface) 70%, #0d0b12 30%) 45%, color-mix(in srgb, var(--color-rose-overlay) 80%, #0d0b12 20%) 100%);
+  z-index: 0;
+  opacity: 0.9;
+}
+
+.glass-card {
+  background: linear-gradient(145deg, rgba(12, 10, 16, 0.86), rgba(20, 16, 28, 0.8));
+  border: 1.5px solid rgba(196, 167, 231, 0.32);
+  box-shadow:
+    0 25px 60px -42px rgba(0, 0, 0, 0.82),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 30px rgba(196, 167, 231, 0.05);
+  backdrop-filter: blur(18px) saturate(115%);
+}
+
+.glass-select {
+  background: linear-gradient(160deg, rgba(24, 18, 32, 0.9), rgba(16, 12, 22, 0.85));
+  border: 1.5px solid rgba(196, 167, 231, 0.35);
+  box-shadow:
+    0 18px 40px -28px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: var(--color-rose-text);
+}
+
+.glass-select option {
+  background-color: #120d19;
+  color: var(--color-rose-text);
+}
+
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at center, rgba(255,255,255,0.8) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-border-strong {
+  border: 1.5px solid rgba(196, 167, 231, 0.25);
+}
+
 /* Mobile optimizations */
 @media (max-width: 640px) {
   html {
@@ -55,36 +106,50 @@ html, body {
   background-color: var(--color-rose-base) !important;
 }
 
-/* Theme-aware glass effects */
+[data-theme="light"] .page-bg {
+  background:
+    radial-gradient(1100px 820px at 18% 8%, color-mix(in srgb, var(--color-rose-iris) 18%, transparent) 0%, transparent 60%),
+    radial-gradient(980px 760px at 80% 20%, color-mix(in srgb, var(--color-rose-foam) 16%, transparent) 0%, transparent 55%),
+    radial-gradient(1200px 920px at 52% 68%, color-mix(in srgb, var(--color-rose-rose) 16%, transparent) 0%, transparent 65%),
+    linear-gradient(150deg, color-mix(in srgb, var(--color-rose-base) 70%, #ffffff 30%) 0%, color-mix(in srgb, var(--color-rose-surface) 70%, #ffffff 30%) 50%, color-mix(in srgb, var(--color-rose-overlay) 70%, #ffffff 30%) 100%);
+  opacity: 0.95;
+}
+
 [data-theme="light"] .glass-card {
-  background-color: rgba(255, 255, 255, 0.6) !important;
-  border-color: var(--color-rose-highlightMed) !important;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.9), rgba(245, 242, 249, 0.82));
+  border-color: rgba(64, 61, 82, 0.2);
+  box-shadow:
+    0 18px 40px -28px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: #2d2640;
 }
 
-[data-theme="dark"] .glass-card {
-  background-color: rgba(0, 0, 0, 0.3) !important;
+[data-theme="light"] .glass-select {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(245, 240, 250, 0.85));
+  border-color: rgba(64, 61, 82, 0.28);
 }
 
-/* Theme-aware input and nested components */
 [data-theme="light"] input[type="text"],
 [data-theme="light"] input[type="number"],
 [data-theme="light"] textarea,
 [data-theme="light"] select {
-  background-color: rgba(255, 255, 255, 0.7) !important;
+  background-color: #fefbff !important;
 }
 
 [data-theme="light"] .bg-black\/40,
 [data-theme="light"] .bg-black\/30,
-[data-theme="light"] .bg-black\/50 {
-  background-color: rgba(255, 255, 255, 0.5) !important;
+[data-theme="light"] .bg-black\/50,
+[data-theme="light"] .bg-black\/35,
+[data-theme="light"] .bg-black\/45 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
 }
 
 [data-theme="light"] .bg-rose-highlightLow {
-  background-color: var(--color-rose-surface) !important;
+  background-color: #f5f1fb !important;
 }
 
 [data-theme="light"] .bg-rose-highlightMed {
-  background-color: var(--color-rose-overlay) !important;
+  background-color: #ebe6f3 !important;
 }
 
 [data-theme="light"] input[type="range"] {

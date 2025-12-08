@@ -10,20 +10,27 @@ const DEFAULT_OUTPUT_TOKENS = 4096;
 const REFERENCE_TOKEN_WINDOW = 4096;
 const TOKEN_STEP = 64;
 
+const TOKENIZERS = [
+  { key: 'cl100k_base', label: 'Universal · cl100k_base (GPT-4/3.5 default)' },
+  { key: 'o200k_base', label: 'o200k_base · GPT-4o large context' },
+  { key: 'p50k_base', label: 'p50k_base · Davinci / code' },
+  { key: 'r50k_base', label: 'r50k_base · Legacy GPT-3' },
+] as const;
+
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState('');
   const [tokens, setTokens] = useState<number[]>([]);
   const [decodedTokens, setDecodedTokens] = useState<{str: string, id: number}[]>([]);
-  const [cost, setCost] = useState<number | null>(null); // total cost (backward compatible)
+  const [cost, setCost] = useState<number | null>(null);
   const [inputCost, setInputCost] = useState<number | null>(null);
   const [outputCost, setOutputCost] = useState<number | null>(null);
-  const [co2e, setCo2e] = useState<number | null>(null);
-  const [co2eFallback, setCo2eFallback] = useState(false);
   const [pricing, setPricing] = useState<PricingMap | null>(null);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState<boolean>(true);
   const [expectedOutTokens, setExpectedOutTokens] = useState<number | null>(null);
+  const [visualizerMode, setVisualizerMode] = useState<'snapshot' | 'tokens'>('snapshot');
+  const [tokenizer, setTokenizer] = useState<typeof TOKENIZERS[number]['key']>('cl100k_base');
 
   useEffect(() => {
     let mounted = true;
@@ -87,7 +94,6 @@ export default function Home() {
       setCost(null);
       setInputCost(null);
       setOutputCost(null);
-      setCo2e(null);
       return;
     }
     const entry = pricing[model];
@@ -111,19 +117,9 @@ export default function Home() {
       ? (inCost as number) + (outCost as number)
       : (typeof inCost === 'number' ? inCost : null);
     setCost(total);
-    // Carbon: use new structure
-    let factor = 0.0002; // fallback
-    let usedFallback = false;
-    if (entry && typeof entry.co2eFactor === 'number' && !isNaN(entry.co2eFactor)) {
-      factor = entry.co2eFactor;
-    } else {
-      usedFallback = true;
-    }
-    setCo2e(tokens.length * factor);
-    setCo2eFallback(usedFallback);
   }, [pricing, model, tokens, expectedOutTokens]);
 
-  const tokenizerName = 'Universal GPT Tokenizer (gpt-tokenizer)';
+  const tokenizerLabel = TOKENIZERS.find(t => t.key === tokenizer)?.label ?? 'cl100k_base';
 
   useEffect(() => {
     if (!prompt) {
@@ -131,10 +127,16 @@ export default function Home() {
       setDecodedTokens([]);
       return;
     }
-    const tks = encode(prompt);
-    setTokens(tks);
-    setDecodedTokens(tks.map(t => ({ str: decode([t]), id: t })));
-  }, [prompt]);
+    try {
+      const tks = encode(prompt, tokenizer as any);
+      setTokens(tks);
+      setDecodedTokens(tks.map(t => ({ str: decode([t]), id: t })));
+    } catch (e) {
+      const tks = encode(prompt);
+      setTokens(tks);
+      setDecodedTokens(tks.map(t => ({ str: decode([t]), id: t })));
+    }
+  }, [prompt, tokenizer]);
 
   const hasTokens = tokens.length > 0;
   const tokenCoverage = useMemo(
@@ -142,20 +144,130 @@ export default function Home() {
     [hasTokens, tokens.length]
   );
   const modelOptions = availableModels;
+  const heroStats = [
+    { label: 'Models tracked', value: pricing ? Object.keys(pricing).length || '—' : '—' },
+    { label: 'Avg. token window', value: `${REFERENCE_TOKEN_WINDOW.toLocaleString()} ctx` },
+    { label: 'Tokenizer', value: tokenizerLabel },
+  ];
 
   return (
     <div className="min-h-screen w-full">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 sm:gap-12 px-4 sm:px-6 py-6 sm:py-8">
-        <header className="text-center space-y-3 sm:space-y-4">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.28em] text-rose-iris">Token planner</p>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-rose-text tracking-tight">Prompt Info</h1>
-          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-rose-subtle max-w-2xl mx-auto leading-relaxed px-2">
-            Understand token count, estimated cost, and carbon footprint before you send your next prompt.
-          </p>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 sm:gap-14 px-4 sm:px-6 py-8 sm:py-12">
+        <header className="grid gap-8 lg:grid-cols-[1.2fr_minmax(0,0.8fr)] items-center">
+          <div className="space-y-5">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.28em] text-rose-iris">Prompt intel</p>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-rose-text leading-tight">
+              Measure tokens and cost before you hit send.
+            </h1>
+            <p className="text-base sm:text-lg text-rose-subtle leading-relaxed max-w-2xl">
+              Paste a prompt to see live token counts and modeled cost for the model you pick. Change tokenizer and output length before you run it.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <a
+                className="rounded-xl bg-rose-iris text-rose-text px-5 py-3 text-sm font-semibold shadow-lg hover:bg-rose-foam transition-colors"
+                href="#planner"
+              >
+                Start analyzing
+              </a>
+              <a
+                className="rounded-xl border border-rose-highlightMed px-5 py-3 text-sm font-semibold text-rose-text hover:border-rose-iris hover:text-rose-iris transition-colors"
+                href="https://helloworldfirm.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View docs
+              </a>
+            </div>
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              {heroStats.map(stat => (
+                <div key={stat.label} className="rounded-xl border border-rose-highlightMed/60 bg-black/40 backdrop-blur-lg px-3 sm:px-4 py-3">
+                  <div className="text-xs text-rose-muted uppercase tracking-wide">{stat.label}</div>
+                  <div className="mt-1 text-lg sm:text-xl font-semibold text-rose-text">{stat.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="glass-card rounded-3xl border-2 border-rose-highlightHigh/60 backdrop-blur-2xl p-5 sm:p-6 shadow-[0_40px_90px_-60px_rgba(0,0,0,0.9)]">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-rose-muted">Live preview</p>
+                <p className="text-lg font-semibold text-rose-text">Visualizer</p>
+              </div>
+              <div className="flex items-center gap-2 bg-black/40 border border-rose-highlightMed/60 rounded-xl px-2 py-1">
+                {(['snapshot', 'tokens'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => setVisualizerMode(mode)}
+                    className={`px-3 py-1 text-[12px] font-semibold rounded-lg transition-all ${
+                      visualizerMode === mode
+                        ? 'bg-rose-iris/30 text-rose-text border border-rose-iris/60 shadow-inner'
+                        : 'text-rose-subtle hover:text-rose-text'
+                    }`}
+                    aria-pressed={visualizerMode === mode}
+                  >
+                    {mode === 'snapshot' ? 'Snapshot' : 'Token view'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {visualizerMode === 'snapshot' ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-rose-subtle text-sm">Tokens</span>
+                  <span className="text-2xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-rose-subtle text-sm">Est. cost</span>
+                  <span className="text-xl font-semibold text-rose-foam tabular-nums">
+                    {cost !== null && !isNaN(cost) ? `$${cost.toFixed(6)}` : '—'}
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-rose-subtle">
+                  <div className="rounded-lg border border-rose-highlightMed bg-black/45 px-3 py-2">
+                    <div className="text-[11px] uppercase tracking-wide">Input</div>
+                    <div className="text-base font-semibold text-rose-text tabular-nums">{tokens.length}</div>
+                  </div>
+                  <div className="rounded-lg border border-rose-highlightMed bg-black/45 px-3 py-2">
+                    <div className="text-[11px] uppercase tracking-wide">Output</div>
+                    <div className="text-base font-semibold text-rose-text tabular-nums">{expectedOutTokens ?? 0}</div>
+                  </div>
+                  <div className="rounded-lg border border-rose-iris/60 bg-rose-iris/14 px-3 py-2">
+                    <div className="text-[11px] uppercase tracking-wide text-rose-iris">Total</div>
+                    <div className="text-base font-semibold text-rose-iris tabular-nums">{tokens.length + Number(expectedOutTokens ?? 0)}</div>
+                  </div>
+                </div>
+                <p className="text-[12px] text-rose-muted">Tokenizer: {tokenizerLabel}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-rose-subtle text-sm">Live token stream</div>
+                <div className="rounded-2xl border border-rose-highlightMed/70 bg-black/40 backdrop-blur-xl p-3 max-h-72 overflow-y-auto scrollbar-thin scrollbar-thumb-rose-highlightHigh scrollbar-track-black/50">
+                  {decodedTokens.length === 0 ? (
+                    <div className="text-sm text-rose-muted italic">Start typing to see tokens in real time.</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2.5">
+                      {decodedTokens.map((tok, i) => (
+                        <span
+                          key={`${tok.id}-${i}`}
+                          className="group flex flex-col items-center rounded-lg border border-rose-highlightMed/80 bg-rose-highlightLow/70 px-3 py-2 text-[13px] font-mono text-rose-subtle transition-all hover:scale-105 hover:border-rose-iris hover:bg-rose-highlightMed/80"
+                          title={`Token #${i + 1}\nID: ${tok.id}`}
+                        >
+                          <span className="leading-tight font-semibold text-rose-text group-hover:text-rose-foam transition-colors">
+                            {tok.str || <span className="text-rose-muted">[space]</span>}
+                          </span>
+                          <span className="text-[10px] text-rose-muted group-hover:text-rose-subtle transition-colors">#{tok.id}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </header>
 
-        <section className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <div className="glass-card flex flex-col gap-6 sm:gap-8 rounded-2xl sm:rounded-3xl border-2 border-rose-highlightHigh/50 backdrop-blur-2xl p-5 sm:p-8 shadow-2xl transition-all hover:border-rose-iris/60">
+        <section id="planner" className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+          <div className="glass-card flex flex-col gap-6 sm:gap-7 rounded-2xl sm:rounded-3xl border-2 border-rose-highlightHigh/50 backdrop-blur-2xl p-5 sm:p-7 shadow-2xl">
             <div className="space-y-3">
               <label className="block text-sm font-bold text-rose-text tracking-wide" htmlFor="prompt-input">
                 Prompt
@@ -176,134 +288,127 @@ export default function Home() {
               />
             </div>
 
-            <div className="pt-4 border-t border-rose-highlightMed/30">
-              <p className="text-xs text-rose-muted">
-                Tokenizer: <span className="font-semibold text-rose-foam">{tokenizerName}</span>
-              </p>
+            <div className="space-y-3">
+              <label className="block text-sm font-bold text-rose-text tracking-wide" htmlFor="tokenizer-select">
+                Tokenizer
+              </label>
+              <select
+                id="tokenizer-select"
+                value={tokenizer}
+                onChange={e => setTokenizer(e.target.value as typeof TOKENIZERS[number]['key'])}
+                className="glass-select w-full appearance-none rounded-xl border px-5 py-3 text-base font-semibold text-rose-text transition-all duration-200 focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/30 hover:border-rose-highlightHigh cursor-pointer"
+              >
+                {TOKENIZERS.map(opt => (
+                  <option key={opt.key} value={opt.key} className="bg-rose-base text-rose-text py-2">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/35 backdrop-blur-xl px-4 sm:px-5 py-4 sm:py-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Output length</p>
+                  <p className="text-sm text-rose-subtle">Blend a likely completion to model total cost.</p>
+                </div>
+                <span className="text-xs text-rose-muted">Max {MAX_OUTPUT_TOKENS.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  id="expected-out"
+                  type="range"
+                  min={0}
+                  max={MAX_OUTPUT_TOKENS}
+                  step={TOKEN_STEP}
+                  value={Number(expectedOutTokens ?? 0)}
+                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
+                  className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-rose-highlightMed/60 accent-rose-iris transition-all"
+                />
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={MAX_OUTPUT_TOKENS}
+                  step={TOKEN_STEP}
+                  value={Number(expectedOutTokens ?? 0)}
+                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
+                  className="w-24 sm:w-28 rounded-xl border border-rose-highlightMed bg-rose-base px-3 sm:px-4 py-2 text-right text-sm sm:text-base font-semibold text-rose-text tabular-nums focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/40 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/35 backdrop-blur-xl px-4 sm:px-5 py-4 sm:py-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Context usage</p>
+                  <p className="text-sm text-rose-subtle">Based on {REFERENCE_TOKEN_WINDOW.toLocaleString()} tokens.</p>
+                </div>
+                <span className="text-xs text-rose-muted tabular-nums">{Math.round(tokenCoverage)}%</span>
+              </div>
+              <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-rose-highlightMed/50 shadow-inner">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-rose-foam via-rose-iris to-rose-pine transition-all duration-300 ease-out shadow-lg"
+                  style={{ width: `${tokenCoverage}%` }}
+                />
+              </div>
             </div>
           </div>
 
-          <aside className="glass-card flex flex-col gap-5 sm:gap-6 rounded-2xl sm:rounded-3xl border-2 border-rose-highlightHigh/50 backdrop-blur-2xl p-5 sm:p-8 shadow-2xl">
-            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/40 backdrop-blur-xl px-5 sm:px-7 py-6 sm:py-7">
-              <p className="text-xs font-bold uppercase tracking-widest text-rose-iris mb-1">Overview</p>
-              <div className="mt-5 sm:mt-6 space-y-4 sm:space-y-5">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-4xl sm:text-5xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
-                  <span className="text-xs sm:text-sm font-medium text-rose-subtle uppercase tracking-wider">tokens</span>
+          <aside className="glass-card flex flex-col gap-5 sm:gap-6 rounded-2xl sm:rounded-3xl border-2 border-rose-highlightHigh/50 backdrop-blur-2xl p-5 sm:p-7 shadow-2xl">
+            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/35 backdrop-blur-xl px-4 sm:px-5 py-5">
+              <p className="text-xs font-bold uppercase tracking-widest text-rose-iris mb-2">Totals</p>
+              <div className="grid grid-cols-3 gap-3 text-sm text-rose-text">
+                <div className="rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 py-3">
+                  <span className="text-rose-subtle text-xs">Prompt</span>
+                  <div className="text-xl font-bold tabular-nums">{tokens.length}</div>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs font-medium text-rose-subtle">
-                    <span>Approx. context usage</span>
-                    <span className="tabular-nums">{Math.round(tokenCoverage)}%</span>
+                <div className="rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 py-3">
+                  <span className="text-rose-subtle text-xs">Output</span>
+                  <div className="text-xl font-bold tabular-nums">{expectedOutTokens ?? 0}</div>
+                </div>
+                <div className="rounded-xl border-2 border-rose-iris/60 bg-rose-iris/12 px-4 py-3">
+                  <span className="text-rose-iris text-xs font-semibold">Combined</span>
+                  <div className="text-xl font-bold text-rose-iris tabular-nums">
+                    {tokens.length + Number(expectedOutTokens ?? 0)}
                   </div>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-rose-highlightMed/50 shadow-inner">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-rose-foam via-rose-iris to-rose-pine transition-all duration-300 ease-out shadow-lg"
-                      style={{ width: `${tokenCoverage}%` }}
-                    />
-                  </div>
-                  <p className="text-[11px] text-rose-muted leading-relaxed">Based on a {REFERENCE_TOKEN_WINDOW.toLocaleString()} token window.</p>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/40 backdrop-blur-xl px-5 sm:px-6 py-5 sm:py-6">
-              <div className="space-y-4">
-                <div className="space-y-2 text-xs text-rose-subtle">
-                  <label htmlFor="expected-out" className="font-bold uppercase tracking-wider text-rose-text">
-                    Expected output tokens
-                  </label>
-                  <p className="text-rose-subtle/80 leading-relaxed">Blend a likely completion length to model total costs.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    id="expected-out"
-                    type="range"
-                    min={0}
-                    max={MAX_OUTPUT_TOKENS}
-                    step={TOKEN_STEP}
-                    value={Number(expectedOutTokens ?? 0)}
-                    onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
-                    className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-rose-highlightMed/60 accent-rose-iris transition-all"
-                  />
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={MAX_OUTPUT_TOKENS}
-                    step={TOKEN_STEP}
-                    value={Number(expectedOutTokens ?? 0)}
-                    onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
-                    className="w-20 sm:w-28 rounded-xl border border-rose-highlightMed bg-rose-base px-3 sm:px-4 py-2 text-right text-sm sm:text-base font-semibold text-rose-text tabular-nums focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/40 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                </div>
+            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/35 backdrop-blur-xl px-4 sm:px-5 py-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Cost</p>
+                <span className="text-[11px] text-rose-muted">USD</span>
               </div>
-              <div className="mt-5 sm:mt-6 grid gap-2.5 sm:gap-3 text-sm text-rose-text">
-                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 sm:px-5 py-3 sm:py-3.5">
-                  <span className="text-rose-subtle font-medium text-xs sm:text-sm">Prompt tokens</span>
-                  <span className="text-lg sm:text-xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
+              <div className="grid gap-3">
+                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 py-3">
+                  <span className="text-sm text-rose-subtle">Input</span>
+                  <span className="text-lg font-bold text-rose-text tabular-nums">
+                    {inputCost !== null && !isNaN(inputCost) ? `$${inputCost.toFixed(6)}` : '—'}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 sm:px-5 py-3 sm:py-3.5">
-                  <span className="text-rose-subtle font-medium text-xs sm:text-sm">Output tokens</span>
-                  <span className="text-lg sm:text-xl font-bold text-rose-text tabular-nums">{expectedOutTokens ?? 0}</span>
+                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 py-3">
+                  <span className="text-sm text-rose-subtle">Output</span>
+                  <span className="text-lg font-bold text-rose-text tabular-nums">
+                    {outputCost !== null && !isNaN(outputCost) ? `$${outputCost.toFixed(6)}` : '—'}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between rounded-xl border-2 border-rose-iris/60 bg-rose-iris/10 px-4 sm:px-5 py-3 sm:py-3.5">
-                  <span className="text-rose-text font-semibold text-xs sm:text-sm">Combined tokens</span>
-                  <span className="text-lg sm:text-xl font-bold text-rose-iris tabular-nums">
-                    {tokens.length + Number(expectedOutTokens ?? 0)}
+                <div className="flex items-center justify-between rounded-xl border-2 border-rose-iris/60 bg-rose-iris/12 px-4 py-3">
+                  <span className="text-sm font-semibold text-rose-text">Total</span>
+                  <span className="text-xl font-bold text-rose-iris tabular-nums">
+                    {cost !== null && !isNaN(cost) ? `$${cost.toFixed(6)}` : '—'}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3 sm:space-y-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Cost Breakdown</p>
-              <div className="grid gap-2.5 sm:gap-3 text-sm text-rose-text">
-                <div className="flex flex-col gap-2 rounded-xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg px-4 sm:px-5 py-3.5 sm:py-4">
-                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-muted">
-                    <span className="text-[10px] sm:text-xs">Input cost</span>
-                    <span className="rounded-full bg-rose-highlightHigh/50 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold text-rose-text">USD</span>
-                  </div>
-                  <div className="text-xl sm:text-2xl font-bold text-rose-text tabular-nums">
-                    {inputCost !== null && !isNaN(inputCost) ? `$${inputCost.toFixed(6)}` : '—'}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 rounded-xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg px-4 sm:px-5 py-3.5 sm:py-4">
-                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-muted">
-                    <span className="text-[10px] sm:text-xs">Output cost</span>
-                    <span className="rounded-full bg-rose-highlightHigh/50 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold text-rose-text">USD</span>
-                  </div>
-                  <div className="text-xl sm:text-2xl font-bold text-rose-text tabular-nums">
-                    {outputCost !== null && !isNaN(outputCost) ? `$${outputCost.toFixed(6)}` : '—'}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 rounded-xl border-2 border-rose-iris/60 bg-rose-iris/15 px-4 sm:px-5 py-3.5 sm:py-4">
-                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-text">
-                    <span className="text-[10px] sm:text-xs">Total cost</span>
-                    <span className="rounded-full bg-rose-iris/40 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold text-rose-text">USD</span>
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-bold text-rose-iris tabular-nums">
-                    {cost !== null && !isNaN(cost) ? `$${cost.toFixed(6)}` : '—'}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 rounded-xl border border-rose-love/50 bg-rose-love/10 px-4 sm:px-5 py-3.5 sm:py-4">
-                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-love">
-                    <span className="text-[10px] sm:text-xs">Estimated CO₂e</span>
-                    <span className="rounded-full bg-rose-love/30 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold text-rose-text">grams</span>
-                  </div>
-                  <div className="text-xl sm:text-2xl font-bold text-rose-text tabular-nums">
-                    {co2e !== null && !isNaN(co2e) ? `${co2e.toFixed(4)} g${co2eFallback ? '*' : ''}` : '—'}
-                  </div>
-                  {co2eFallback && (
-                    <p className="text-[10px] sm:text-[11px] text-rose-gold leading-relaxed">Using generic emissions factor. Update pricing data for precise values.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {decodedTokens.length > 0 && (
+            {visualizerMode === 'snapshot' && decodedTokens.length > 0 && (
               <div className="flex flex-col gap-4">
-                <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Token breakdown</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Token breakdown</p>
+                  <span className="text-[11px] text-rose-muted">Live from tokenizer</span>
+                </div>
                 <div className="max-h-56 overflow-y-auto rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg p-4 scrollbar-thin scrollbar-thumb-rose-highlightHigh scrollbar-track-black">
                   <div className="flex flex-wrap gap-2.5">
                     {decodedTokens.map((tok, i) => (
