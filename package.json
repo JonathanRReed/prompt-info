@@ -4,7 +4,7 @@
   "private": true,
   "description": "Simple Dev Tools – A product of Hello.World Consulting.",
   "author": "Jonathan Reed",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "packageManager": "bun@1.2.22",
   "scripts": {
     "dev": "next dev",
