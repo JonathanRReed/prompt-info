@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import PromptInput from '../components/PromptInput';
 import ModelSelect from '../components/ModelSelect';
 import { fetchPricing, PricingMap } from '../lib/fetchPricing';
@@ -9,8 +9,11 @@ import { HARD_MAX_OUTPUT_TOKENS, resolveModelTokenProfile } from '../lib/modelTo
 
 const DEFAULT_OUTPUT_TOKENS = 4096;
 const AUTO_OUTPUT_FALLBACK = 768;
-const REFERENCE_TOKEN_WINDOW = 4096;
+const FALLBACK_CONTEXT_WINDOW = 4096;
 const TOKEN_STEP = 64;
+const DEFAULT_AGENT_TURNS = 8;
+const MAX_AGENT_TURNS = 200;
+const RECEIPT_ANIMATION_MS = 2800;
 
 const TOKENIZERS = [
   { key: 'o200k_base', label: 'o200k_base', description: 'Newest OpenAI GPT-4o, o-series, and GPT-5 style models' },
@@ -26,6 +29,8 @@ type OutputPreset = {
   description: string;
 };
 
+type ReceiptRow = [string, string];
+
 const OUTPUT_PRESETS: OutputPreset[] = [
   { label: 'Tiny', tokens: 256, description: 'label or title' },
   { label: 'Brief', tokens: 768, description: 'short answer' },
@@ -36,6 +41,14 @@ const OUTPUT_PRESETS: OutputPreset[] = [
   { label: '32K', tokens: 32768, description: 'deep run' },
   { label: '64K', tokens: 65536, description: 'extended run' },
   { label: '128K', tokens: 128000, description: 'max-scale run' },
+];
+
+const AGENT_TURN_PRESETS = [
+  { label: 'Quick', turns: 3, description: 'short tool loop' },
+  { label: 'IDE', turns: 8, description: 'coding session' },
+  { label: 'Research', turns: 16, description: 'multi-source run' },
+  { label: 'Deep', turns: 32, description: 'long investigation' },
+  { label: 'Marathon', turns: 64, description: 'large agent job' },
 ];
 
 type TokenizerKey = typeof TOKENIZERS[number]['key'];
@@ -76,11 +89,17 @@ function clampOutputTokens(value: number, limit = HARD_MAX_OUTPUT_TOKENS) {
   return Math.max(0, Math.min(Math.floor(value), Math.min(limit, HARD_MAX_OUTPUT_TOKENS)));
 }
 
+function clampAgentTurns(value: number) {
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(1, Math.min(Math.floor(value), MAX_AGENT_TURNS));
+}
+
 function roundToTokenStep(value: number) {
   return Math.ceil(value / TOKEN_STEP) * TOKEN_STEP;
 }
 
 function estimateOutputTokens(promptTokens: number, modelLimit: number) {
+  if (modelLimit <= 0) return 0;
   const safeLimit = Math.max(TOKEN_STEP, Math.min(modelLimit, HARD_MAX_OUTPUT_TOKENS));
   const softCap = Math.min(safeLimit, DEFAULT_OUTPUT_TOKENS);
 
@@ -111,6 +130,81 @@ function getRecommendedTokenizer(model: string): TokenizerKey | null {
   return null;
 }
 
+function ReceiptCard({
+  rows,
+  totalTokens,
+  totalCostLabel,
+  note,
+  action,
+  showRegister = false,
+  animateSequence = false,
+  className = '',
+}: {
+  rows: ReceiptRow[];
+  totalTokens: number;
+  totalCostLabel: string;
+  note: string;
+  action?: ReactNode;
+  showRegister?: boolean;
+  animateSequence?: boolean;
+  className?: string;
+}) {
+  const sequenceStyle = {
+    '--receipt-count': rows.length,
+  } as CSSProperties;
+
+  return (
+    <div
+      className={`receipt-card ${animateSequence ? 'receipt-card-sequenced' : ''} ${className}`}
+      style={animateSequence ? sequenceStyle : undefined}
+    >
+      <div className="receipt-perf" aria-hidden="true" />
+      <div className="flex items-start justify-between gap-6 border-b border-rose-highlightMed pb-5">
+        <div>
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-rose-muted">Live estimate</p>
+          <p className="mt-2 text-2xl font-black uppercase leading-none tracking-[-0.04em] text-rose-text">Cost receipt</p>
+        </div>
+        <output className="register-price font-mono text-sm font-bold text-rose-love tabular-nums">
+          {totalCostLabel}
+        </output>
+      </div>
+
+      {showRegister && (
+        <div className="register-strip mt-5" aria-hidden="true">
+          <span>Ringing up session total</span>
+          <span>{totalCostLabel}</span>
+        </div>
+      )}
+
+      <div className="mt-6 grid gap-3">
+        {rows.map(([label, value], index) => (
+          <div
+            key={label}
+            className="receipt-row"
+            style={animateSequence ? ({ '--receipt-index': index } as CSSProperties) : undefined}
+          >
+            <span>{label}</span>
+            <output>{value}</output>
+          </div>
+        ))}
+      </div>
+
+      <div className="receipt-total mt-8">
+        <span>Total tokens</span>
+        <data value={totalTokens}>{totalTokens.toLocaleString()}</data>
+      </div>
+      <div className="receipt-cost-total mt-3">
+        <span>Total cost</span>
+        <output>{totalCostLabel}</output>
+      </div>
+      <p className="receipt-note mt-5 text-sm leading-6 text-rose-muted">
+        {note}
+      </p>
+      {action && <div className="receipt-action-wrap mt-5">{action}</div>}
+    </div>
+  );
+}
+
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState('');
@@ -127,6 +221,15 @@ export default function Home() {
   const [visualizerMode, setVisualizerMode] = useState<'snapshot' | 'tokens'>('snapshot');
   const [tokenizer, setTokenizer] = useState<TokenizerKey>('o200k_base');
   const [tokenizerTouched, setTokenizerTouched] = useState(false);
+  const [agentMode, setAgentMode] = useState(false);
+  const [agentTurns, setAgentTurns] = useState(DEFAULT_AGENT_TURNS);
+  const [summaryView, setSummaryView] = useState<'receipt' | 'detail'>('receipt');
+  const [animatedSessionCost, setAnimatedSessionCost] = useState(0);
+  const [finalReceiptAnimationState, setFinalReceiptAnimationState] = useState<'idle' | 'running' | 'done'>('idle');
+  const animatedSessionCostRef = useRef(0);
+  const finalReceiptRef = useRef<HTMLDivElement | null>(null);
+  const finalReceiptAnimationTimerRef = useRef<number | null>(null);
+  const [finalReceiptInView, setFinalReceiptInView] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -196,15 +299,20 @@ export default function Home() {
     [model, pricing]
   );
   const modelOutputLimit = modelTokenProfile.maxOutputTokens;
+  const modelContextWindow = modelTokenProfile.contextWindowTokens;
+  const effectiveOutputLimit = useMemo(() => {
+    if (!modelContextWindow) return modelOutputLimit;
+    return clampOutputTokens(Math.max(0, modelContextWindow - tokens.length), modelOutputLimit);
+  }, [modelContextWindow, modelOutputLimit, tokens.length]);
 
   const autoOutTokens = useMemo(
-    () => estimateOutputTokens(tokens.length, modelOutputLimit),
-    [modelOutputLimit, tokens.length]
+    () => estimateOutputTokens(tokens.length, effectiveOutputLimit),
+    [effectiveOutputLimit, tokens.length]
   );
 
   const plannedOutput = outputMode === 'auto'
     ? autoOutTokens
-    : clampOutputTokens(customOutTokens, modelOutputLimit);
+    : clampOutputTokens(customOutTokens, effectiveOutputLimit);
 
   const outputPresets = useMemo(() => {
     const presets = [...OUTPUT_PRESETS];
@@ -224,8 +332,8 @@ export default function Home() {
   const recommendedTokenizer = useMemo(() => getRecommendedTokenizer(model), [model]);
 
   useEffect(() => {
-    setCustomOutTokens(prev => clampOutputTokens(prev, modelOutputLimit));
-  }, [modelOutputLimit]);
+    setCustomOutTokens(prev => clampOutputTokens(prev, effectiveOutputLimit));
+  }, [effectiveOutputLimit]);
 
   useEffect(() => {
     if (!tokenizerTouched && recommendedTokenizer) {
@@ -303,50 +411,309 @@ export default function Home() {
   }, [prompt, tokenizer]);
 
   const hasTokens = tokens.length > 0;
-  const tokenCoverage = useMemo(
-    () => (hasTokens ? Math.min(100, (tokens.length / REFERENCE_TOKEN_WINDOW) * 100) : 0),
-    [hasTokens, tokens.length]
-  );
   const modelOptions = availableModels;
   const combinedTokens = tokens.length + plannedOutput;
+  const effectiveAgentTurns = agentMode ? clampAgentTurns(agentTurns) : 1;
+  const totalPromptTokens = tokens.length * effectiveAgentTurns;
+  const totalOutputTokens = plannedOutput * effectiveAgentTurns;
+  const totalSessionTokens = combinedTokens * effectiveAgentTurns;
+  const contextReferenceWindow = modelContextWindow ?? FALLBACK_CONTEXT_WINDOW;
+  const contextCoverage = useMemo(
+    () => (hasTokens || plannedOutput > 0 ? Math.min(100, (combinedTokens / contextReferenceWindow) * 100) : 0),
+    [combinedTokens, contextReferenceWindow, hasTokens, plannedOutput]
+  );
+  const contextRemaining = modelContextWindow
+    ? Math.max(0, modelContextWindow - combinedTokens)
+    : null;
   const outputCapLabel = modelOutputLimit.toLocaleString();
-  const contextWindowLabel = formatTokenCount(modelTokenProfile.contextWindowTokens);
+  const availableOutputLabel = effectiveOutputLimit.toLocaleString();
+  const contextWindowLabel = formatTokenCount(modelContextWindow);
+  const contextRemainingLabel = contextRemaining === null ? 'unknown' : contextRemaining.toLocaleString();
+  const contextMeterLabel = modelContextWindow ? 'model context plan' : 'fallback planning window';
   const tokenLimitSource = `${modelTokenProfile.source}, ${formatConfidence(modelTokenProfile.confidence)}`;
-  const receiptRows = [
+  const sessionInputCost = typeof inputCost === 'number' ? inputCost * effectiveAgentTurns : null;
+  const sessionOutputCost = typeof outputCost === 'number' ? outputCost * effectiveAgentTurns : null;
+  const sessionCost = typeof cost === 'number' ? cost * effectiveAgentTurns : null;
+  const animatedSessionCostLabel = sessionCost === null ? 'N/A' : formatCost(animatedSessionCost);
+  const finalSessionCostLabel = formatCost(sessionCost);
+  const receiptAnimationSignature = useMemo(
+    () => [
+      model,
+      tokenizer,
+      outputMode,
+      plannedOutput,
+      effectiveAgentTurns,
+      totalSessionTokens,
+      finalSessionCostLabel,
+    ].join('|'),
+    [effectiveAgentTurns, finalSessionCostLabel, model, outputMode, plannedOutput, tokenizer, totalSessionTokens]
+  );
+
+  useEffect(() => {
+    const target = typeof sessionCost === 'number' ? sessionCost : 0;
+    const start = animatedSessionCostRef.current;
+    let frame = 0;
+    let latest = start;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      animatedSessionCostRef.current = target;
+      setAnimatedSessionCost(target);
+      return;
+    }
+
+    const startedAt = performance.now();
+    const duration = 680;
+
+    const tick = (time: number) => {
+      const progress = Math.min(1, (time - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      latest = start + (target - start) * eased;
+      animatedSessionCostRef.current = latest;
+      setAnimatedSessionCost(latest);
+
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+      } else {
+        animatedSessionCostRef.current = target;
+      }
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frame);
+      animatedSessionCostRef.current = latest;
+    };
+  }, [sessionCost]);
+
+  useEffect(() => {
+    if (summaryView !== 'receipt') return;
+    const receiptNode = finalReceiptRef.current;
+    if (!receiptNode) return;
+
+    if (!('IntersectionObserver' in window)) {
+      setFinalReceiptInView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setFinalReceiptInView(entry.isIntersecting);
+      },
+      {
+        root: null,
+        rootMargin: '0px 0px -12% 0px',
+        threshold: 0.28,
+      }
+    );
+
+    observer.observe(receiptNode);
+    return () => observer.disconnect();
+  }, [summaryView]);
+
+  useEffect(() => {
+    if (finalReceiptAnimationTimerRef.current) {
+      clearTimeout(finalReceiptAnimationTimerRef.current);
+      finalReceiptAnimationTimerRef.current = null;
+    }
+    setFinalReceiptAnimationState('idle');
+  }, [receiptAnimationSignature]);
+
+  useEffect(() => {
+    if (summaryView !== 'receipt' || !finalReceiptInView || finalReceiptAnimationState !== 'idle') return;
+
+    setFinalReceiptAnimationState('running');
+    finalReceiptAnimationTimerRef.current = window.setTimeout(() => {
+      setFinalReceiptAnimationState('done');
+      finalReceiptAnimationTimerRef.current = null;
+    }, RECEIPT_ANIMATION_MS);
+  }, [finalReceiptAnimationState, finalReceiptInView, receiptAnimationSignature, summaryView]);
+
+  useEffect(() => () => {
+    if (finalReceiptAnimationTimerRef.current) {
+      clearTimeout(finalReceiptAnimationTimerRef.current);
+    }
+  }, []);
+
+  const receiptNote = agentMode
+    ? 'Agent mode multiplies the bill by similar AI turns. Context safety still stays per turn.'
+    : 'Empty values show until you paste a prompt and choose a priced model.';
+  const receiptRows: ReceiptRow[] = [
     ['Model', compactModelName(model)],
+    ['Mode', agentMode ? `Agent x ${effectiveAgentTurns}` : 'One-shot'],
     ['Tokenizer', tokenizer.replace('_', '/')],
-    ['Prompt', tokens.length.toLocaleString()],
-    ['Output plan', outputMode === 'auto' ? `${plannedOutput.toLocaleString()} est.` : plannedOutput.toLocaleString()],
+    ['Prompt / turn', tokens.length.toLocaleString()],
+    ['Output / turn', outputMode === 'auto' ? `${plannedOutput.toLocaleString()} est.` : plannedOutput.toLocaleString()],
+    ['Total turns', effectiveAgentTurns.toLocaleString()],
     ['Output cap', outputCapLabel],
+    ['Available out', availableOutputLabel],
     ['Context', contextWindowLabel],
-    ['Input cost', formatCost(inputCost)],
-    ['Output cost', formatCost(outputCost)],
+    ['Context left', contextRemainingLabel],
+    ['Input cost', formatCost(sessionInputCost)],
+    ['Output cost', formatCost(sessionOutputCost)],
   ];
-  const flowSteps = [
-    {
-      stepLabel: 'Step 01',
-      title: 'Paste the exact prompt',
-      body: 'Use the final request text, not a draft summary. The counter prices the bytes you actually send.',
-      href: '#planner',
-    },
-    {
-      stepLabel: 'Step 02',
-      title: 'Choose model and output',
-      body: 'Search the model list, pick the tokenizer, then use an auto estimate, preset, or custom output length.',
-      href: '#model-select',
-    },
-    {
-      stepLabel: 'Step 03',
-      title: 'Inspect before sending',
-      body: 'Use the receipt, summary, and token evidence to catch expensive prompts before they run.',
-      href: '#evidence',
-    },
+  const summaryRows: ReceiptRow[] = [
+    ['Prompt tokens', tokens.length.toLocaleString()],
+    ['Planned output', plannedOutput.toLocaleString()],
+    ['Agent mode', agentMode ? 'On' : 'Off'],
+    ['AI turns', effectiveAgentTurns.toLocaleString()],
+    ['Total prompt tokens', totalPromptTokens.toLocaleString()],
+    ['Total output tokens', totalOutputTokens.toLocaleString()],
+    ['Output cap', outputCapLabel],
+    ['Available output', availableOutputLabel],
+    ['Context window', contextWindowLabel],
+    ['Context left', contextRemainingLabel],
+    ['Combined tokens', combinedTokens.toLocaleString()],
+    ['Session tokens', totalSessionTokens.toLocaleString()],
+    ['Input cost', formatCost(sessionInputCost)],
+    ['Output cost', formatCost(sessionOutputCost)],
+    ['Total cost', finalSessionCostLabel],
   ];
 
+  const downloadReceiptImage = () => {
+    const scale = 2;
+    const width = 1500;
+    const cardX = 120;
+    const cardY = 86;
+    const cardWidth = 1180;
+    const shadowOffset = 34;
+    const rowHeight = 66;
+    const headerHeight = 265;
+    const totalHeight = 330;
+    const footerHeight = 150;
+    const cardHeight = headerHeight + receiptRows.length * rowHeight + totalHeight + footerHeight;
+    const height = cardY + cardHeight + shadowOffset + 92;
+    const contentLeft = cardX + 76;
+    const contentRight = cardX + cardWidth - 76;
+    const backgroundColor = '#050505';
+    const cardColor = '#111111';
+    const accentColor = '#e61919';
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    const drawPerforation = (edgeY: number) => {
+      context.fillStyle = backgroundColor;
+      for (let x = cardX + 18; x < cardX + cardWidth - 8; x += 22) {
+        context.beginPath();
+        context.arc(x, edgeY, 8, 0, Math.PI * 2);
+        context.fill();
+      }
+    };
+
+    const drawRightText = (text: string, x: number, y: number, maxWidth: number, font: string) => {
+      const parts = font.match(/^(\d+)px\s+(.+)$/);
+      if (!parts) {
+        context.font = font;
+        context.fillText(text, x, y);
+        return;
+      }
+
+      const fontFamily = parts[2];
+      let size = Number(parts[1]);
+      context.font = `${size}px ${fontFamily}`;
+      while (size > 22 && context.measureText(text).width > maxWidth) {
+        size -= 2;
+        context.font = `${size}px ${fontFamily}`;
+      }
+      context.fillText(text, x, y);
+    };
+
+    context.scale(scale, scale);
+    context.fillStyle = backgroundColor;
+    context.fillRect(0, 0, width, height);
+
+    context.fillStyle = 'rgba(230, 25, 25, 0.14)';
+    context.beginPath();
+    context.moveTo(0, height * 0.7);
+    context.lineTo(width * 0.22, height * 0.45);
+    context.lineTo(width, height * 0.1);
+    context.lineTo(width, height);
+    context.lineTo(0, height);
+    context.closePath();
+    context.fill();
+
+    context.fillStyle = accentColor;
+    context.fillRect(cardX + shadowOffset, cardY + shadowOffset, cardWidth, cardHeight);
+    context.fillStyle = cardColor;
+    context.fillRect(cardX, cardY, cardWidth, cardHeight);
+    context.strokeStyle = '#343434';
+    context.lineWidth = 2;
+    context.strokeRect(cardX, cardY, cardWidth, cardHeight);
+    drawPerforation(cardY);
+    drawPerforation(cardY + cardHeight);
+
+    context.font = '700 24px Space Mono, monospace';
+    context.fillStyle = '#8b8b8b';
+    context.fillText('L I V E   E S T I M A T E', contentLeft, cardY + 82);
+    context.font = '900 64px Outfit, sans-serif';
+    context.fillStyle = '#f0f0f0';
+    context.fillText('COST RECEIPT', contentLeft, cardY + 158);
+    context.font = '700 28px Space Mono, monospace';
+    context.fillStyle = accentColor;
+    context.textAlign = 'right';
+    drawRightText(finalSessionCostLabel, contentRight, cardY + 82, 360, '28px Space Mono, monospace');
+    context.textAlign = 'left';
+
+    context.strokeStyle = '#555555';
+    context.setLineDash([14, 14]);
+    context.beginPath();
+    context.moveTo(contentLeft, cardY + 210);
+    context.lineTo(contentRight, cardY + 210);
+    context.stroke();
+    context.setLineDash([]);
+
+    let y = cardY + headerHeight;
+    context.font = '700 26px Space Mono, monospace';
+    for (const [label, value] of receiptRows) {
+      context.fillStyle = '#8b8b8b';
+      context.textAlign = 'left';
+      context.fillText(label.toUpperCase(), contentLeft, y);
+      context.fillStyle = '#e8e8e8';
+      context.textAlign = 'right';
+      drawRightText(value, contentRight, y, 590, '700 26px Space Mono, monospace');
+      context.strokeStyle = '#303030';
+      context.beginPath();
+      context.moveTo(contentLeft, y + 24);
+      context.lineTo(contentRight, y + 24);
+      context.stroke();
+      y += rowHeight;
+    }
+
+    y += 62;
+    context.fillStyle = '#8b8b8b';
+    context.textAlign = 'left';
+    context.font = '700 26px Space Mono, monospace';
+    context.fillText('TOTAL TOKENS', contentLeft, y);
+    context.fillStyle = accentColor;
+    context.textAlign = 'right';
+    drawRightText(totalSessionTokens.toLocaleString(), contentRight, y + 34, 760, '92px Space Mono, monospace');
+
+    y += 124;
+    context.fillStyle = '#8b8b8b';
+    context.textAlign = 'left';
+    context.font = '700 26px Space Mono, monospace';
+    context.fillText('TOTAL COST', contentLeft, y);
+    context.fillStyle = accentColor;
+    context.textAlign = 'right';
+    drawRightText(finalSessionCostLabel, contentRight, y + 10, 520, '48px Space Mono, monospace');
+
+    context.textAlign = 'left';
+    context.font = '500 24px Outfit, sans-serif';
+    context.fillStyle = '#8b8b8b';
+    context.fillText('Made at https://prompt-info.helloworldfirm.com/', contentLeft, cardY + cardHeight - 68);
+
+    const link = document.createElement('a');
+    link.download = 'prompt-info-final-bill.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
   return (
     <main className="w-full max-w-full overflow-x-hidden">
-      <section className="prompt-hero mx-auto grid min-h-[78dvh] w-full max-w-[1500px] border-b border-rose-highlightMed lg:grid-cols-[minmax(0,1fr)_minmax(320px,460px)]">
-        <div className="flex flex-col justify-end border-rose-highlightMed px-4 pb-12 pt-16 sm:px-6 md:px-10 md:pb-16 lg:border-r lg:px-12">
+      <section className="prompt-hero mx-auto flex min-h-[68dvh] w-full max-w-[1500px] border-b border-rose-highlightMed">
+        <div className="flex w-full flex-col justify-end px-4 pb-12 pt-16 sm:px-6 md:px-12 md:pb-16">
           <p className="data-label text-rose-love">Prompt Info</p>
           <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3.2rem,8vw,7.2rem)]">
             Know the bill before the model runs.
@@ -363,56 +730,6 @@ export default function Home() {
             </Link>
           </div>
         </div>
-
-        <aside className="receipt-wrap p-5 sm:p-8 md:p-10" aria-label="Live prompt cost receipt">
-          <div className="receipt-card">
-            <div className="receipt-perf" aria-hidden="true" />
-            <div className="flex items-start justify-between gap-6 border-b border-rose-highlightMed pb-5">
-              <div>
-                <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-rose-muted">Live estimate</p>
-                <p className="mt-2 text-2xl font-black uppercase leading-none tracking-[-0.04em] text-rose-text">Cost receipt</p>
-              </div>
-              <output className="font-mono text-sm font-bold text-rose-love tabular-nums">
-                {formatCost(cost)}
-              </output>
-            </div>
-
-            <div className="mt-6 grid gap-3">
-              {receiptRows.map(([label, value]) => (
-                <div key={label} className="receipt-row">
-                  <span>{label}</span>
-                  <output>{value}</output>
-                </div>
-              ))}
-            </div>
-
-            <div className="receipt-total mt-8">
-              <span>Total tokens</span>
-              <data value={combinedTokens}>{combinedTokens.toLocaleString()}</data>
-            </div>
-            <p className="mt-5 text-sm leading-6 text-rose-muted">
-              Empty values show until you paste a prompt and choose a priced model.
-            </p>
-          </div>
-        </aside>
-      </section>
-
-      <section className="flow-strip mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px md:grid-cols-3" aria-label="Prompt planning flow">
-        {flowSteps.map(step => (
-          <a
-            key={step.title}
-            href={step.href}
-            aria-label={`${step.stepLabel}: ${step.title}. ${step.body}`}
-            data-step={step.stepLabel.replace('Step ', '')}
-            className="flow-step group block p-5 transition duration-200 hover:bg-rose-overlay focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none sm:p-7"
-          >
-            <span className="stage-tag">{step.stepLabel}</span>
-            <h2 className="mt-8 max-w-sm text-2xl font-black uppercase leading-none tracking-[-0.05em] text-rose-text sm:text-3xl">
-              {step.title}
-            </h2>
-            <p className="relative z-10 mt-5 max-w-sm text-sm leading-7 text-rose-subtle">{step.body}</p>
-          </a>
-        ))}
       </section>
 
       <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-12 sm:px-6 md:px-12 md:py-16">
@@ -451,11 +768,11 @@ export default function Home() {
           <div className="mt-5 h-2 border border-rose-highlightMed bg-rose-overlay">
             <div
               className="h-full bg-rose-love transition-[width] duration-300 motion-reduce:transition-none"
-              style={{ width: `${tokenCoverage}%` }}
+              style={{ width: `${contextCoverage}%` }}
             />
           </div>
           <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted tabular-nums">
-            {Math.round(tokenCoverage)}% of the {REFERENCE_TOKEN_WINDOW.toLocaleString()} token reference window
+            {Math.round(contextCoverage)}% of the {contextReferenceWindow.toLocaleString()} token {contextMeterLabel}
           </p>
         </article>
 
@@ -549,7 +866,7 @@ export default function Home() {
             </div>
             <div className="mt-5 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(92px,1fr))]">
               {outputPresets.map(preset => {
-                const isUnavailable = preset.tokens > modelOutputLimit;
+                const isUnavailable = preset.tokens > effectiveOutputLimit;
                 const isActive = outputMode === 'custom' && preset.tokens === plannedOutput;
                 return (
                   <button
@@ -572,7 +889,7 @@ export default function Home() {
                     <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em]">{preset.label}</span>
                     <span className="mt-1 block font-mono text-xs font-bold tabular-nums">{preset.tokens.toLocaleString()}</span>
                     <span className="mt-1 block text-xs normal-case text-current opacity-75">
-                      {isUnavailable ? 'above cap' : preset.description}
+                      {isUnavailable ? 'above available' : preset.description}
                     </span>
                   </button>
                 );
@@ -583,12 +900,12 @@ export default function Home() {
                 id="expected-out"
                 type="range"
                 min={0}
-                max={modelOutputLimit}
+                max={effectiveOutputLimit}
                 step={TOKEN_STEP}
                 value={plannedOutput}
                 onChange={e => {
                   setOutputMode('custom');
-                  setCustomOutTokens(clampOutputTokens(Number(e.target.value), modelOutputLimit));
+                  setCustomOutTokens(clampOutputTokens(Number(e.target.value), effectiveOutputLimit));
                 }}
                 className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
                 aria-describedby="planned-output-help"
@@ -597,19 +914,130 @@ export default function Home() {
                 type="number"
                 inputMode="numeric"
                 min={0}
-                max={modelOutputLimit}
+                max={effectiveOutputLimit}
                 step={TOKEN_STEP}
                 value={plannedOutput}
                 onChange={e => {
                   setOutputMode('custom');
-                  setCustomOutTokens(clampOutputTokens(Number(e.target.value), modelOutputLimit));
+                  setCustomOutTokens(clampOutputTokens(Number(e.target.value), effectiveOutputLimit));
                 }}
                 className="glass-select w-full border px-4 py-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 aria-label="Custom planned output tokens"
               />
             </div>
             <p id="planned-output-help" className="mt-3 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted tabular-nums">
-              {outputMode === 'auto' ? 'Auto estimate' : 'Custom forecast'} / output cap {outputCapLabel} tokens / {tokenLimitSource}
+              {outputMode === 'auto' ? 'Auto estimate' : 'Custom forecast'} / available {availableOutputLabel} / output cap {outputCapLabel} / {tokenLimitSource}
+            </p>
+          </div>
+
+          <div className="bg-rose-base p-4 sm:p-6 md:p-8">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <span className="stage-tag">Step 05</span>
+                <label className="data-label" htmlFor="agent-turns">
+                  Agent mode
+                </label>
+                <p className="mt-2 text-sm leading-6 text-rose-subtle">
+                  Multiply the prompt, output, and cost by repeated AI turns for IDE agents, tool loops, and deep research.
+                </p>
+              </div>
+              <output className="font-mono text-sm font-bold text-rose-text tabular-nums" aria-live="polite">
+                {effectiveAgentTurns.toLocaleString()} turn{effectiveAgentTurns === 1 ? '' : 's'}
+              </output>
+            </div>
+
+            <div className="mt-5 grid gap-px bg-rose-highlightMed p-px sm:grid-cols-2">
+              {[
+                { label: 'One-shot', enabled: false },
+                { label: 'Agent work', enabled: true },
+              ].map(option => (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={() => setAgentMode(option.enabled)}
+                  aria-pressed={agentMode === option.enabled}
+                  className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
+                    agentMode === option.enabled
+                      ? 'bg-rose-love text-white'
+                      : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(98px,1fr))]">
+              {AGENT_TURN_PRESETS.map(preset => {
+                const isActive = agentMode && effectiveAgentTurns === preset.turns;
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => {
+                      setAgentMode(true);
+                      setAgentTurns(preset.turns);
+                    }}
+                    aria-pressed={isActive}
+                    className={`min-h-16 border px-3 py-2 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none ${
+                      isActive
+                        ? 'border-rose-love bg-rose-love text-white'
+                        : 'border-rose-highlightMed bg-rose-base text-rose-subtle hover:border-rose-love hover:text-rose-text'
+                    }`}
+                  >
+                    <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em]">{preset.label}</span>
+                    <span className="mt-1 block font-mono text-xs font-bold tabular-nums">{preset.turns.toLocaleString()} turns</span>
+                    <span className="mt-1 block text-xs normal-case text-current opacity-75">{preset.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_150px] sm:items-center">
+              <input
+                id="agent-turns"
+                type="range"
+                min={1}
+                max={MAX_AGENT_TURNS}
+                step={1}
+                value={effectiveAgentTurns}
+                onChange={e => {
+                  setAgentMode(true);
+                  setAgentTurns(clampAgentTurns(Number(e.target.value)));
+                }}
+                className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
+                aria-describedby="agent-mode-help"
+              />
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={MAX_AGENT_TURNS}
+                step={1}
+                value={effectiveAgentTurns}
+                onChange={e => {
+                  setAgentMode(true);
+                  setAgentTurns(clampAgentTurns(Number(e.target.value)));
+                }}
+                className="glass-select w-full border px-4 py-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                aria-label="Agent turn count"
+              />
+            </div>
+
+            <div className="mt-5 grid gap-px bg-rose-highlightMed sm:grid-cols-3">
+              {[
+                ['Prompt total', totalPromptTokens.toLocaleString()],
+                ['Output total', totalOutputTokens.toLocaleString()],
+                ['Session cost', formatCost(sessionCost)],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-rose-base p-3">
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-muted">{label}</p>
+                  <output className="mt-2 block font-mono text-sm font-bold text-rose-text tabular-nums">{value}</output>
+                </div>
+              ))}
+            </div>
+            <p id="agent-mode-help" className="mt-3 text-sm leading-6 text-rose-muted">
+              Context safety is still shown per turn. Agent totals assume each turn sends a similar prompt and receives a similar response.
             </p>
           </div>
         </aside>
@@ -617,27 +1045,64 @@ export default function Home() {
 
       <section id="evidence" className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
         <aside className="receipt-panel bg-rose-base p-4 sm:p-6 md:p-8">
-          <span className="stage-tag">Step 05</span>
-          <p className="data-label">Summary</p>
-          <div className="mt-6 grid gap-px bg-rose-highlightMed">
-            {[
-              ['Prompt tokens', tokens.length.toLocaleString()],
-              ['Planned output', plannedOutput.toLocaleString()],
-              ['Output cap', outputCapLabel],
-              ['Context window', contextWindowLabel],
-              ['Combined tokens', combinedTokens.toLocaleString()],
-              ['Input cost', formatCost(inputCost)],
-              ['Output cost', formatCost(outputCost)],
-              ['Total cost', formatCost(cost)],
-            ].map(([label, value]) => (
-              <div key={label} className="grid grid-cols-[minmax(0,1fr)_minmax(100px,0.7fr)] bg-rose-base">
-                <span className="border-r border-rose-highlightMed p-3 text-sm text-rose-subtle">{label}</span>
-                <output className="p-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums">{value}</output>
-              </div>
-            ))}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="stage-tag">Step 06</span>
+              <p className="data-label mt-4">Final bill</p>
+            </div>
+            <div className="grid grid-cols-2 gap-px bg-rose-highlightMed p-px">
+              {(['receipt', 'detail'] as const).map(view => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setSummaryView(view)}
+                  aria-pressed={summaryView === view}
+                  className={`min-h-10 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
+                    summaryView === view
+                      ? 'bg-rose-love text-white'
+                      : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
+                  }`}
+                >
+                  {view === 'receipt' ? 'Receipt' : 'Details'}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {summaryView === 'receipt' ? (
+            <div ref={finalReceiptRef} className="receipt-stage mt-7">
+              <ReceiptCard
+                key={receiptAnimationSignature}
+                rows={receiptRows}
+                totalTokens={totalSessionTokens}
+                totalCostLabel={animatedSessionCostLabel}
+                note={receiptNote}
+                className="receipt-card-final"
+                showRegister={finalReceiptAnimationState === 'running'}
+                animateSequence={finalReceiptAnimationState === 'running'}
+                action={(
+                  <button
+                    type="button"
+                    onClick={downloadReceiptImage}
+                    className="receipt-action"
+                  >
+                    Save bill image
+                  </button>
+                )}
+              />
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-px bg-rose-highlightMed">
+              {summaryRows.map(([label, value]) => (
+                <div key={label} className="grid grid-cols-[minmax(0,1fr)_minmax(100px,0.7fr)] bg-rose-base">
+                  <span className="border-r border-rose-highlightMed p-3 text-sm text-rose-subtle">{label}</span>
+                  <output className="p-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums">{value}</output>
+                </div>
+              ))}
+            </div>
+          )}
           <p className="mt-5 text-sm leading-7 text-rose-muted">
-            The estimate uses the selected model price and your planned output length. It is meant for prompt planning, not provider billing reconciliation.
+            The estimate uses the selected model price, planned output length, and agent turn count. It is meant for prompt planning, not provider billing reconciliation.
           </p>
         </aside>
 

@@ -17,6 +17,7 @@ npm-debug.log*
 *.tgz
 *.bak
 *.tmp
+*.tsbuildinfo
 build/
 # Mac system files
 .DS_Store

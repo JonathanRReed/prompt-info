@@ -142,7 +142,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <html lang="en" className="m-0 p-0">
+    <html lang="en" className="m-0 p-0" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
@@ -164,7 +164,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="m-0 min-h-screen bg-rose-base p-0 font-sans text-rose-text antialiased">
         <ThemeProvider>
-          <div className="relative m-0 flex min-h-screen flex-col overflow-hidden p-0">
+          <div className="relative m-0 flex min-h-screen flex-col overflow-x-hidden p-0">
             <div className="page-bg" aria-hidden="true" />
             <div className="grid-overlay" aria-hidden="true" />
             <header className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rose-highlightMed bg-rose-base px-3 py-3 sm:px-6">
@@ -186,8 +186,28 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                       className="h-9 w-9 border border-rose-highlightMed object-cover object-center grayscale"
                     />
                     <div>
-                      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-rose-muted">Product / Hello.World Consulting</p>
-                      <p className="mt-1 text-sm font-semibold text-rose-text">Made by Jonathan Reed</p>
+                      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-rose-muted">
+                        Product /{' '}
+                        <a
+                          href="https://helloworldfirm.com/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="transition duration-200 hover:text-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
+                        >
+                          Hello.World Consulting
+                        </a>
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-rose-text">
+                        Made by{' '}
+                        <a
+                          href="https://jonathanrreed.com/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="transition duration-200 hover:text-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
+                        >
+                          Jonathan Reed
+                        </a>
+                      </p>
                     </div>
                   </div>
                   <p className="mt-8 max-w-3xl text-sm leading-7 text-rose-subtle">
@@ -197,8 +217,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <div className="grid gap-px bg-rose-highlightMed">
                   {[
                     ['Format lab', '/format-comparison/'],
-                    ['Hello.World Consulting', 'https://helloworldfirm.com'],
-                    ['Jonathan Reed', 'https://JonathanRReed.com'],
+                    ['Hello.World Consulting', 'https://helloworldfirm.com/'],
+                    ['Jonathan Reed', 'https://jonathanrreed.com/'],
                   ].map(([label, href]) => (
                     <a
                       key={href}

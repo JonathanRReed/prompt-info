@@ -12,6 +12,11 @@ export type ModelTokenProfile = {
 
 type LimitFieldMap = Record<string, unknown>;
 
+type NumericCandidate = {
+  value: number;
+  path: string;
+};
+
 const OUTPUT_LIMIT_FIELDS = [
   'max_output_tokens',
   'maxOutputTokens',
@@ -28,22 +33,51 @@ const OUTPUT_LIMIT_FIELDS = [
   'responseTokenLimit',
   'output_limit',
   'outputLimit',
+  'max_tokens',
+  'maxTokens',
 ];
 
 const CONTEXT_LIMIT_FIELDS = [
+  'context_length',
+  'contextLength',
   'context_window',
   'contextWindow',
   'contextWindowTokens',
-  'context_length',
-  'contextLength',
   'input_token_limit',
   'inputTokenLimit',
   'token_limit',
   'tokenLimit',
 ];
 
+const OPENROUTER_OUTPUT_PATHS = [
+  'top_provider.max_completion_tokens',
+  'topProvider.maxCompletionTokens',
+  'max_completion_tokens',
+  'maxCompletionTokens',
+];
+
+const OPENROUTER_CONTEXT_PATHS = [
+  'context_length',
+  'contextLength',
+  'top_provider.context_length',
+  'topProvider.contextLength',
+];
+
+function parseNumberLike(value: unknown) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  if (typeof value !== 'string') return NaN;
+
+  const normalized = value.trim().toLowerCase().replace(/[$,]/g, '');
+  const match = normalized.match(/^(\d+(?:\.\d+)?)\s*([kmb])?(?:\s*(?:tokens?|context|ctx))?$/);
+  if (!match) return NaN;
+
+  const [, rawNumber, suffix] = match;
+  const multiplier = suffix === 'k' ? 1_000 : suffix === 'm' ? 1_000_000 : suffix === 'b' ? 1_000_000_000 : 1;
+  return Number(rawNumber) * multiplier;
+}
+
 function toPositiveInteger(value: unknown) {
-  const num = Number(value);
+  const num = parseNumberLike(value);
   return Number.isFinite(num) && num > 0 ? Math.floor(num) : null;
 }
 
@@ -56,6 +90,67 @@ function firstNumericField(fields: LimitFieldMap | undefined, names: string[]) {
   }
 
   return null;
+}
+
+function normalizePathPart(value: string) {
+  return value.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+}
+
+function normalizePath(path: string) {
+  return path.split('.').map(normalizePathPart).join('.');
+}
+
+function collectNumericCandidates(value: unknown, path = '', seen = new WeakSet<object>()): NumericCandidate[] {
+  if (!value || typeof value !== 'object') return [];
+  if (seen.has(value)) return [];
+  seen.add(value);
+
+  const candidates: NumericCandidate[] = [];
+  const entries = Array.isArray(value)
+    ? value.map((item, index) => [String(index), item] as const)
+    : Object.entries(value as Record<string, unknown>);
+
+  for (const [key, child] of entries) {
+    const nextPath = path ? `${path}.${key}` : key;
+    const numericValue = toPositiveInteger(child);
+    if (numericValue !== null) {
+      candidates.push({ value: numericValue, path: nextPath });
+    }
+
+    if (child && typeof child === 'object') {
+      candidates.push(...collectNumericCandidates(child, nextPath, seen));
+    }
+  }
+
+  return candidates;
+}
+
+function firstNumericCandidate(fields: LimitFieldMap | undefined, names: string[]) {
+  if (!fields) return null;
+
+  const normalizedNames = new Set(names.map(normalizePath));
+  const candidates = collectNumericCandidates(fields);
+
+  for (const candidate of candidates) {
+    const normalizedPath = normalizePath(candidate.path);
+    const leaf = normalizedPath.split('.').at(-1);
+    if (normalizedNames.has(normalizedPath) || (leaf && normalizedNames.has(leaf))) {
+      if (!/price|pricing|cost|cache|rate|seconds|per_second/.test(normalizedPath)) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+function isOpenRouterLimitPath(path: string) {
+  const normalizedPath = normalizePath(path);
+  return normalizedPath.startsWith('top_provider.') ||
+    normalizedPath === 'context_length' ||
+    normalizedPath === 'max_completion_tokens' ||
+    normalizedPath.includes('openrouter') ||
+    normalizedPath.includes('open_router');
 }
 
 function normalizeModelName(model: string) {
@@ -182,8 +277,20 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
 }
 
 export function resolveModelTokenProfile(model: string, fields?: LimitFieldMap): ModelTokenProfile {
-  const explicitOutput = firstNumericField(fields, OUTPUT_LIMIT_FIELDS);
-  const contextWindow = firstNumericField(fields, CONTEXT_LIMIT_FIELDS) ?? undefined;
+  const explicitOutput =
+    firstNumericCandidate(fields, [...OPENROUTER_OUTPUT_PATHS, ...OUTPUT_LIMIT_FIELDS]) ??
+    (firstNumericField(fields, OUTPUT_LIMIT_FIELDS) !== null
+      ? { value: firstNumericField(fields, OUTPUT_LIMIT_FIELDS) as number, path: 'model data' }
+      : null);
+  const explicitContext =
+    firstNumericCandidate(fields, [...OPENROUTER_CONTEXT_PATHS, ...CONTEXT_LIMIT_FIELDS]) ??
+    (firstNumericField(fields, CONTEXT_LIMIT_FIELDS) !== null
+      ? { value: firstNumericField(fields, CONTEXT_LIMIT_FIELDS) as number, path: 'model data' }
+      : null);
+  const contextWindow = explicitContext?.value;
+  const contextSourceLabel = explicitContext && isOpenRouterLimitPath(explicitContext.path)
+    ? 'OpenRouter context data'
+    : 'model context data';
   const explicitSource = typeof fields?.outputTokenLimitSource === 'string'
     ? fields.outputTokenLimitSource
     : null;
@@ -196,15 +303,25 @@ export function resolveModelTokenProfile(model: string, fields?: LimitFieldMap):
 
   if (explicitOutput !== null) {
     return {
-      maxOutputTokens: Math.min(explicitOutput, HARD_MAX_OUTPUT_TOKENS),
+      maxOutputTokens: Math.min(explicitOutput.value, HARD_MAX_OUTPUT_TOKENS),
       contextWindowTokens: contextWindow,
-      source: explicitSource ?? 'model data',
+      source: explicitSource ?? (isOpenRouterLimitPath(explicitOutput.path) ? 'OpenRouter model data' : 'model data'),
       confidence: explicitConfidence ?? 'high',
     };
   }
 
   const inferred = inferModelTokenProfile(model);
-  if (inferred) return inferred;
+  if (inferred) {
+    return {
+      ...inferred,
+      maxOutputTokens: contextWindow
+        ? Math.min(inferred.maxOutputTokens, contextWindow, HARD_MAX_OUTPUT_TOKENS)
+        : inferred.maxOutputTokens,
+      contextWindowTokens: contextWindow ?? inferred.contextWindowTokens,
+      source: contextWindow ? `${inferred.source}, ${contextSourceLabel}` : inferred.source,
+      confidence: contextWindow ? 'high' : inferred.confidence,
+    };
+  }
 
   const legacyOutput = firstNumericField(fields, ['avgOutputTokens']);
   if (legacyOutput !== null && legacyOutput >= DEFAULT_OUTPUT_TOKENS) {
@@ -217,9 +334,9 @@ export function resolveModelTokenProfile(model: string, fields?: LimitFieldMap):
   }
 
   return {
-    maxOutputTokens: DEFAULT_OUTPUT_TOKENS,
+    maxOutputTokens: contextWindow ? Math.min(DEFAULT_OUTPUT_TOKENS, contextWindow) : DEFAULT_OUTPUT_TOKENS,
     contextWindowTokens: contextWindow,
-    source: 'default fallback',
-    confidence: 'low',
+    source: contextWindow ? `${contextSourceLabel} with default output fallback` : 'default fallback',
+    confidence: contextWindow ? 'medium' : 'low',
   };
 }
