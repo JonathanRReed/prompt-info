@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { resolveModelTokenProfile, TokenLimitConfidence } from './modelTokenLimits';
 
 export type PricingEntry = {
   pricing: {
@@ -7,6 +8,10 @@ export type PricingEntry = {
   };
   co2eFactor: number;
   avgOutputTokens?: number;
+  maxOutputTokens?: number;
+  contextWindowTokens?: number;
+  outputTokenLimitSource?: string;
+  outputTokenLimitConfidence?: TokenLimitConfidence;
 };
 
 export type PricingMap = Record<string, PricingEntry>;
@@ -14,13 +19,21 @@ export type PricingMap = Record<string, PricingEntry>;
 const MILLION_TO_THOUSAND_RATIO = 1000;
 const BASE_CO2E_FACTOR = 0.0002;
 const MAX_CO2E_MULTIPLIER = 1.5;
-const DEFAULT_OUTPUT_TOKENS = 4096;
 const QUERY_LIMIT = 1000;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readNumber(fields: Record<string, unknown>, key: string) {
+  const value = Number(fields[key]);
+  return Number.isFinite(value) ? value : NaN;
+}
 
 export async function fetchPricing(): Promise<PricingMap> {
   const { data, error } = await supabase
     .from('aa_models')
-    .select('name, pricing')
+    .select('*')
     .not('pricing', 'is', null)
     .limit(QUERY_LIMIT);
 
@@ -29,37 +42,41 @@ export async function fetchPricing(): Promise<PricingMap> {
     return {};
   }
 
-  type RowShape = { 
-    name: string; 
-    perMillionIn: number; 
-    perMillionOut: number; 
-    blended: number; 
-    estMaxOut: number;
+  type RowShape = {
+    name: string;
+    perMillionIn: number;
+    perMillionOut: number;
+    blended: number;
+    maxOutputTokens: number;
+    contextWindowTokens?: number;
+    outputTokenLimitSource: string;
+    outputTokenLimitConfidence: TokenLimitConfidence;
   };
   
   const rows: RowShape[] = [];
   
   for (const row of data ?? []) {
-    const name: string | null = (row as any).name ?? null;
-    const pricing = (row as any).pricing ?? null;
-    if (!name || !pricing) continue;
+    const record = row as Record<string, unknown>;
+    const name = typeof record.name === 'string' ? record.name : null;
+    const pricing = isRecord(record.pricing) ? record.pricing : {};
+    if (!name) continue;
     
-    const perMillionIn = Number(pricing.price_1m_input_tokens);
-    const perMillionOut = Number(pricing.price_1m_output_tokens);
-    const blended = Number(pricing.price_1m_blended_3_to_1);
-    
-    const rawMax = Number(
-      pricing.max_output_tokens ??
-      pricing.max_output_length ??
-      pricing.context_window ??
-      pricing.context_length ??
-      pricing.output_tokens_max
-    );
-    const estMaxOut = isFinite(rawMax) && rawMax > 0 
-      ? Math.floor(rawMax) 
-      : DEFAULT_OUTPUT_TOKENS;
-    
-    rows.push({ name, perMillionIn, perMillionOut, blended, estMaxOut });
+    const fields = { ...record, ...pricing };
+    const perMillionIn = readNumber(fields, 'price_1m_input_tokens');
+    const perMillionOut = readNumber(fields, 'price_1m_output_tokens');
+    const blended = readNumber(fields, 'price_1m_blended_3_to_1');
+    const tokenProfile = resolveModelTokenProfile(name, fields);
+
+    rows.push({
+      name,
+      perMillionIn,
+      perMillionOut,
+      blended,
+      maxOutputTokens: tokenProfile.maxOutputTokens,
+      contextWindowTokens: tokenProfile.contextWindowTokens,
+      outputTokenLimitSource: tokenProfile.source,
+      outputTokenLimitConfidence: tokenProfile.confidence,
+    });
   }
 
   // Compute min/max using blended price if available, else fall back to input price
@@ -96,7 +113,11 @@ export async function fetchPricing(): Promise<PricingMap> {
     result[r.name] = {
       pricing: { input, output },
       co2eFactor,
-      avgOutputTokens: r.estMaxOut,
+      avgOutputTokens: r.maxOutputTokens,
+      maxOutputTokens: r.maxOutputTokens,
+      contextWindowTokens: r.contextWindowTokens,
+      outputTokenLimitSource: r.outputTokenLimitSource,
+      outputTokenLimitConfidence: r.outputTokenLimitConfidence,
     };
   }
 

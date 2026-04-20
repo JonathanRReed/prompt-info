@@ -1,36 +1,132 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import PromptInput from '../components/PromptInput';
 import ModelSelect from '../components/ModelSelect';
-import { encode, decode } from 'gpt-tokenizer';
 import { fetchPricing, PricingMap } from '../lib/fetchPricing';
+import { HARD_MAX_OUTPUT_TOKENS, resolveModelTokenProfile } from '../lib/modelTokenLimits';
 
-const MAX_OUTPUT_TOKENS = 131072;
 const DEFAULT_OUTPUT_TOKENS = 4096;
+const AUTO_OUTPUT_FALLBACK = 768;
 const REFERENCE_TOKEN_WINDOW = 4096;
 const TOKEN_STEP = 64;
 
 const TOKENIZERS = [
-  { key: 'cl100k_base', label: 'Universal · cl100k_base (GPT-4/3.5 default)' },
-  { key: 'o200k_base', label: 'o200k_base · GPT-4o large context' },
-  { key: 'p50k_base', label: 'p50k_base · Davinci / code' },
-  { key: 'r50k_base', label: 'r50k_base · Legacy GPT-3' },
+  { key: 'o200k_base', label: 'o200k_base', description: 'Newest OpenAI GPT-4o, o-series, and GPT-5 style models' },
+  { key: 'cl100k_base', label: 'cl100k_base', description: 'GPT-4, GPT-3.5, embeddings, and broad OpenAI-compatible estimates' },
+  { key: 'p50k_base', label: 'p50k_base', description: 'Codex and older code-focused models' },
+  { key: 'p50k_edit', label: 'p50k_edit', description: 'Legacy edit models' },
+  { key: 'r50k_base', label: 'r50k_base', description: 'Legacy GPT-3 base models' },
 ] as const;
+
+type OutputPreset = {
+  label: string;
+  tokens: number;
+  description: string;
+};
+
+const OUTPUT_PRESETS: OutputPreset[] = [
+  { label: 'Tiny', tokens: 256, description: 'label or title' },
+  { label: 'Brief', tokens: 768, description: 'short answer' },
+  { label: 'Standard', tokens: 2048, description: 'normal response' },
+  { label: 'Long', tokens: 4096, description: 'detailed answer' },
+  { label: 'Deep', tokens: 8192, description: 'large report' },
+  { label: '16K', tokens: 16384, description: 'long document' },
+  { label: '32K', tokens: 32768, description: 'deep run' },
+  { label: '64K', tokens: 65536, description: 'extended run' },
+  { label: '128K', tokens: 128000, description: 'max-scale run' },
+];
+
+type TokenizerKey = typeof TOKENIZERS[number]['key'];
+type TokenizerModule = {
+  encode: (lineToEncode: string) => number[];
+  decode: (inputTokensToDecode: Iterable<number>) => string;
+};
+
+const TOKENIZER_IMPORTERS: Record<TokenizerKey, () => Promise<TokenizerModule>> = {
+  o200k_base: () => import('gpt-tokenizer/esm/encoding/o200k_base'),
+  cl100k_base: () => import('gpt-tokenizer/esm/encoding/cl100k_base'),
+  p50k_base: () => import('gpt-tokenizer/esm/encoding/p50k_base'),
+  p50k_edit: () => import('gpt-tokenizer/esm/encoding/p50k_edit'),
+  r50k_base: () => import('gpt-tokenizer/esm/encoding/r50k_base'),
+};
+
+function formatCost(value: number | null) {
+  return value !== null && Number.isFinite(value) ? `$${value.toFixed(6)}` : 'N/A';
+}
+
+function formatTokenCount(value: number | undefined) {
+  return value && Number.isFinite(value) ? value.toLocaleString() : 'unknown';
+}
+
+function formatConfidence(confidence: string | undefined) {
+  if (confidence === 'high') return 'high confidence';
+  if (confidence === 'medium') return 'medium confidence';
+  return 'planning estimate';
+}
+
+function compactModelName(model: string) {
+  if (!model) return 'Select a model';
+  return model.length > 34 ? `${model.slice(0, 31)}...` : model;
+}
+
+function clampOutputTokens(value: number, limit = HARD_MAX_OUTPUT_TOKENS) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(Math.floor(value), Math.min(limit, HARD_MAX_OUTPUT_TOKENS)));
+}
+
+function roundToTokenStep(value: number) {
+  return Math.ceil(value / TOKEN_STEP) * TOKEN_STEP;
+}
+
+function estimateOutputTokens(promptTokens: number, modelLimit: number) {
+  const safeLimit = Math.max(TOKEN_STEP, Math.min(modelLimit, HARD_MAX_OUTPUT_TOKENS));
+  const softCap = Math.min(safeLimit, DEFAULT_OUTPUT_TOKENS);
+
+  if (promptTokens <= 0) {
+    return Math.min(AUTO_OUTPUT_FALLBACK, softCap);
+  }
+
+  const estimated =
+    promptTokens < 80
+      ? AUTO_OUTPUT_FALLBACK
+      : promptTokens < 700
+        ? promptTokens * 1.5
+        : promptTokens * 1.2;
+
+  return clampOutputTokens(Math.max(TOKEN_STEP, roundToTokenStep(estimated)), softCap);
+}
+
+function getRecommendedTokenizer(model: string): TokenizerKey | null {
+  const normalized = model.toLowerCase();
+
+  if (!normalized) return null;
+  if (/(gpt-5|gpt-4o|chatgpt-4o|o1|o3|o4|realtime|audio)/.test(normalized)) return 'o200k_base';
+  if (normalized.includes('edit')) return 'p50k_edit';
+  if (/(codex|code-|code_)/.test(normalized)) return 'p50k_base';
+  if (/(gpt-4|gpt-3\.5|embedding|davinci-002|babbage-002)/.test(normalized)) return 'cl100k_base';
+  if (/(ada|babbage|curie|davinci)/.test(normalized)) return 'r50k_base';
+
+  return null;
+}
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState('');
   const [tokens, setTokens] = useState<number[]>([]);
-  const [decodedTokens, setDecodedTokens] = useState<{str: string, id: number}[]>([]);
+  const [decodedTokens, setDecodedTokens] = useState<{ str: string; id: number }[]>([]);
   const [cost, setCost] = useState<number | null>(null);
   const [inputCost, setInputCost] = useState<number | null>(null);
   const [outputCost, setOutputCost] = useState<number | null>(null);
   const [pricing, setPricing] = useState<PricingMap | null>(null);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState<boolean>(true);
-  const [expectedOutTokens, setExpectedOutTokens] = useState<number | null>(null);
+  const [outputMode, setOutputMode] = useState<'auto' | 'custom'>('auto');
+  const [customOutTokens, setCustomOutTokens] = useState(DEFAULT_OUTPUT_TOKENS);
   const [visualizerMode, setVisualizerMode] = useState<'snapshot' | 'tokens'>('snapshot');
-  const [tokenizer, setTokenizer] = useState<typeof TOKENIZERS[number]['key']>('cl100k_base');
+  const [tokenizer, setTokenizer] = useState<TokenizerKey>('o200k_base');
+  const [tokenizerTouched, setTokenizerTouched] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -43,26 +139,38 @@ export default function Home() {
         if (mounted) setPricing({});
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // Build model list; if Supabase returned no models, fallback to static JSON
   useEffect(() => {
     let mounted = true;
+
+    if (pricing === null) {
+      setModelsLoading(true);
+      return () => {
+        mounted = false;
+      };
+    }
+
     (async () => {
       setModelsLoading(true);
       try {
-        const keys = pricing ? Object.keys(pricing) : [];
+        const keys = Object.keys(pricing);
         if (keys.length > 0) {
           if (mounted) setAvailableModels(keys);
           return;
         }
-        // Fallback to static JSON
+
         try {
           const res = await fetch('/data/llm-data.json');
           const json = await res.json();
           const staticKeys = Object.keys(json ?? {});
-          if (mounted) setAvailableModels(staticKeys);
+          if (mounted) {
+            setPricing(json as PricingMap);
+            setAvailableModels(staticKeys);
+          }
         } catch (err) {
           console.warn('Fallback to static model list failed:', err);
           if (mounted) setAvailableModels([]);
@@ -71,23 +179,59 @@ export default function Home() {
         if (mounted) setModelsLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [pricing]);
 
-  // When model or pricing changes, initialize expectedOutTokens to the model's default if available
   useEffect(() => {
-    if (!pricing || !model) {
-      setExpectedOutTokens(null);
-      return;
+    if (modelsLoading || availableModels.length === 0) return;
+    if (!model || !availableModels.includes(model)) {
+      setModel(availableModels[0]);
     }
-    const entry = pricing[model];
-    const defOut = Number(entry?.avgOutputTokens ?? NaN);
-    setExpectedOutTokens(
-      Number.isFinite(defOut) && defOut > 0 
-        ? Math.min(defOut, MAX_OUTPUT_TOKENS) 
-        : DEFAULT_OUTPUT_TOKENS
-    );
-  }, [pricing, model]);
+  }, [availableModels, model, modelsLoading]);
+
+  const modelTokenProfile = useMemo(
+    () => resolveModelTokenProfile(model, pricing?.[model]),
+    [model, pricing]
+  );
+  const modelOutputLimit = modelTokenProfile.maxOutputTokens;
+
+  const autoOutTokens = useMemo(
+    () => estimateOutputTokens(tokens.length, modelOutputLimit),
+    [modelOutputLimit, tokens.length]
+  );
+
+  const plannedOutput = outputMode === 'auto'
+    ? autoOutTokens
+    : clampOutputTokens(customOutTokens, modelOutputLimit);
+
+  const outputPresets = useMemo(() => {
+    const presets = [...OUTPUT_PRESETS];
+    const shouldAddCap =
+      modelOutputLimit > 0 &&
+      modelOutputLimit <= HARD_MAX_OUTPUT_TOKENS &&
+      !presets.some(preset => preset.tokens === modelOutputLimit) &&
+      modelOutputLimit > OUTPUT_PRESETS[OUTPUT_PRESETS.length - 1].tokens;
+
+    if (shouldAddCap) {
+      presets.push({ label: 'Cap', tokens: modelOutputLimit, description: 'model ceiling' });
+    }
+
+    return presets.sort((a, b) => a.tokens - b.tokens);
+  }, [modelOutputLimit]);
+
+  const recommendedTokenizer = useMemo(() => getRecommendedTokenizer(model), [model]);
+
+  useEffect(() => {
+    setCustomOutTokens(prev => clampOutputTokens(prev, modelOutputLimit));
+  }, [modelOutputLimit]);
+
+  useEffect(() => {
+    if (!tokenizerTouched && recommendedTokenizer) {
+      setTokenizer(recommendedTokenizer);
+    }
+  }, [recommendedTokenizer, tokenizerTouched]);
 
   useEffect(() => {
     if (!pricing || !model || !tokens.length) {
@@ -96,46 +240,66 @@ export default function Home() {
       setOutputCost(null);
       return;
     }
+
     const entry = pricing[model];
-    // Cost breakdown
     let inCost: number | null = null;
     let outCost: number | null = null;
+
     if (entry && entry.pricing) {
       const inPricePer1k = Number(entry.pricing.input);
       const outPricePer1k = Number(entry.pricing.output);
-      const plannedOut = Number(expectedOutTokens ?? entry.avgOutputTokens ?? 0);
-      if (isFinite(inPricePer1k)) {
+
+      if (Number.isFinite(inPricePer1k)) {
         inCost = (tokens.length / 1000) * inPricePer1k;
       }
-      if (isFinite(outPricePer1k) && isFinite(plannedOut) && plannedOut > 0) {
-        outCost = (plannedOut / 1000) * outPricePer1k;
+
+      if (Number.isFinite(outPricePer1k) && plannedOutput > 0) {
+        outCost = (plannedOutput / 1000) * outPricePer1k;
       }
     }
+
     setInputCost(inCost);
     setOutputCost(outCost);
-    const total = [inCost, outCost].every(v => typeof v === 'number' && !isNaN(v as number))
+    const total = [inCost, outCost].every(v => typeof v === 'number' && !Number.isNaN(v))
       ? (inCost as number) + (outCost as number)
-      : (typeof inCost === 'number' ? inCost : null);
+      : typeof inCost === 'number'
+        ? inCost
+        : null;
     setCost(total);
-  }, [pricing, model, tokens, expectedOutTokens]);
+  }, [pricing, model, tokens, plannedOutput]);
 
-  const tokenizerLabel = TOKENIZERS.find(t => t.key === tokenizer)?.label ?? 'cl100k_base';
+  const tokenizerOption = TOKENIZERS.find(t => t.key === tokenizer) ?? TOKENIZERS[0];
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!prompt) {
       setTokens([]);
       setDecodedTokens([]);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
-    try {
-      const tks = encode(prompt, tokenizer as any);
-      setTokens(tks);
-      setDecodedTokens(tks.map(t => ({ str: decode([t]), id: t })));
-    } catch (e) {
-      const tks = encode(prompt);
-      setTokens(tks);
-      setDecodedTokens(tks.map(t => ({ str: decode([t]), id: t })));
-    }
+
+    (async () => {
+      try {
+        const tokenizerModule = await TOKENIZER_IMPORTERS[tokenizer]();
+        if (cancelled) return;
+        const tks = tokenizerModule.encode(prompt);
+        setTokens(tks);
+        setDecodedTokens(tks.map(t => ({ str: tokenizerModule.decode([t]), id: t })));
+      } catch (e) {
+        const fallback = await TOKENIZER_IMPORTERS.cl100k_base();
+        if (cancelled) return;
+        const tks = fallback.encode(prompt);
+        setTokens(tks);
+        setDecodedTokens(tks.map(t => ({ str: fallback.decode([t]), id: t })));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [prompt, tokenizer]);
 
   const hasTokens = tokens.length > 0;
@@ -144,141 +308,164 @@ export default function Home() {
     [hasTokens, tokens.length]
   );
   const modelOptions = availableModels;
-  const heroStats = [
-    { label: 'Models tracked', value: pricing ? Object.keys(pricing).length || '—' : '—' },
-    { label: 'Avg. token window', value: `${REFERENCE_TOKEN_WINDOW.toLocaleString()} ctx` },
-    { label: 'Tokenizer', value: tokenizerLabel },
+  const combinedTokens = tokens.length + plannedOutput;
+  const outputCapLabel = modelOutputLimit.toLocaleString();
+  const contextWindowLabel = formatTokenCount(modelTokenProfile.contextWindowTokens);
+  const tokenLimitSource = `${modelTokenProfile.source}, ${formatConfidence(modelTokenProfile.confidence)}`;
+  const receiptRows = [
+    ['Model', compactModelName(model)],
+    ['Tokenizer', tokenizer.replace('_', '/')],
+    ['Prompt', tokens.length.toLocaleString()],
+    ['Output plan', outputMode === 'auto' ? `${plannedOutput.toLocaleString()} est.` : plannedOutput.toLocaleString()],
+    ['Output cap', outputCapLabel],
+    ['Context', contextWindowLabel],
+    ['Input cost', formatCost(inputCost)],
+    ['Output cost', formatCost(outputCost)],
+  ];
+  const flowSteps = [
+    {
+      stepLabel: 'Step 01',
+      title: 'Paste the exact prompt',
+      body: 'Use the final request text, not a draft summary. The counter prices the bytes you actually send.',
+      href: '#planner',
+    },
+    {
+      stepLabel: 'Step 02',
+      title: 'Choose model and output',
+      body: 'Search the model list, pick the tokenizer, then use an auto estimate, preset, or custom output length.',
+      href: '#model-select',
+    },
+    {
+      stepLabel: 'Step 03',
+      title: 'Inspect before sending',
+      body: 'Use the receipt, summary, and token evidence to catch expensive prompts before they run.',
+      href: '#evidence',
+    },
   ];
 
   return (
-    <div className="min-h-screen w-full">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 sm:gap-14 px-4 sm:px-6 py-8 sm:py-12">
-        <header className="grid gap-8 lg:grid-cols-[1.2fr_minmax(0,0.8fr)] items-center">
-          <div className="space-y-5">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.28em] text-rose-iris">Prompt Info</p>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-rose-text leading-tight">
-              Measure tokens and cost before you hit send.
-            </h1>
-            <p className="text-base sm:text-lg text-rose-subtle leading-relaxed max-w-2xl">
-              Paste a prompt to see live token counts and modeled cost for the model you pick. Change tokenizer and output length before you run it.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <a
-                className="rounded-xl bg-rose-iris text-rose-text px-5 py-3 text-sm font-semibold shadow-lg hover:bg-rose-foam transition-colors"
-                href="#planner"
-              >
-                Start analyzing
-              </a>
-              <a
-                className="rounded-xl border border-rose-highlightMed px-5 py-3 text-sm font-semibold text-rose-text hover:border-rose-iris hover:text-rose-iris transition-colors"
-                href="https://helloworldfirm.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View docs
-              </a>
+    <main className="w-full max-w-full overflow-x-hidden">
+      <section className="prompt-hero mx-auto grid min-h-[78dvh] w-full max-w-[1500px] border-b border-rose-highlightMed lg:grid-cols-[minmax(0,1fr)_minmax(320px,460px)]">
+        <div className="flex flex-col justify-end border-rose-highlightMed px-4 pb-12 pt-16 sm:px-6 md:px-10 md:pb-16 lg:border-r lg:px-12">
+          <p className="data-label text-rose-love">Prompt Info</p>
+          <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3.2rem,8vw,7.2rem)]">
+            Know the bill before the model runs.
+          </h1>
+          <p className="mt-8 max-w-2xl text-base leading-8 text-rose-subtle sm:text-lg">
+            A prompt workbench that turns pasted text into a live token count, output forecast, and cost receipt.
+          </p>
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+            <a className="action-primary" href="#planner">
+              Analyze prompt
+            </a>
+            <Link className="action-secondary" href="/format-comparison">
+              Convert format
+            </Link>
+          </div>
+        </div>
+
+        <aside className="receipt-wrap p-5 sm:p-8 md:p-10" aria-label="Live prompt cost receipt">
+          <div className="receipt-card">
+            <div className="receipt-perf" aria-hidden="true" />
+            <div className="flex items-start justify-between gap-6 border-b border-rose-highlightMed pb-5">
+              <div>
+                <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-rose-muted">Live estimate</p>
+                <p className="mt-2 text-2xl font-black uppercase leading-none tracking-[-0.04em] text-rose-text">Cost receipt</p>
+              </div>
+              <output className="font-mono text-sm font-bold text-rose-love tabular-nums">
+                {formatCost(cost)}
+              </output>
             </div>
-            <div className="grid grid-cols-3 gap-3 sm:gap-4">
-              {heroStats.map(stat => (
-                <div key={stat.label} className="rounded-xl border border-rose-highlightMed/60 bg-black/40 backdrop-blur-lg px-3 sm:px-4 py-3">
-                  <div className="text-xs text-rose-muted uppercase tracking-wide">{stat.label}</div>
-                  <div className="mt-1 text-lg sm:text-xl font-semibold text-rose-text">{stat.value}</div>
+
+            <div className="mt-6 grid gap-3">
+              {receiptRows.map(([label, value]) => (
+                <div key={label} className="receipt-row">
+                  <span>{label}</span>
+                  <output>{value}</output>
                 </div>
               ))}
             </div>
-          </div>
-          <div className="glass-card rounded-3xl border-2 border-rose-highlightHigh/60 backdrop-blur-2xl p-5 sm:p-6 shadow-[0_40px_90px_-60px_rgba(0,0,0,0.9)]">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-rose-muted">Live preview</p>
-                <p className="text-lg font-semibold text-rose-text">Visualizer</p>
-              </div>
-              <div className="flex items-center gap-2 bg-black/40 border border-rose-highlightMed/60 rounded-xl px-2 py-1">
-                {(['snapshot', 'tokens'] as const).map(mode => (
-                  <button
-                    key={mode}
-                    onClick={() => setVisualizerMode(mode)}
-                    className={`px-3 py-1 text-[12px] font-semibold rounded-lg transition-all ${
-                      visualizerMode === mode
-                        ? 'bg-rose-iris/30 text-rose-text border border-rose-iris/60 shadow-inner'
-                        : 'text-rose-subtle hover:text-rose-text'
-                    }`}
-                    aria-pressed={visualizerMode === mode}
-                  >
-                    {mode === 'snapshot' ? 'Snapshot' : 'Token view'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {visualizerMode === 'snapshot' ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-rose-subtle text-sm">Tokens</span>
-                  <span className="text-2xl font-bold text-rose-text tabular-nums">{tokens.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-rose-subtle text-sm">Est. cost</span>
-                  <span className="text-xl font-semibold text-rose-foam tabular-nums">
-                    {cost !== null && !isNaN(cost) ? `$${cost.toFixed(6)}` : '—'}
-                  </span>
-                </div>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-rose-subtle">
-                  <div className="rounded-lg border border-rose-highlightMed bg-black/45 px-3 py-2">
-                    <div className="text-[11px] uppercase tracking-wide">Input</div>
-                    <div className="text-base font-semibold text-rose-text tabular-nums">{tokens.length}</div>
-                  </div>
-                  <div className="rounded-lg border border-rose-highlightMed bg-black/45 px-3 py-2">
-                    <div className="text-[11px] uppercase tracking-wide">Output</div>
-                    <div className="text-base font-semibold text-rose-text tabular-nums">{expectedOutTokens ?? 0}</div>
-                  </div>
-                  <div className="rounded-lg border border-rose-iris/60 bg-rose-iris/14 px-3 py-2">
-                    <div className="text-[11px] uppercase tracking-wide text-rose-iris">Total</div>
-                    <div className="text-base font-semibold text-rose-iris tabular-nums">{tokens.length + Number(expectedOutTokens ?? 0)}</div>
-                  </div>
-                </div>
-                <p className="text-[12px] text-rose-muted">Tokenizer: {tokenizerLabel}</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="text-rose-subtle text-sm">Live token stream</div>
-                <div className="rounded-2xl border border-rose-highlightMed/70 bg-black/40 backdrop-blur-xl p-3 max-h-72 overflow-y-auto scrollbar-thin scrollbar-thumb-rose-highlightHigh scrollbar-track-black/50">
-                  {decodedTokens.length === 0 ? (
-                    <div className="text-sm text-rose-muted italic">Start typing to see tokens in real time.</div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2.5">
-                      {decodedTokens.map((tok, i) => (
-                        <span
-                          key={`${tok.id}-${i}`}
-                          className="group flex flex-col items-center rounded-lg border border-rose-highlightMed/80 bg-rose-highlightLow/70 px-3 py-2 text-[13px] font-mono text-rose-subtle transition-all hover:scale-105 hover:border-rose-iris hover:bg-rose-highlightMed/80"
-                          title={`Token #${i + 1}\nID: ${tok.id}`}
-                        >
-                          <span className="leading-tight font-semibold text-rose-text group-hover:text-rose-foam transition-colors">
-                            {tok.str || <span className="text-rose-muted">[space]</span>}
-                          </span>
-                          <span className="text-[10px] text-rose-muted group-hover:text-rose-subtle transition-colors">#{tok.id}</span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </header>
 
-        <section id="planner" className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-          <div className="glass-card flex flex-col gap-6 sm:gap-7 rounded-2xl sm:rounded-3xl border-2 border-rose-highlightHigh/50 backdrop-blur-2xl p-5 sm:p-7 shadow-2xl">
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-rose-text tracking-wide" htmlFor="prompt-input">
+            <div className="receipt-total mt-8">
+              <span>Total tokens</span>
+              <data value={combinedTokens}>{combinedTokens.toLocaleString()}</data>
+            </div>
+            <p className="mt-5 text-sm leading-6 text-rose-muted">
+              Empty values show until you paste a prompt and choose a priced model.
+            </p>
+          </div>
+        </aside>
+      </section>
+
+      <section className="flow-strip mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px md:grid-cols-3" aria-label="Prompt planning flow">
+        {flowSteps.map(step => (
+          <a
+            key={step.title}
+            href={step.href}
+            aria-label={`${step.stepLabel}: ${step.title}. ${step.body}`}
+            data-step={step.stepLabel.replace('Step ', '')}
+            className="flow-step group block p-5 transition duration-200 hover:bg-rose-overlay focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none sm:p-7"
+          >
+            <span className="stage-tag">{step.stepLabel}</span>
+            <h2 className="mt-8 max-w-sm text-2xl font-black uppercase leading-none tracking-[-0.05em] text-rose-text sm:text-3xl">
+              {step.title}
+            </h2>
+            <p className="relative z-10 mt-5 max-w-sm text-sm leading-7 text-rose-subtle">{step.body}</p>
+          </a>
+        ))}
+      </section>
+
+      <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-12 sm:px-6 md:px-12 md:py-16">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] lg:items-end">
+          <div>
+            <p className="data-label text-rose-love">Workbench</p>
+            <h2 className="mt-4 max-w-4xl text-[clamp(2.7rem,6vw,5.8rem)] font-black uppercase leading-[0.88] tracking-[-0.07em] text-rose-text">
+              Price the request in the same order you build it.
+            </h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-7 text-rose-subtle sm:text-base">
+            Start with text, then select the model and tokenizer. Output uses a conservative auto estimate until you switch to a preset or custom number.
+          </p>
+        </div>
+      </section>
+
+      <section id="planner" className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px py-px lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <article className="bg-rose-base p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="stage-tag">Step 01</span>
+              <label className="data-label" htmlFor="prompt-input">
                 Prompt
               </label>
-              <PromptInput id="prompt-input" value={prompt} onChange={setPrompt} />
+              <p className="mt-2 max-w-xl text-sm leading-6 text-rose-subtle">
+                Paste the exact text you plan to send. The receipt updates as you type.
+              </p>
             </div>
+            <output className="font-mono text-sm font-bold text-rose-text tabular-nums">
+              {tokens.length.toLocaleString()} tokens
+            </output>
+          </div>
+          <div className="mt-5">
+            <PromptInput id="prompt-input" value={prompt} onChange={setPrompt} />
+          </div>
+          <div className="mt-5 h-2 border border-rose-highlightMed bg-rose-overlay">
+            <div
+              className="h-full bg-rose-love transition-[width] duration-300 motion-reduce:transition-none"
+              style={{ width: `${tokenCoverage}%` }}
+            />
+          </div>
+          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted tabular-nums">
+            {Math.round(tokenCoverage)}% of the {REFERENCE_TOKEN_WINDOW.toLocaleString()} token reference window
+          </p>
+        </article>
 
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-rose-text tracking-wide" htmlFor="model-select">
-                Model
-              </label>
+        <aside className="grid gap-px bg-rose-highlightMed">
+          <div className="bg-rose-base p-4 sm:p-6 md:p-8">
+            <span className="stage-tag">Step 02</span>
+            <label className="data-label" htmlFor="model-select">
+              Model
+            </label>
+            <div className="mt-4">
               <ModelSelect
                 id="model-select"
                 value={model}
@@ -287,147 +474,241 @@ export default function Home() {
                 loading={modelsLoading}
               />
             </div>
+          </div>
 
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-rose-text tracking-wide" htmlFor="tokenizer-select">
-                Tokenizer
-              </label>
-              <select
-                id="tokenizer-select"
-                value={tokenizer}
-                onChange={e => setTokenizer(e.target.value as typeof TOKENIZERS[number]['key'])}
-                className="glass-select w-full appearance-none rounded-xl border px-5 py-3 text-base font-semibold text-rose-text transition-all duration-200 focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/30 hover:border-rose-highlightHigh cursor-pointer"
-              >
-                {TOKENIZERS.map(opt => (
-                  <option key={opt.key} value={opt.key} className="bg-rose-base text-rose-text py-2">
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/35 backdrop-blur-xl px-4 sm:px-5 py-4 sm:py-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Output length</p>
-                  <p className="text-sm text-rose-subtle">Blend a likely completion to model total cost.</p>
-                </div>
-                <span className="text-xs text-rose-muted">Max {MAX_OUTPUT_TOKENS.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  id="expected-out"
-                  type="range"
-                  min={0}
-                  max={MAX_OUTPUT_TOKENS}
-                  step={TOKEN_STEP}
-                  value={Number(expectedOutTokens ?? 0)}
-                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
-                  className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-rose-highlightMed/60 accent-rose-iris transition-all"
-                />
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={MAX_OUTPUT_TOKENS}
-                  step={TOKEN_STEP}
-                  value={Number(expectedOutTokens ?? 0)}
-                  onChange={e => setExpectedOutTokens(Math.max(0, Math.min(MAX_OUTPUT_TOKENS, Number(e.target.value))))}
-                  className="w-24 sm:w-28 rounded-xl border border-rose-highlightMed bg-rose-base px-3 sm:px-4 py-2 text-right text-sm sm:text-base font-semibold text-rose-text tabular-nums focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/40 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/35 backdrop-blur-xl px-4 sm:px-5 py-4 sm:py-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Context usage</p>
-                  <p className="text-sm text-rose-subtle">Based on {REFERENCE_TOKEN_WINDOW.toLocaleString()} tokens.</p>
-                </div>
-                <span className="text-xs text-rose-muted tabular-nums">{Math.round(tokenCoverage)}%</span>
-              </div>
-              <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-rose-highlightMed/50 shadow-inner">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-rose-foam via-rose-iris to-rose-pine transition-all duration-300 ease-out shadow-lg"
-                  style={{ width: `${tokenCoverage}%` }}
-                />
-              </div>
+          <div className="bg-rose-base p-4 sm:p-6 md:p-8">
+            <span className="stage-tag">Step 03</span>
+            <label className="data-label" htmlFor="tokenizer-select">
+              Tokenizer
+            </label>
+            <select
+              id="tokenizer-select"
+              value={tokenizer}
+              onChange={e => {
+                setTokenizerTouched(true);
+                setTokenizer(e.target.value as TokenizerKey);
+              }}
+              className="glass-select mt-4 w-full appearance-none border px-4 py-3 text-sm font-semibold transition duration-200 focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
+            >
+              {TOKENIZERS.map(opt => (
+                <option key={opt.key} value={opt.key} className="bg-rose-base text-rose-text">
+                  {opt.label} - {opt.description}
+                </option>
+              ))}
+            </select>
+            <div className="mt-4 grid gap-3">
+              <p className="text-sm leading-6 text-rose-muted">
+                {tokenizerOption.description}. These are the mainstream OpenAI BPE encodings available in the tokenizer package. Anthropic, Gemini, and Llama counts remain planning estimates unless their native tokenizer is added later.
+              </p>
+              {recommendedTokenizer && recommendedTokenizer !== tokenizer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTokenizer(recommendedTokenizer);
+                    setTokenizerTouched(false);
+                  }}
+                  className="justify-self-start border border-rose-highlightMed bg-rose-base px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:border-rose-love hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
+                >
+                  Use recommended {recommendedTokenizer.replace('_', '/')}
+                </button>
+              )}
             </div>
           </div>
 
-          <aside className="glass-card flex flex-col gap-5 sm:gap-6 rounded-2xl sm:rounded-3xl border-2 border-rose-highlightHigh/50 backdrop-blur-2xl p-5 sm:p-7 shadow-2xl">
-            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/35 backdrop-blur-xl px-4 sm:px-5 py-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-rose-iris mb-2">Totals</p>
-              <div className="grid grid-cols-3 gap-3 text-sm text-rose-text">
-                <div className="rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 py-3">
-                  <span className="text-rose-subtle text-xs">Prompt</span>
-                  <div className="text-xl font-bold tabular-nums">{tokens.length}</div>
-                </div>
-                <div className="rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 py-3">
-                  <span className="text-rose-subtle text-xs">Output</span>
-                  <div className="text-xl font-bold tabular-nums">{expectedOutTokens ?? 0}</div>
-                </div>
-                <div className="rounded-xl border-2 border-rose-iris/60 bg-rose-iris/12 px-4 py-3">
-                  <span className="text-rose-iris text-xs font-semibold">Combined</span>
-                  <div className="text-xl font-bold text-rose-iris tabular-nums">
-                    {tokens.length + Number(expectedOutTokens ?? 0)}
-                  </div>
-                </div>
+          <div className="bg-rose-base p-4 sm:p-6 md:p-8">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <span className="stage-tag">Step 04</span>
+                <label className="data-label" htmlFor="expected-out">
+                  Planned output
+                </label>
+                <p className="mt-2 text-sm leading-6 text-rose-subtle">
+                  Output is uncertain, so auto mode estimates from prompt length. Presets and direct edits switch to custom mode.
+                </p>
               </div>
+              <output className="font-mono text-sm font-bold text-rose-text tabular-nums" aria-live="polite">
+                {plannedOutput.toLocaleString()}
+              </output>
             </div>
-
-            <div className="rounded-2xl border border-rose-highlightMed/50 bg-black/35 backdrop-blur-xl px-4 sm:px-5 py-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Cost</p>
-                <span className="text-[11px] text-rose-muted">USD</span>
-              </div>
-              <div className="grid gap-3">
-                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 py-3">
-                  <span className="text-sm text-rose-subtle">Input</span>
-                  <span className="text-lg font-bold text-rose-text tabular-nums">
-                    {inputCost !== null && !isNaN(inputCost) ? `$${inputCost.toFixed(6)}` : '—'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl border border-rose-highlightMed bg-rose-highlightLow px-4 py-3">
-                  <span className="text-sm text-rose-subtle">Output</span>
-                  <span className="text-lg font-bold text-rose-text tabular-nums">
-                    {outputCost !== null && !isNaN(outputCost) ? `$${outputCost.toFixed(6)}` : '—'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl border-2 border-rose-iris/60 bg-rose-iris/12 px-4 py-3">
-                  <span className="text-sm font-semibold text-rose-text">Total</span>
-                  <span className="text-xl font-bold text-rose-iris tabular-nums">
-                    {cost !== null && !isNaN(cost) ? `$${cost.toFixed(6)}` : '—'}
-                  </span>
-                </div>
-              </div>
+            <div className="mt-5 grid gap-px bg-rose-highlightMed p-px sm:grid-cols-2">
+              {(['auto', 'custom'] as const).map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setOutputMode(mode)}
+                  aria-pressed={outputMode === mode}
+                  className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
+                    outputMode === mode
+                      ? 'bg-rose-love text-white'
+                      : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
+                  }`}
+                >
+                  {mode === 'auto' ? 'Auto estimate' : 'Custom'}
+                </button>
+              ))}
             </div>
+            <div className="mt-5 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(92px,1fr))]">
+              {outputPresets.map(preset => {
+                const isUnavailable = preset.tokens > modelOutputLimit;
+                const isActive = outputMode === 'custom' && preset.tokens === plannedOutput;
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    disabled={isUnavailable}
+                    onClick={() => {
+                      setOutputMode('custom');
+                      setCustomOutTokens(preset.tokens);
+                    }}
+                    aria-pressed={isActive}
+                    className={`min-h-16 border px-3 py-2 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none ${
+                      isActive
+                        ? 'border-rose-love bg-rose-love text-white'
+                        : isUnavailable
+                          ? 'cursor-not-allowed border-rose-highlightMed bg-rose-base text-rose-muted opacity-45'
+                        : 'border-rose-highlightMed bg-rose-base text-rose-subtle hover:border-rose-love hover:text-rose-text'
+                    }`}
+                  >
+                    <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em]">{preset.label}</span>
+                    <span className="mt-1 block font-mono text-xs font-bold tabular-nums">{preset.tokens.toLocaleString()}</span>
+                    <span className="mt-1 block text-xs normal-case text-current opacity-75">
+                      {isUnavailable ? 'above cap' : preset.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_150px] sm:items-center">
+              <input
+                id="expected-out"
+                type="range"
+                min={0}
+                max={modelOutputLimit}
+                step={TOKEN_STEP}
+                value={plannedOutput}
+                onChange={e => {
+                  setOutputMode('custom');
+                  setCustomOutTokens(clampOutputTokens(Number(e.target.value), modelOutputLimit));
+                }}
+                className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
+                aria-describedby="planned-output-help"
+              />
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={modelOutputLimit}
+                step={TOKEN_STEP}
+                value={plannedOutput}
+                onChange={e => {
+                  setOutputMode('custom');
+                  setCustomOutTokens(clampOutputTokens(Number(e.target.value), modelOutputLimit));
+                }}
+                className="glass-select w-full border px-4 py-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                aria-label="Custom planned output tokens"
+              />
+            </div>
+            <p id="planned-output-help" className="mt-3 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted tabular-nums">
+              {outputMode === 'auto' ? 'Auto estimate' : 'Custom forecast'} / output cap {outputCapLabel} tokens / {tokenLimitSource}
+            </p>
+          </div>
+        </aside>
+      </section>
 
-            {visualizerMode === 'snapshot' && decodedTokens.length > 0 && (
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Token breakdown</p>
-                  <span className="text-[11px] text-rose-muted">Live from tokenizer</span>
-                </div>
-                <div className="max-h-56 overflow-y-auto rounded-2xl border border-rose-highlightMed bg-black/40 backdrop-blur-lg p-4 scrollbar-thin scrollbar-thumb-rose-highlightHigh scrollbar-track-black">
-                  <div className="flex flex-wrap gap-2.5">
-                    {decodedTokens.map((tok, i) => (
-                      <span
-                        key={i}
-                        className="group flex flex-col items-center rounded-lg border border-rose-highlightMed bg-rose-highlightLow px-2.5 py-1.5 text-[13px] font-mono text-rose-subtle transition-all hover:scale-105 hover:border-rose-iris hover:bg-rose-highlightMed"
-                        title={`Token #${i + 1}\nID: ${tok.id}`}
-                      >
-                        <span className="leading-tight font-semibold text-rose-text group-hover:text-rose-foam transition-colors">{tok.str || <>&nbsp;</>}</span>
-                        <span className="text-[10px] text-rose-muted group-hover:text-rose-subtle transition-colors">#{tok.id}</span>
-                      </span>
-                    ))}
-                  </div>
+      <section id="evidence" className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+        <aside className="receipt-panel bg-rose-base p-4 sm:p-6 md:p-8">
+          <span className="stage-tag">Step 05</span>
+          <p className="data-label">Summary</p>
+          <div className="mt-6 grid gap-px bg-rose-highlightMed">
+            {[
+              ['Prompt tokens', tokens.length.toLocaleString()],
+              ['Planned output', plannedOutput.toLocaleString()],
+              ['Output cap', outputCapLabel],
+              ['Context window', contextWindowLabel],
+              ['Combined tokens', combinedTokens.toLocaleString()],
+              ['Input cost', formatCost(inputCost)],
+              ['Output cost', formatCost(outputCost)],
+              ['Total cost', formatCost(cost)],
+            ].map(([label, value]) => (
+              <div key={label} className="grid grid-cols-[minmax(0,1fr)_minmax(100px,0.7fr)] bg-rose-base">
+                <span className="border-r border-rose-highlightMed p-3 text-sm text-rose-subtle">{label}</span>
+                <output className="p-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums">{value}</output>
+              </div>
+            ))}
+          </div>
+          <p className="mt-5 text-sm leading-7 text-rose-muted">
+            The estimate uses the selected model price and your planned output length. It is meant for prompt planning, not provider billing reconciliation.
+          </p>
+        </aside>
+
+        <article className="bg-rose-base p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="data-label">Token evidence</p>
+              <h2 className="mt-3 max-w-3xl text-[clamp(2.4rem,5vw,5.4rem)] font-black uppercase leading-[0.9] tracking-[-0.06em] text-rose-text">
+                Inspect what the counter sees.
+              </h2>
+            </div>
+            <div className="flex border border-rose-highlightMed">
+              {(['snapshot', 'tokens'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setVisualizerMode(mode)}
+                  className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none ${
+                    visualizerMode === mode
+                      ? 'bg-rose-love text-white'
+                      : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
+                  }`}
+                  aria-pressed={visualizerMode === mode}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-8 border border-rose-highlightMed bg-rose-surface p-3">
+            {visualizerMode === 'snapshot' && decodedTokens.length === 0 ? (
+              <div className="p-5 text-sm text-rose-muted">Paste a prompt to see token fragments and IDs.</div>
+            ) : visualizerMode === 'snapshot' ? (
+              <div className="max-h-[420px] overflow-y-auto p-1">
+                <div className="flex flex-wrap gap-2">
+                  {decodedTokens.map((tok, i) => (
+                    <span
+                      key={`${tok.id}-${i}`}
+                      className="token-chip group"
+                      title={`Token #${i + 1}\nID: ${tok.id}`}
+                    >
+                      <span className="text-rose-text group-hover:text-white">{tok.str || '[space]'}</span>
+                      <span className="text-rose-muted group-hover:text-rose-text">#{tok.id}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
+            ) : (
+              <pre className="max-h-[420px] overflow-y-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 text-rose-subtle">
+                {decodedTokens.length
+                  ? decodedTokens.map((tok, i) => `${String(i + 1).padStart(4, '0')} / ${tok.id} / ${JSON.stringify(tok.str)}`).join('\n')
+                  : '0000 / waiting for prompt'}
+              </pre>
             )}
-          </aside>
-        </section>
-      </main>
-    </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-16 sm:px-6 md:px-12 md:py-24">
+        <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_340px] md:items-end">
+          <div>
+            <p className="data-label">Need a different payload shape?</p>
+            <h2 className="mt-5 max-w-5xl text-[clamp(2.8rem,7vw,6.6rem)] font-black uppercase leading-[0.86] tracking-[-0.07em] text-rose-text">
+              Compare the same prompt as TOON, JSON, YAML, XML, and CSV.
+            </h2>
+          </div>
+          <Link className="action-primary justify-center" href="/format-comparison">
+            Open format lab
+          </Link>
+        </div>
+      </section>
+    </main>
   );
 }

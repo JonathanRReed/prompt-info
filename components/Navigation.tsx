@@ -1,42 +1,43 @@
 'use client';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 type NavItem = {
   href: string;
   label: string;
+  shortLabel: string;
   description: string;
 };
 
 const navItems: NavItem[] = [
-  { href: '/', label: 'Token Planner', description: 'Count tokens & estimate costs' },
-  { href: '/format-comparison', label: 'Format Comparison', description: 'Compare TOON, JSON, YAML, XML, CSV' },
-  { href: '/about', label: 'About', description: 'What this site does' },
+  { href: '/', label: 'Token Planner', shortLabel: 'Planner', description: 'Count tokens and estimate costs' },
+  { href: '/format-comparison', label: 'Format Comparison', shortLabel: 'Formats', description: 'Compare TOON, JSON, YAML, XML, CSV' },
+  { href: '/about', label: 'About', shortLabel: 'About', description: 'What this utility does' },
 ];
 
 export default function Navigation() {
   const pathname = usePathname();
+  const normalizedPathname = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
 
   return (
-    <nav className="flex items-center gap-1 sm:gap-2" role="navigation" aria-label="Main navigation">
-      {navItems.map((item) => {
-        const isActive = pathname === item.href;
+    <nav className="flex min-w-0 items-center border border-rose-highlightMed" role="navigation" aria-label="Main navigation">
+      {navItems.map(item => {
+        const isActive = normalizedPathname === item.href;
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`group relative flex items-center gap-1.5 rounded-lg sm:rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all ${
+            className={`group relative flex min-h-11 items-center border-r border-rose-highlightMed px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition duration-200 last:border-r-0 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none sm:px-5 ${
               isActive
-                ? 'bg-rose-iris/20 text-rose-iris border border-rose-iris/40'
-                : 'text-rose-subtle hover:text-rose-text hover:bg-rose-highlightMed/50 border border-transparent'
+                ? 'bg-rose-love text-white'
+                : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
             }`}
             aria-current={isActive ? 'page' : undefined}
           >
             <span className="hidden sm:inline">{item.label}</span>
-            <span className="sm:hidden">{item.label.split(' ')[0]}</span>
-            
-            {/* Tooltip on hover for desktop */}
-            <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-rose-surface border border-rose-highlightMed px-3 py-2 text-xs text-rose-subtle opacity-0 shadow-xl transition-opacity group-hover:opacity-100 hidden lg:block">
+            <span className="sm:hidden">{item.shortLabel}</span>
+            <span className="pointer-events-none absolute left-0 top-full z-50 mt-px hidden w-72 border border-rose-highlightMed bg-rose-base px-3 py-2 text-[11px] text-rose-muted opacity-0 transition-opacity group-hover:opacity-100 lg:block">
               {item.description}
             </span>
           </Link>

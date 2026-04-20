@@ -24,13 +24,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (mounted) {
-      const root = document.documentElement;
-      root.setAttribute('data-theme', theme === 'dawn' ? 'light' : 'dark');
-    }
-  }, [theme, mounted]);
-
   const setTheme = (newTheme: ThemeName) => {
     setThemeState(newTheme);
     localStorage.setItem('rose-pine-theme', newTheme);
