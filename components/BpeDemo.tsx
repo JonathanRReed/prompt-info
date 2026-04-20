@@ -1,4 +1,5 @@
 'use client';
+
 import { useMemo, useState } from 'react';
 import PromptInput from './PromptInput';
 import { encode, decode } from 'gpt-tokenizer';
@@ -26,84 +27,77 @@ export default function BpeDemo() {
   }, [decodedTokens, prompt]);
 
   return (
-    <div className="glass-card w-full rounded-2xl sm:rounded-3xl shadow-[0_40px_90px_-60px_rgba(0,0,0,0.9)] p-5 sm:p-7 backdrop-blur-2xl border border-rose-highlightMed/70">
-      <header className="text-center mb-6">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-rose-iris mb-2">Tokenization</p>
-        <h1 className="text-2xl sm:text-3xl font-bold text-rose-text">BPE Token Visualizer</h1>
-        <p className="mt-2 text-sm text-rose-subtle">See how text is broken into tokens using Byte Pair Encoding</p>
-      </header>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] items-start">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="block text-sm font-bold text-rose-text tracking-wide" htmlFor="bpe-prompt">
-              Enter text to tokenize
+    <section className="grid w-full gap-px bg-rose-highlightMed border border-rose-highlightMed lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <div className="bg-rose-base p-5 sm:p-7">
+        <header className="mb-6">
+          <p className="data-label text-rose-love">Tokenization</p>
+          <h1 className="mt-3 text-3xl font-black uppercase leading-none tracking-[-0.05em] text-rose-text sm:text-4xl">
+            BPE token visualizer
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-rose-subtle">See how text breaks into byte pair encoded token units.</p>
+        </header>
+
+        <div className="space-y-5">
+          <div className="flex items-center justify-between gap-4">
+            <label className="data-label" htmlFor="bpe-prompt">
+              Text to tokenize
             </label>
             <button
               onClick={() => setPrompt('')}
-              className="text-xs font-semibold text-rose-iris hover:text-rose-foam transition-colors"
+              className="min-h-11 border border-rose-highlightMed bg-rose-base px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:border-rose-love hover:bg-rose-love hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
               aria-label="Clear input"
             >
               Clear
             </button>
           </div>
-          <div className="rounded-2xl border border-rose-highlightMed/60 bg-black/45 backdrop-blur-xl shadow-inner">
-            <PromptInput id="bpe-prompt" value={prompt} onChange={setPrompt} />
+          <PromptInput id="bpe-prompt" value={prompt} onChange={setPrompt} />
+          <div className="grid gap-px bg-rose-highlightMed sm:grid-cols-3">
+            {[
+              ['Characters', prompt.length],
+              ['Tokens', decodedTokens.length],
+              ['Tokens per char', stats?.ratio ?? '0.00'],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-rose-base p-4 text-center">
+                <div className="font-mono text-3xl font-bold text-rose-text tabular-nums">{value}</div>
+                <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-rose-muted">{label}</div>
+              </div>
+            ))}
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-xl border border-rose-highlightMed bg-black/50 px-4 py-3">
-              <div className="text-2xl font-bold text-rose-text tabular-nums">{prompt.length}</div>
-              <div className="text-xs text-rose-subtle uppercase tracking-wide">Characters</div>
-            </div>
-            <div className="rounded-xl border border-rose-iris/50 bg-rose-iris/12 px-4 py-3">
-              <div className="text-2xl font-bold text-rose-iris tabular-nums">{decodedTokens.length}</div>
-              <div className="text-xs text-rose-subtle uppercase tracking-wide">Tokens</div>
-            </div>
-            <div className="rounded-xl border border-rose-highlightMed bg-black/50 px-4 py-3">
-              <div className="text-2xl font-bold text-rose-text tabular-nums">{stats?.ratio ?? '0.00'}</div>
-              <div className="text-xs text-rose-subtle uppercase tracking-wide">Tokens / char</div>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-rose-highlightMed bg-black/35 backdrop-blur-xl p-4 text-rose-subtle text-sm">
-            <p className="font-semibold text-rose-text mb-2">Tips:</p>
-            <ul className="space-y-1.5 list-disc list-inside">
-              <li>Whitespace and newlines become their own tokens—trim them if they are noisy.</li>
-              <li>Repeated prefixes inflate token count; rewrite to reduce repetition.</li>
-              <li>Watch multi-character tokens; they indicate good compression.</li>
+          <div className="border border-rose-highlightMed bg-rose-base p-4 text-sm leading-7 text-rose-subtle">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-rose-text">Notes</p>
+            <ul className="mt-3 space-y-1.5">
+              <li>Whitespace and newlines can become their own tokens, trim them if they are noisy.</li>
+              <li>Repeated prefixes inflate token count. Rewrite repeated instructions when possible.</li>
+              <li>Multi-character tokens indicate better compression.</li>
             </ul>
           </div>
         </div>
+      </div>
 
-        <div className="rounded-2xl border-2 border-rose-highlightHigh/70 bg-[rgba(12,10,16,0.72)] backdrop-blur-2xl shadow-[0_30px_90px_-60px_rgba(0,0,0,0.85)] p-4 sm:p-5 max-h-[70vh] overflow-hidden flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-rose-iris">Live token breakdown</p>
-            <span className="text-[11px] text-rose-subtle">{decodedTokens.length} tokens</span>
-          </div>
-          <div className="relative flex-1 overflow-hidden rounded-xl border border-rose-highlightMed/70">
-            <div className="absolute inset-0 bg-gradient-to-b from-white/4 via-rose-surface/10 to-black/30 opacity-70 pointer-events-none mix-blend-screen" />
-            <div className="absolute inset-0 backdrop-blur-lg" />
-            <div className="relative max-h-[60vh] overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-rose-highlightHigh scrollbar-track-black/50">
-              {decodedTokens.length === 0 ? (
-                <div className="text-sm text-rose-muted italic">Start typing to see tokens in real time.</div>
-              ) : (
-                <div className="flex flex-wrap gap-2.5">
-                  {decodedTokens.map((tok, i) => (
-                    <span
-                      key={`${tok.id}-${i}`}
-                      className="group relative flex flex-col items-center rounded-lg border border-rose-highlightMed/80 bg-rose-highlightLow/70 px-3 py-2 text-[13px] font-mono text-rose-subtle transition-all hover:scale-105 hover:border-rose-iris hover:bg-rose-highlightMed/80"
-                      title={`Token #${i + 1}\nID: ${tok.id}`}
-                    >
-                      <span className="leading-tight font-semibold text-rose-text group-hover:text-rose-foam transition-colors">
-                        {tok.str || <span className="text-rose-muted">[space]</span>}
-                      </span>
-                      <span className="text-[10px] text-rose-muted group-hover:text-rose-subtle transition-colors">#{tok.id}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
+      <div className="flex min-h-[520px] flex-col gap-3 bg-rose-base p-5 sm:p-7">
+        <div className="flex items-center justify-between gap-4">
+          <p className="data-label">Live token breakdown</p>
+          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-rose-muted">{decodedTokens.length} tokens</span>
+        </div>
+        <div className="flex-1 overflow-y-auto border border-rose-highlightMed bg-rose-surface p-3">
+          {decodedTokens.length === 0 ? (
+            <div className="p-4 text-sm text-rose-muted">Start typing to see tokens in real time.</div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {decodedTokens.map((tok, i) => (
+                <span
+                  key={`${tok.id}-${i}`}
+                  className="token-chip group"
+                  title={`Token #${i + 1}\nID: ${tok.id}`}
+                >
+                  <span className="text-rose-text group-hover:text-white">{tok.str || '[space]'}</span>
+                  <span className="text-rose-muted group-hover:text-rose-text">#{tok.id}</span>
+                </span>
+              ))}
             </div>
-          </div>
+          )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -1,4 +1,5 @@
 'use client';
+
 import { memo } from 'react';
 
 function PromptInput({
@@ -15,8 +16,8 @@ function PromptInput({
       id={id}
       value={value}
       onChange={e => onChange(e.target.value)}
-      placeholder="Enter your prompt here..."
-      className="w-full h-48 resize-y rounded-xl border border-rose-highlightMed bg-black/50 backdrop-blur-lg p-5 text-base text-rose-text placeholder:text-rose-muted/60 transition-all duration-200 focus:border-rose-iris focus:ring-2 focus:ring-rose-iris/30 hover:border-rose-highlightHigh"
+      placeholder="Paste prompt text for analysis"
+      className="h-56 w-full resize-y border border-rose-highlightMed bg-rose-surface p-4 font-mono text-sm leading-7 text-rose-text placeholder:text-rose-muted transition duration-200 hover:border-rose-highlightHigh focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none sm:h-64"
       spellCheck={false}
       autoCorrect="off"
       autoComplete="off"

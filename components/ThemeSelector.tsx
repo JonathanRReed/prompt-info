@@ -1,7 +1,8 @@
 'use client';
+
 import { useTheme } from './ThemeProvider';
 import { themes, ThemeName } from '../lib/themes';
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export default function ThemeSelector() {
   const { theme, setTheme } = useTheme();
@@ -10,7 +11,7 @@ export default function ThemeSelector() {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const themeOptions = useMemo<ThemeName[]>(() => ['night', 'dawn'], []);
+  const themeOptions = useMemo<ThemeName[]>(() => Object.keys(themes) as ThemeName[], []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isOpen) {
@@ -49,7 +50,7 @@ export default function ThemeSelector() {
         setIsOpen(false);
         break;
     }
-  }, [isOpen, focusedIndex, theme, setTheme, themeOptions]);
+  }, [focusedIndex, isOpen, setTheme, theme, themeOptions]);
 
   useEffect(() => {
     if (isOpen && focusedIndex >= 0 && menuRef.current) {
@@ -63,57 +64,31 @@ export default function ThemeSelector() {
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="glass-select flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-rose-text transition-all hover:border-rose-iris focus:border-rose-iris focus:outline-none focus:ring-2 focus:ring-rose-iris/30 shadow-lg"
-        aria-label="Select theme"
+        className="flex min-h-11 items-center gap-2 border border-rose-highlightMed bg-rose-base px-3 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:border-rose-love hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none sm:px-4"
+        aria-label="Select interface theme"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-rose-iris sm:w-4 sm:h-4"
-        >
-          <circle cx="12" cy="12" r="5" />
-          <path d="M12 1v6m0 6v6m5.66-13A10 10 0 0 1 12 22a10 10 0 0 1-6.66-17" />
-        </svg>
-        <span className="hidden xs:inline sm:inline">{themes[theme].name}</span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        <span className="theme-swatch" aria-hidden="true">
+          <span style={{ backgroundColor: themes[theme].colors.base }} />
+          <span style={{ backgroundColor: themes[theme].colors.surface }} />
+          <span style={{ backgroundColor: themes[theme].colors.love }} />
+        </span>
+        <span className="hidden sm:inline">{themes[theme].name}</span>
+        <span className="sm:hidden">Theme</span>
       </button>
 
       {isOpen && (
         <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
-          <div 
             ref={menuRef}
             role="listbox"
             aria-label="Theme options"
-            className="glass-card absolute right-0 top-full z-20 mt-2 w-48 sm:w-56 rounded-lg sm:rounded-xl border border-rose-highlightHigh/60 backdrop-blur-2xl shadow-[0_30px_80px_-40px_rgba(0,0,0,0.65)]"
+            className="absolute right-0 top-full z-20 mt-px w-[min(22rem,calc(100vw-1.5rem))] border border-rose-highlightMed bg-rose-base shadow-[12px_12px_0_var(--color-rose-love)]"
           >
-            <div className="p-1.5 sm:p-2 grid gap-1">
-              {themeOptions.map((themeName) => (
+            <div className="grid gap-px bg-rose-highlightMed">
+              {themeOptions.map(themeName => (
                 <button
                   key={themeName}
                   role="option"
@@ -123,29 +98,28 @@ export default function ThemeSelector() {
                     setIsOpen(false);
                     buttonRef.current?.focus();
                   }}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs sm:text-sm transition-all focus:outline-none focus:ring-2 focus:ring-rose-iris/50 ${
+                  className={`grid min-h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 bg-rose-base px-4 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
                     theme === themeName
-                      ? 'bg-rose-iris/18 text-rose-foam font-semibold border border-rose-iris/50'
-                      : 'text-rose-text hover:bg-rose-highlightMed/60 border border-transparent'
+                      ? 'text-rose-love'
+                      : 'text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
                   }`}
                 >
-                  <span>{themes[themeName].name}</span>
-                  {theme === themeName && (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-rose-iris"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
+                  <span className="theme-swatch theme-swatch-lg" aria-hidden="true">
+                    <span style={{ backgroundColor: themes[themeName].colors.base }} />
+                    <span style={{ backgroundColor: themes[themeName].colors.surface }} />
+                    <span style={{ backgroundColor: themes[themeName].colors.love }} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-mono text-[11px] font-bold uppercase tracking-[0.14em]">
+                      {themes[themeName].name}
+                    </span>
+                    <span className="mt-1 block truncate text-xs font-medium normal-case tracking-normal text-rose-muted">
+                      {themes[themeName].tone}
+                    </span>
+                  </span>
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" aria-hidden="true">
+                    {theme === themeName ? 'Active' : themes[themeName].mode}
+                  </span>
                 </button>
               ))}
             </div>

@@ -5,6 +5,7 @@ import type { Metadata } from 'next'
 import { ThemeProvider } from '../components/ThemeProvider'
 import ThemeSelector from '../components/ThemeSelector'
 import Navigation from '../components/Navigation'
+import { themes } from '../lib/themes'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://prompt-info.helloworldfirm.com'),
@@ -71,6 +72,22 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const themeBootstrap = `
+    (function() {
+      try {
+        const themes = ${JSON.stringify(themes)};
+        const stored = localStorage.getItem('rose-pine-theme');
+        const theme = stored && themes[stored] ? stored : 'night';
+        const definition = themes[theme] || themes.night;
+        Object.entries(definition.colors).forEach(([key, value]) => {
+          document.documentElement.style.setProperty('--color-rose-' + key, value);
+        });
+        document.documentElement.setAttribute('data-theme', definition.mode);
+        document.documentElement.setAttribute('data-theme-name', theme);
+      } catch (e) {}
+    })();
+  `;
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
@@ -125,33 +142,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <html lang="en" className="p-0 m-0 bg-black">
+    <html lang="en" className="m-0 p-0">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)" />
         <link rel="preconnect" href="https://bgbqdzmgxkwstjihgeef.supabase.co" />
         <link rel="icon" type="image/svg+xml" href="/Favicon/favicon.svg" />
-        <link rel="alternate icon" type="image/png" href="/Favicon/favicon-96x96.png" />
-        <link rel="apple-touch-icon" href="/Favicon/apple-touch-icon.png" />
+        <link rel="alternate icon" type="image/png" href="/Favicon/favicon-96x96.avif" />
+        <link rel="apple-touch-icon" href="/Favicon/apple-touch-icon.avif" />
         <link rel="manifest" href="/Favicon/site.webmanifest" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  const theme = localStorage.getItem('rose-pine-theme') || 'night';
-                  const themes = {
-                    night: { base: '#191724', surface: '#1f1d2e', overlay: '#26233a', muted: '#6e6a86', subtle: '#908caa', text: '#e0def4', love: '#eb6f92', gold: '#f6c177', rose: '#ebbcba', pine: '#31748f', foam: '#9ccfd8', iris: '#c4a7e7', highlightLow: '#21202e', highlightMed: '#403d52', highlightHigh: '#524f67' },
-                    moon: { base: '#232136', surface: '#2a273f', overlay: '#393552', muted: '#6e6a86', subtle: '#908caa', text: '#e0def4', love: '#eb6f92', gold: '#f6c177', rose: '#ea9a97', pine: '#3e8fb0', foam: '#9ccfd8', iris: '#c4a7e7', highlightLow: '#2a283e', highlightMed: '#44415a', highlightHigh: '#56526e' },
-                    dawn: { base: '#faf4ed', surface: '#fffaf3', overlay: '#f2e9e1', muted: '#9893a5', subtle: '#797593', text: '#575279', love: '#b4637a', gold: '#ea9d34', rose: '#d7827e', pine: '#286983', foam: '#56949f', iris: '#907aa9', highlightLow: '#f4ede8', highlightMed: '#dfdad9', highlightHigh: '#cecacd' }
-                  };
-                  const colors = themes[theme];
-                  Object.entries(colors).forEach(([key, value]) => {
-                    document.documentElement.style.setProperty('--color-rose-' + key, value);
-                  });
-                } catch (e) {}
-              })();
-            `,
+            __html: themeBootstrap,
           }}
         />
         <script
@@ -159,70 +162,61 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="min-h-screen bg-black p-0 m-0 font-sans text-rose-text antialiased">
+      <body className="m-0 min-h-screen bg-rose-base p-0 font-sans text-rose-text antialiased">
         <ThemeProvider>
-          <div className="flex min-h-screen flex-col p-0 m-0 relative overflow-hidden">
+          <div className="relative m-0 flex min-h-screen flex-col overflow-hidden p-0">
             <div className="page-bg" aria-hidden="true" />
             <div className="grid-overlay" aria-hidden="true" />
-            <header className="sticky top-0 z-50 flex w-full items-center justify-between px-4 sm:px-6 py-3 sm:py-4 backdrop-blur-lg bg-black/30 border-b border-rose-highlightMed/30">
+            <header className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rose-highlightMed bg-rose-base px-3 py-3 sm:px-6">
               <Navigation />
               <ThemeSelector />
             </header>
-            <main className="relative flex flex-1 flex-col items-center justify-center bg-transparent p-0 m-0">
+            <main className="relative z-10 m-0 flex flex-1 flex-col items-center justify-center bg-transparent p-0">
               {children}
             </main>
-          <footer className="flex w-full flex-col items-center justify-center pb-8 sm:pb-12 px-4">
-            <div className="glass-card mx-auto w-full max-w-5xl rounded-2xl sm:rounded-3xl border border-rose-highlightMed/60 px-6 py-6 sm:px-8 sm:py-7 md:px-10 md:py-8 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] backdrop-blur-xl">
-              <div className="flex flex-col gap-3 sm:gap-4">
-                <div className="flex items-center gap-2.5 sm:gap-3">
-                  <Image
-                    src="/logo.avif"
-                    alt="Hello.World Consulting logo"
-                    width={32}
-                    height={32}
-                    className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover object-center"
-                  />
-                  <span className="text-base sm:text-lg font-semibold text-rose-text">A product of <span className="font-bold text-rose-foam">Hello.World Consulting</span></span>
-                </div>
-                <div className="text-xs sm:text-sm italic text-rose-subtle">Made by Jonathan Reed</div>
-
-                <div className="grid gap-3 sm:gap-4 sm:grid-cols-[1.1fr_1fr] items-start">
-                  <div className="flex flex-col gap-2">
-                    <a href="https://helloworldfirm.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
-                      <Image
-                        src="/logo.avif"
-                        alt="Hello.World Consulting logo"
-                        width={20}
-                        height={20}
-                        className="h-5 w-5 rounded-full object-cover object-center"
-                      />
-                      helloworldfirm.com
-                    </a>
-                    <a href="https://JonathanRReed.com" className="flex items-center gap-2 text-sm sm:text-base font-medium text-rose-foam transition hover:underline" target="_blank" rel="noopener noreferrer">
-                      <Image
-                        src="/jonathan.avif"
-                        alt="Jonathan Reed"
-                        width={20}
-                        height={20}
-                        className="h-5 w-5 rounded-full border-2 border-rose-highlightMed object-cover object-center"
-                      />
-                      JonathanRReed.com
-                    </a>
+            <footer className="relative z-10 w-full border-t border-rose-highlightMed bg-rose-base">
+              <div className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px md:grid-cols-[minmax(0,1fr)_minmax(300px,420px)]">
+                <div className="bg-rose-base p-5 sm:p-8 md:p-10">
+                  <div className="flex items-center gap-4">
+                    <Image
+                      src="/logo.avif"
+                      alt="Hello.World Consulting logo"
+                      width={36}
+                      height={36}
+                      className="h-9 w-9 border border-rose-highlightMed object-cover object-center grayscale"
+                    />
+                    <div>
+                      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-rose-muted">Product / Hello.World Consulting</p>
+                      <p className="mt-1 text-sm font-semibold text-rose-text">Made by Jonathan Reed</p>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2 text-sm sm:text-base font-medium text-rose-foam">
-                    <a className="hover:underline" href="https://ai-news.helloworldfirm.com" target="_blank" rel="noopener noreferrer">
-                      AI News
-                    </a>
-                    <a className="hover:underline" href="https://aistats.jonathanrreed.com" target="_blank" rel="noopener noreferrer">
-                      AI Stats
-                    </a>
-                  </div>
+                  <p className="mt-8 max-w-3xl text-sm leading-7 text-rose-subtle">
+                    Prompt Info is a compact utility for token counts, cost estimates, and prompt format checks before sending model requests.
+                  </p>
                 </div>
-
-                <div className="text-[10px] sm:text-xs text-rose-muted">2025 &copy; All Rights Reserved</div>
+                <div className="grid gap-px bg-rose-highlightMed">
+                  {[
+                    ['Format lab', '/format-comparison/'],
+                    ['Hello.World Consulting', 'https://helloworldfirm.com'],
+                    ['Jonathan Reed', 'https://JonathanRReed.com'],
+                  ].map(([label, href]) => (
+                    <a
+                      key={href}
+                      href={href}
+                      className="flex min-h-20 items-end bg-rose-base p-5 font-mono text-xs font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:bg-rose-love hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none"
+                      target={href.startsWith('http') ? '_blank' : undefined}
+                      rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    >
+                      {label}
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
-          </footer>
+              <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between border-x border-rose-highlightMed px-5 py-4 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted sm:px-8">
+                <span>2025 Copyright. All rights reserved.</span>
+                <span>Token and cost planning</span>
+              </div>
+            </footer>
           </div>
         </ThemeProvider>
       </body>
