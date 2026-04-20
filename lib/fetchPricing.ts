@@ -25,9 +25,41 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function readNumber(fields: Record<string, unknown>, key: string) {
-  const value = Number(fields[key]);
-  return Number.isFinite(value) ? value : NaN;
+function readPath(fields: Record<string, unknown>, path: string) {
+  return path.split('.').reduce<unknown>((current, key) => {
+    if (!isRecord(current)) return undefined;
+    return current[key];
+  }, fields);
+}
+
+function parseNumberLike(value: unknown) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  if (typeof value !== 'string') return NaN;
+
+  const normalized = value.trim().toLowerCase().replace(/[$,]/g, '');
+  const match = normalized.match(/^(\d+(?:\.\d+)?)\s*([kmb])?$/);
+  if (!match) return NaN;
+
+  const [, rawNumber, suffix] = match;
+  const multiplier = suffix === 'k' ? 1_000 : suffix === 'm' ? 1_000_000 : suffix === 'b' ? 1_000_000_000 : 1;
+  return Number(rawNumber) * multiplier;
+}
+
+function readFirstNumber(fields: Record<string, unknown>, paths: string[]) {
+  for (const path of paths) {
+    const value = parseNumberLike(readPath(fields, path));
+    if (Number.isFinite(value)) return value;
+  }
+
+  return NaN;
+}
+
+function readPerMillionPrice(fields: Record<string, unknown>, perMillionPaths: string[], perTokenPaths: string[]) {
+  const perMillion = readFirstNumber(fields, perMillionPaths);
+  if (Number.isFinite(perMillion)) return perMillion;
+
+  const perToken = readFirstNumber(fields, perTokenPaths);
+  return Number.isFinite(perToken) ? perToken * 1_000_000 : NaN;
 }
 
 export async function fetchPricing(): Promise<PricingMap> {
@@ -62,9 +94,25 @@ export async function fetchPricing(): Promise<PricingMap> {
     if (!name) continue;
     
     const fields = { ...record, ...pricing };
-    const perMillionIn = readNumber(fields, 'price_1m_input_tokens');
-    const perMillionOut = readNumber(fields, 'price_1m_output_tokens');
-    const blended = readNumber(fields, 'price_1m_blended_3_to_1');
+    const perMillionIn = readPerMillionPrice(
+      fields,
+      ['price_1m_input_tokens', 'pricing.price_1m_input_tokens', 'openrouter.price_1m_input_tokens', 'openrouter.pricing.price_1m_input_tokens', 'openrouter_data.pricing.price_1m_input_tokens', 'open_router.pricing.price_1m_input_tokens', 'metadata.pricing.price_1m_input_tokens'],
+      ['pricing.prompt', 'prompt', 'openrouter.pricing.prompt', 'openrouter.prompt', 'openrouter_data.pricing.prompt', 'open_router.pricing.prompt', 'metadata.pricing.prompt']
+    );
+    const perMillionOut = readPerMillionPrice(
+      fields,
+      ['price_1m_output_tokens', 'pricing.price_1m_output_tokens', 'openrouter.price_1m_output_tokens', 'openrouter.pricing.price_1m_output_tokens', 'openrouter_data.pricing.price_1m_output_tokens', 'open_router.pricing.price_1m_output_tokens', 'metadata.pricing.price_1m_output_tokens'],
+      ['pricing.completion', 'completion', 'openrouter.pricing.completion', 'openrouter.completion', 'openrouter_data.pricing.completion', 'open_router.pricing.completion', 'metadata.pricing.completion']
+    );
+    const blended = readFirstNumber(fields, [
+      'price_1m_blended_3_to_1',
+      'pricing.price_1m_blended_3_to_1',
+      'openrouter.price_1m_blended_3_to_1',
+      'openrouter.pricing.price_1m_blended_3_to_1',
+      'openrouter_data.pricing.price_1m_blended_3_to_1',
+      'open_router.pricing.price_1m_blended_3_to_1',
+      'metadata.pricing.price_1m_blended_3_to_1',
+    ]);
     const tokenProfile = resolveModelTokenProfile(name, fields);
 
     rows.push({
