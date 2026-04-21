@@ -14,6 +14,16 @@ const pageJsonLd = {
     name: 'Hello.World Consulting',
     url: 'https://helloworldfirm.com/',
   },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Hello.World Consulting',
+    url: 'https://helloworldfirm.com/',
+    logo: {
+      '@type': 'ImageObject',
+      url: 'https://prompt-info.helloworldfirm.com/logo.avif',
+    },
+  },
+  image: 'https://prompt-info.helloworldfirm.com/logo.avif',
 };
 
 export const metadata: Metadata = {
@@ -58,7 +68,7 @@ export default function FormatComparisonPage() {
             The generated examples are deliberately simple, which makes the differences easier to inspect. Use them to decide whether a structured request should favor compactness, strict syntax, human editing, or compatibility with an existing ingestion pipeline.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            Updated April 21, 2026 by Hello.World Consulting.
+            By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
           </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">

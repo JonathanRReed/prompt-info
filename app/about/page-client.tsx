@@ -32,7 +32,7 @@ export default function AboutPageClient() {
             The product is intentionally narrow. It focuses on client-side measurement, transparent assumptions, and repeatable reference examples for teams evaluating model usage.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            Updated April 21, 2026 by Hello.World Consulting.
+            By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
           </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">

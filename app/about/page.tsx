@@ -28,6 +28,11 @@ const pageJsonLd = {
     name: 'Hello.World Consulting',
     url: 'https://helloworldfirm.com/',
   },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Hello.World Consulting',
+    url: 'https://helloworldfirm.com/',
+  },
 };
 
 export const metadata: Metadata = {
@@ -72,7 +77,7 @@ export default function AboutPage() {
             The product is intentionally narrow. It focuses on client-side measurement, transparent assumptions, and repeatable reference examples for teams evaluating model usage. That scope keeps the interface quick, reduces data handling surface area, and makes the results easier to verify during engineering review.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            Updated April 21, 2026 by Hello.World Consulting.
+            By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
           </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">

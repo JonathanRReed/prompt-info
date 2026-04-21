@@ -12,6 +12,11 @@ const pageJsonLd = {
     name: 'Hello.World Consulting',
     url: 'https://helloworldfirm.com/',
   },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Hello.World Consulting',
+    url: 'https://helloworldfirm.com/',
+  },
 };
 
 export const metadata: Metadata = {
@@ -46,8 +51,11 @@ export default function ContactPage() {
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
             The fastest reports include what you were trying to estimate, the model or tokenizer selected, the browser used, and the result that looked off. For workflow discussions, describe the review process you want to improve and where cost or token planning currently slows the team down.
           </p>
+          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
+            Clear context helps separate data corrections, interface bugs, and advisory requests. If the question is about adoption inside a team, share the role of the people reviewing requests, the approval step that needs evidence, and the kind of receipt or export that would make the decision easier.
+          </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            Updated April 21, 2026 by Hello.World Consulting.
+            By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
           </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">
@@ -63,6 +71,9 @@ export default function ContactPage() {
           </p>
           <p className="mt-6 text-sm leading-7 text-rose-subtle">
             Do not include private API keys, customer data, confidential transcripts, or unreleased product material in a support request. A short synthetic example is enough for most troubleshooting.
+          </p>
+          <p className="mt-6 text-sm leading-7 text-rose-subtle">
+            If a correction affects a public model catalog, include the public source URL and the unit used by the provider. If a request is strategic, include the launch window, constraints, and what outcome would count as a useful recommendation.
           </p>
         </aside>
       </section>
