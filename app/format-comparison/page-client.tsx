@@ -36,26 +36,7 @@ export default function FormatComparisonPageClient() {
   const cards = useMemo(() => buildFormats(prompt), [prompt]);
 
   return (
-    <main className="w-full max-w-full overflow-x-hidden">
-      <section className="mx-auto grid min-h-[52dvh] w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="border-rose-highlightMed px-4 py-16 sm:px-6 md:border-r md:px-12 md:py-24">
-          <p className="data-label text-rose-love">Format laboratory</p>
-          <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
-            One prompt. Six payload shells.
-          </h1>
-          <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Enter text once, then compare the generated representation across common model and data exchange formats.
-          </p>
-        </div>
-        <aside className="bg-rose-base p-5 sm:p-8">
-          <p className="data-label">Character count</p>
-          <output className="mt-8 block font-mono text-[clamp(4rem,9vw,8rem)] font-bold leading-none tracking-[-0.08em] text-rose-love tabular-nums">
-            {prompt.length}
-          </output>
-          <p className="mt-4 text-sm leading-7 text-rose-subtle">The formatter updates as you type. Copy actions write directly to clipboard.</p>
-        </aside>
-      </section>
-
+    <>
       <section className="mx-auto w-full max-w-[1500px] border-b border-rose-highlightMed bg-rose-base p-4 sm:p-6 md:p-10">
         <div className="flex items-center justify-between gap-4">
           <label className="data-label" htmlFor="format-prompt">
@@ -94,6 +75,6 @@ export default function FormatComparisonPageClient() {
           </article>
         ))}
       </section>
-    </main>
+    </>
   );
 }
