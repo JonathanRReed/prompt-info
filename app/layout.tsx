@@ -147,7 +147,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
         <meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)" />
-        <link rel="preconnect" href="https://bgbqdzmgxkwstjihgeef.supabase.co" />
         <link rel="icon" type="image/svg+xml" href="/Favicon/favicon.svg" />
         <link rel="alternate icon" type="image/png" href="/Favicon/favicon-96x96.avif" />
         <link rel="apple-touch-icon" href="/Favicon/apple-touch-icon.avif" />
