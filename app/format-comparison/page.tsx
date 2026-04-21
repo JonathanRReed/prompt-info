@@ -19,6 +19,7 @@ export const metadata: Metadata = {
     title: 'Prompt Format Comparison Tool',
     description:
       'Convert one prompt into common payload formats to compare readability and token planning tradeoffs.',
+    images: ['/logo.avif'],
   },
 };
 
@@ -34,6 +35,9 @@ export default function FormatComparisonPage() {
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
             Convert one prompt into TOON, JSON, compact JSON, YAML, XML, and CSV examples. The comparison helps teams choose payload formats that are readable, compact, and easy to inspect before model execution.
           </p>
+          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
+            Use the format lab to compare how field names, nested values, lists, and repeated metadata change across payload styles. The examples are designed for planning and review, so teams can spot verbosity, escaping, and readability tradeoffs before adopting a prompt transport format.
+          </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">
           <p className="data-label">Formats covered</p>
@@ -41,6 +45,7 @@ export default function FormatComparisonPage() {
             <li>TOON for compact structured prompts.</li>
             <li>JSON and compact JSON for API payloads.</li>
             <li>YAML, XML, and CSV for common exchange formats.</li>
+            <li>Side-by-side token estimates for planning tradeoffs.</li>
           </ul>
         </aside>
       </section>

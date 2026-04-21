@@ -50,6 +50,9 @@ export default function AboutPage() {
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
             Prompt Info is a small technical workspace for measuring token count, projected cost, and payload format before model execution. It is built by Hello.World Consulting for developers, product teams, and AI engineers who need fast prompt checks without a login flow.
           </p>
+          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
+            The tool is meant for preflight review: paste or draft a request, choose a tokenizer, inspect estimated usage, and compare structured payload shapes before a call reaches a provider. It keeps the practical planning details close to the prompt instead of burying them in separate spreadsheets or docs.
+          </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">
           {[
@@ -81,6 +84,7 @@ export default function AboutPage() {
             <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k.</li>
             <li>Cost estimates are planning values. Provider billing may differ by model version and feature use.</li>
             <li>The interface is designed for preflight review, not storage or user account management.</li>
+            <li>Format output is generated for inspection and planning, not as a guarantee that every downstream API accepts the same structure.</li>
           </ul>
         </article>
         <article className="bg-rose-base p-5 sm:p-8 md:p-10">
