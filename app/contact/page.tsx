@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Contact Prompt Info',
   description:
-    'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, AI developer tooling, bug reports, and integration requests for model workflow teams.',
+    'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, bug reports, and AI workflow tooling requests.',
   alternates: {
     canonical: 'https://prompt-info.helloworldfirm.com/contact/',
   },
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     url: 'https://prompt-info.helloworldfirm.com/contact/',
     title: 'Contact Prompt Info',
     description:
-      'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, AI developer tooling, bug reports, and integration requests for model workflow teams.',
+      'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, bug reports, and AI workflow tooling requests.',
     images: ['/logo.avif'],
   },
 };
@@ -37,7 +37,22 @@ export default function ContactPage() {
           <p className="mt-6 text-sm leading-7 text-rose-subtle">
             Include the page URL, browser, and a short description if you are reporting a tool issue.
           </p>
+          <p className="mt-6 text-sm leading-7 text-rose-subtle">
+            For pricing corrections, include the model name, provider page, expected token price, and the date you checked the source. For product questions, include the workflow you are trying to support and whether the request is about token counts, cost planning, or prompt format review.
+          </p>
         </aside>
+      </section>
+      <section className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px md:grid-cols-3">
+        {[
+          ['Bug reports', 'Send the prompt size, selected tokenizer, model, browser, and exact result that looked wrong. Reproducible reports are easier to verify.'],
+          ['Integration requests', 'Describe the target workflow, expected input format, and output you need from the token or cost planning utility.'],
+          ['Consulting', 'For advisory or implementation work, include the project stage, stack, decision deadline, and the model providers under evaluation.'],
+        ].map(([title, body]) => (
+          <article key={title} className="bg-rose-base p-5 sm:p-7">
+            <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{title}</h2>
+            <p className="mt-6 text-sm leading-7 text-rose-subtle">{body}</p>
+          </article>
+        ))}
       </section>
     </main>
   );
