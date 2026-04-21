@@ -12,6 +12,11 @@ const pageJsonLd = {
     name: 'Hello.World Consulting',
     url: 'https://helloworldfirm.com/',
   },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Hello.World Consulting',
+    url: 'https://helloworldfirm.com/',
+  },
 };
 
 export const metadata: Metadata = {
@@ -42,8 +47,11 @@ export default function PrivacyPage() {
         <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
           This page explains the practical data boundaries for Prompt Info. The utility is designed for browser-based estimation, public model metadata, and support conversations, not for account management or long-term storage of private work.
         </p>
+        <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
+          Treat the app as a planning aid for synthetic or approved material. Teams with regulated data, customer records, or internal launch details should use their own review process before placing that material into any public browser utility, even when the calculation happens locally.
+        </p>
         <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-          Updated April 21, 2026 by Hello.World Consulting.
+          By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
         </p>
         <div className="mt-10 grid gap-px bg-rose-highlightMed md:grid-cols-3">
           {[

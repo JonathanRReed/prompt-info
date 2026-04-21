@@ -2,6 +2,30 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import HomePageClient from './page-client';
 
+const pageJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'LLM Token Counter and Cost Calculator',
+  url: 'https://prompt-info.helloworldfirm.com/',
+  datePublished: '2026-04-21',
+  dateModified: '2026-04-21',
+  author: {
+    '@type': 'Organization',
+    name: 'Hello.World Consulting',
+    url: 'https://helloworldfirm.com/',
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Hello.World Consulting',
+    url: 'https://helloworldfirm.com/',
+    logo: {
+      '@type': 'ImageObject',
+      url: 'https://prompt-info.helloworldfirm.com/logo.avif',
+    },
+  },
+  image: 'https://prompt-info.helloworldfirm.com/logo.avif',
+};
+
 export const metadata: Metadata = {
   title: 'LLM Token Counter and Cost Calculator',
   description:
@@ -26,6 +50,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <main className="w-full max-w-full overflow-x-hidden">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
       <section className="prompt-hero mx-auto flex min-h-[68dvh] w-full max-w-[1500px] border-b border-rose-highlightMed">
         <div className="flex w-full flex-col justify-end px-4 pb-12 pt-16 sm:px-6 md:px-12 md:pb-16">
           <p className="data-label text-rose-love">Prompt Info</p>
@@ -34,6 +59,9 @@ export default function Page() {
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
             Prompt Info is a browser-based LLM token counter and cost calculator for people who need to check how many tokens are in a prompt before a model request runs. Paste draft text, choose a model, compare OpenAI tokenizer families, estimate output size, and export a planning receipt for longer agent sessions.
+          </p>
+          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+            By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <a className="action-primary" href="#planner">
