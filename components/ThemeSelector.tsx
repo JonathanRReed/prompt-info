@@ -65,7 +65,6 @@ export default function ThemeSelector() {
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="flex min-h-11 items-center gap-2 border border-rose-highlightMed bg-rose-base px-3 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:border-rose-love hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none sm:px-4"
-        aria-label="Select interface theme"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
       >

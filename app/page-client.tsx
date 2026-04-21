@@ -1149,7 +1149,7 @@ export default function HomePageClient() {
               Compare the same prompt as TOON, JSON, YAML, XML, and CSV.
             </h2>
           </div>
-          <Link className="action-primary justify-center" href="/format-comparison">
+          <Link className="action-primary justify-center" href="/format-comparison/">
             Open format lab
           </Link>
         </div>

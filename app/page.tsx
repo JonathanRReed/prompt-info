@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     title: 'LLM Token Counter and Cost Calculator',
     description:
       'Count prompt tokens, estimate LLM request costs, compare tokenizers, and plan output budgets before sending model requests.',
+    images: ['/logo.avif'],
   },
   twitter: {
     title: 'LLM Token Counter and Cost Calculator',

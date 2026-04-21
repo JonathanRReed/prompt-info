@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     title: 'Prompt Format Comparison Tool',
     description:
       'Convert one prompt into TOON, JSON, YAML, XML, and CSV examples to compare payload shape, readability, and token planning tradeoffs.',
+    images: ['/logo.avif'],
   },
   twitter: {
     title: 'Prompt Format Comparison Tool',

@@ -12,9 +12,9 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: '/', label: 'Token Planner', shortLabel: 'Planner', description: 'Count tokens and estimate costs' },
-  { href: '/format-comparison', label: 'Format Comparison', shortLabel: 'Formats', description: 'Compare TOON, JSON, YAML, XML, CSV' },
-  { href: '/about', label: 'About', shortLabel: 'About', description: 'What this utility does' },
-  { href: '/contact', label: 'Contact', shortLabel: 'Contact', description: 'Contact Hello.World Consulting' },
+  { href: '/format-comparison/', label: 'Format Comparison', shortLabel: 'Formats', description: 'Compare TOON, JSON, YAML, XML, CSV' },
+  { href: '/about/', label: 'About', shortLabel: 'About', description: 'What this utility does' },
+  { href: '/contact/', label: 'Contact', shortLabel: 'Contact', description: 'Contact Hello.World Consulting' },
 ];
 
 export default function Navigation() {
@@ -24,7 +24,8 @@ export default function Navigation() {
   return (
     <nav className="flex min-w-0 items-center border border-rose-highlightMed" role="navigation" aria-label="Main navigation">
       {navItems.map(item => {
-        const isActive = normalizedPathname === item.href;
+        const normalizedHref = item.href.length > 1 ? item.href.replace(/\/$/, '') : item.href;
+        const isActive = normalizedPathname === normalizedHref;
         return (
           <Link
             key={item.href}
