@@ -8,7 +8,7 @@ Prompt Info is a Next.js app for planning prompts before you spend tokens. It in
 ## Tech Stack
 - Next.js (App Router), TypeScript, Tailwind CSS
 - gpt-tokenizer for token counts
-- Supabase pricing with local JSON fallback
+- Same-origin pricing API with local JSON fallback
 
 ## Key Pages
 - / : Token Planner

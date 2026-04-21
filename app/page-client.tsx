@@ -238,7 +238,7 @@ export default function HomePageClient() {
         const data = await fetchPricing();
         if (mounted) setPricing(data);
       } catch (e) {
-        console.error('Failed to load pricing from Supabase', e);
+        console.error('Failed to load pricing data', e);
         if (mounted) setPricing({});
       }
     })();

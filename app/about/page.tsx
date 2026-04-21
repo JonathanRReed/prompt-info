@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 const highlights = [
   { title: 'Token planning', body: 'Paste a prompt, pick a model, change tokenizers, and estimate cost before sending.' },
   { title: 'Format comparison', body: 'Render the same prompt as TOON, JSON, YAML, XML, and CSV for practical payload review.' },
-  { title: 'Resilient data path', body: 'Use Supabase pricing when available, with a static model catalog as the fallback.' },
+  { title: 'Resilient data path', body: 'Use a same-origin pricing API when available, with a static model catalog as the fallback.' },
 ];
 
 const links = [
