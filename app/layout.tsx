@@ -171,9 +171,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Navigation />
               <ThemeSelector />
             </header>
-            <main className="relative z-10 m-0 flex flex-1 flex-col items-center justify-center bg-transparent p-0">
+            <div className="relative z-10 m-0 flex flex-1 flex-col items-center justify-center bg-transparent p-0">
               {children}
-            </main>
+            </div>
             <footer className="relative z-10 w-full border-t border-rose-highlightMed bg-rose-base">
               <div className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px md:grid-cols-[minmax(0,1fr)_minmax(300px,420px)]">
                 <div className="bg-rose-base p-5 sm:p-8 md:p-10">
