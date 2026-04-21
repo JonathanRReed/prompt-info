@@ -11,7 +11,6 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeName>('night');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('rose-pine-theme') as ThemeName | null;
@@ -21,7 +20,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       applyTheme('night');
     }
-    setMounted(true);
   }, []);
 
   const setTheme = (newTheme: ThemeName) => {
@@ -32,7 +30,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
-      {mounted ? children : <div className="min-h-screen" />}
+      {children}
     </ThemeContext.Provider>
   );
 }

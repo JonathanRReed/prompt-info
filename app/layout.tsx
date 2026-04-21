@@ -217,6 +217,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <div className="grid gap-px bg-rose-highlightMed">
                   {[
                     ['Format lab', '/format-comparison/'],
+                    ['About Prompt Info', '/about/'],
+                    ['Privacy policy', '/privacy/'],
+                    ['Contact', '/contact/'],
                     ['Hello.World Consulting', 'https://helloworldfirm.com/'],
                     ['Jonathan Reed', 'https://jonathanrreed.com/'],
                   ].map(([label, href]) => (

@@ -711,27 +711,7 @@ export default function HomePageClient() {
     link.click();
   };
   return (
-    <main className="w-full max-w-full overflow-x-hidden">
-      <section className="prompt-hero mx-auto flex min-h-[68dvh] w-full max-w-[1500px] border-b border-rose-highlightMed">
-        <div className="flex w-full flex-col justify-end px-4 pb-12 pt-16 sm:px-6 md:px-12 md:pb-16">
-          <p className="data-label text-rose-love">Prompt Info</p>
-          <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3.2rem,8vw,7.2rem)]">
-            Know the bill before the model runs.
-          </h1>
-          <p className="mt-8 max-w-2xl text-base leading-8 text-rose-subtle sm:text-lg">
-            A prompt workbench that turns pasted text into a live token count, output forecast, and cost receipt.
-          </p>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <a className="action-primary" href="#planner">
-              Analyze prompt
-            </a>
-            <Link className="action-secondary" href="/format-comparison">
-              Convert format
-            </Link>
-          </div>
-        </div>
-      </section>
-
+    <>
       <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-12 sm:px-6 md:px-12 md:py-16">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] lg:items-end">
           <div>
@@ -1174,6 +1154,6 @@ export default function HomePageClient() {
           </Link>
         </div>
       </section>
-    </main>
+    </>
   );
 }

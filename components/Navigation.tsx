@@ -14,6 +14,7 @@ const navItems: NavItem[] = [
   { href: '/', label: 'Token Planner', shortLabel: 'Planner', description: 'Count tokens and estimate costs' },
   { href: '/format-comparison', label: 'Format Comparison', shortLabel: 'Formats', description: 'Compare TOON, JSON, YAML, XML, CSV' },
   { href: '/about', label: 'About', shortLabel: 'About', description: 'What this utility does' },
+  { href: '/contact', label: 'Contact', shortLabel: 'Contact', description: 'Contact Hello.World Consulting' },
 ];
 
 export default function Navigation() {
