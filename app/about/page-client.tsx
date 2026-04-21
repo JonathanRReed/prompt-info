@@ -28,11 +28,17 @@ export default function AboutPageClient() {
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
             Prompt Info is a small technical workspace for measuring token count, projected cost, and payload format before model execution.
           </p>
+          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
+            The product is intentionally narrow. It focuses on client-side measurement, transparent assumptions, and repeatable reference examples for teams evaluating model usage.
+          </p>
+          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+            Updated April 21, 2026 by Hello.World Consulting.
+          </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">
           {[
             ['Status', 'Public web utility'],
-            ['Data', 'Pricing plus fallback JSON'],
+            ['Data', 'Same-origin API plus fallback JSON'],
             ['Owner', 'Hello.World Consulting'],
           ].map(([label, value]) => (
             <dl key={label} className="bg-rose-base p-5">

@@ -1,6 +1,21 @@
 import type { Metadata } from 'next';
 import FormatComparisonPageClient from './page-client';
 
+const pageJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'TechArticle',
+  name: 'Prompt Format Comparison Tool',
+  headline: 'Prompt Format Comparison Tool',
+  url: 'https://prompt-info.helloworldfirm.com/format-comparison/',
+  datePublished: '2026-04-21',
+  dateModified: '2026-04-21',
+  author: {
+    '@type': 'Organization',
+    name: 'Hello.World Consulting',
+    url: 'https://helloworldfirm.com/',
+  },
+};
+
 export const metadata: Metadata = {
   title: 'Prompt Format Comparison Tool',
   description:
@@ -26,6 +41,7 @@ export const metadata: Metadata = {
 export default function FormatComparisonPage() {
   return (
     <main className="w-full max-w-full overflow-x-hidden">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
       <section className="mx-auto grid min-h-[52dvh] w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_340px]">
         <div className="border-rose-highlightMed px-4 py-16 sm:px-6 md:border-r md:px-12 md:py-24">
           <p className="data-label text-rose-love">Format laboratory</p>
@@ -38,6 +54,12 @@ export default function FormatComparisonPage() {
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
             Use the format lab to compare how field names, nested values, lists, and repeated metadata change across payload styles. The examples are designed for planning and review, so teams can spot verbosity, escaping, and readability tradeoffs before adopting a prompt transport format.
           </p>
+          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
+            The generated examples are deliberately simple, which makes the differences easier to inspect. Use them to decide whether a structured request should favor compactness, strict syntax, human editing, or compatibility with an existing ingestion pipeline.
+          </p>
+          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+            Updated April 21, 2026 by Hello.World Consulting.
+          </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">
           <p className="data-label">Formats covered</p>
@@ -46,6 +68,7 @@ export default function FormatComparisonPage() {
             <li>JSON and compact JSON for API payloads.</li>
             <li>YAML, XML, and CSV for common exchange formats.</li>
             <li>Side-by-side token estimates for planning tradeoffs.</li>
+            <li>Copyable examples for documentation, tests, and review notes.</li>
           </ul>
         </aside>
       </section>

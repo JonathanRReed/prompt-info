@@ -178,10 +178,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <div className="bg-rose-base p-5 sm:p-8 md:p-10">
                   <div className="flex items-center gap-4">
                     <Image
-                      src="/logo.avif"
+                      src="/Favicon/favicon-96x96.avif"
+                      sizes="36px"
                       alt="Hello.World Consulting logo"
                       width={36}
                       height={36}
+                      priority
                       className="h-9 w-9 border border-rose-highlightMed object-cover object-center grayscale"
                     />
                     <div>
