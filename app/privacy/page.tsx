@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Prompt Info Privacy Policy',
   description:
-    'Privacy notes for Prompt Info, including prompt handling, local browser processing, analytics, and contact information.',
+    'Privacy notes for Prompt Info, including prompt handling, local browser processing, model pricing data, analytics behavior, contact details, and product support practices.',
   alternates: {
     canonical: 'https://prompt-info.helloworldfirm.com/privacy/',
   },
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     url: 'https://prompt-info.helloworldfirm.com/privacy/',
     title: 'Prompt Info Privacy Policy',
     description:
-      'Privacy notes for Prompt Info, including prompt handling, local browser processing, analytics, and contact information.',
+      'Privacy notes for Prompt Info, including prompt handling, local browser processing, model pricing data, analytics behavior, contact details, and product support practices.',
     images: ['/logo.avif'],
   },
 };
@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           {[
             ['Prompt text', 'Prompt text is processed in the browser for token counting and format comparison. The app does not require an account.'],
             ['Pricing data', 'Model pricing and limits may be loaded from a public data source or static fallback catalog.'],
-            ['Contact', 'Privacy questions can be sent to hello@helloworldfirm.com.'],
+            ['Contact', 'Privacy questions can be sent to hello [at] helloworldfirm [dot] com.'],
           ].map(([title, body]) => (
             <article key={title} className="bg-rose-base p-5 sm:p-7">
               <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{title}</h2>
