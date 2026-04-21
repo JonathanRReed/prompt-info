@@ -16,6 +16,20 @@ const links = [
   { label: 'JSON Schema 2020-12', href: 'https://json-schema.org/draft/2020-12/schema' },
 ];
 
+const pageJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'About Prompt Info',
+  url: 'https://prompt-info.helloworldfirm.com/about/',
+  datePublished: '2026-04-21',
+  dateModified: '2026-04-21',
+  author: {
+    '@type': 'Organization',
+    name: 'Hello.World Consulting',
+    url: 'https://helloworldfirm.com/',
+  },
+};
+
 export const metadata: Metadata = {
   title: 'About Prompt Info',
   description:
@@ -41,6 +55,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <main className="w-full max-w-full overflow-x-hidden">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
       <section className="mx-auto grid min-h-[54dvh] w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_340px]">
         <div className="border-rose-highlightMed px-4 py-16 sm:px-6 md:border-r md:px-12 md:py-24">
           <p className="data-label text-rose-love">About the utility</p>
@@ -53,11 +68,17 @@ export default function AboutPage() {
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
             The tool is meant for preflight review: paste or draft a request, choose a tokenizer, inspect estimated usage, and compare structured payload shapes before a call reaches a provider. It keeps the practical planning details close to the prompt instead of burying them in separate spreadsheets or docs.
           </p>
+          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
+            The product is intentionally narrow. It focuses on client-side measurement, transparent assumptions, and repeatable reference examples for teams evaluating model usage. That scope keeps the interface quick, reduces data handling surface area, and makes the results easier to verify during engineering review.
+          </p>
+          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+            Updated April 21, 2026 by Hello.World Consulting.
+          </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">
           {[
             ['Status', 'Public web utility'],
-            ['Data', 'Pricing plus fallback JSON'],
+            ['Data', 'Same-origin API plus fallback JSON'],
             ['Owner', 'Hello.World Consulting'],
           ].map(([label, value]) => (
             <dl key={label} className="bg-rose-base p-5">
@@ -85,6 +106,7 @@ export default function AboutPage() {
             <li>Cost estimates are planning values. Provider billing may differ by model version and feature use.</li>
             <li>The interface is designed for preflight review, not storage or user account management.</li>
             <li>Format output is generated for inspection and planning, not as a guarantee that every downstream API accepts the same structure.</li>
+            <li>Model metadata is treated as a working catalog. When the live pricing endpoint is unavailable, the interface falls back to the bundled reference file so the utility remains usable.</li>
           </ul>
         </article>
         <article className="bg-rose-base p-5 sm:p-8 md:p-10">
