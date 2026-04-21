@@ -67,6 +67,9 @@ export default function FormatComparisonPage() {
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
             The generated examples are deliberately simple, which makes the differences easier to inspect. Use them to decide whether a structured request should favor compactness, strict syntax, human editing, or compatibility with an existing ingestion pipeline.
           </p>
+          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
+            For implementation reviews, compare indentation, escaping rules, repeated labels, and how comfortably a teammate can scan the same information during a code review. A compact representation can save tokens, while a more verbose representation may be easier to debug, document, and hand off across teams.
+          </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
             By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
           </p>

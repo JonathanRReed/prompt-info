@@ -1,6 +1,5 @@
 import '../styles/globals.css'
 import { ReactNode } from 'react'
-import Image from 'next/image'
 import type { Metadata } from 'next'
 import { ThemeProvider } from '../components/ThemeProvider'
 import ThemeSelector from '../components/ThemeSelector'
@@ -177,15 +176,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <div className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px md:grid-cols-[minmax(0,1fr)_minmax(300px,420px)]">
                 <div className="bg-rose-base p-5 sm:p-8 md:p-10">
                   <div className="flex items-center gap-4">
-                    <Image
-                      src="/Favicon/favicon-96x96.avif"
-                      sizes="36px"
-                      alt="Hello.World Consulting logo"
-                      width={36}
-                      height={36}
-                      priority
-                      className="h-9 w-9 border border-rose-highlightMed object-cover object-center grayscale"
-                    />
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center border border-rose-highlightMed bg-rose-surface font-mono text-[10px] font-black uppercase tracking-[0.08em] text-rose-love"
+                      aria-hidden="true"
+                    >
+                      HW
+                    </span>
                     <div>
                       <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-rose-muted">
                         Product /{' '}
