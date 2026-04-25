@@ -1,22 +1,26 @@
-# Simple Dev Tools
+# Prompt Info
 
-A product of Hello.World Consulting.
+**LLM Token Counter and Cost Calculator**
 
+A product of [Hello.World Consulting](https://helloworldfirm.com).
 Made by Jonathan Reed.
 
 ---
 
 ## Overview
 
-A beautiful, Rose Pine-themed dashboard for analyzing LLM prompts with token counting and cost estimation. Built with Next.js, TypeScript, and Tailwind CSS.
+Prompt Info is a browser-based LLM token counter and cost calculator. It allows you to check how many tokens are in a prompt before running a model request. You can paste draft text, choose a model, compare OpenAI tokenizer families, estimate output size, and export a planning receipt for multi-turn agent sessions.
+
+Built with Next.js, TypeScript, and Tailwind CSS (Rosé Pine theme).
 
 ## Features
 
-- **Token Analysis**: Real-time tokenization with GPT tokenizer and detailed breakdown
-- **Cost Estimation**: Calculate input/output costs across 1000+ LLM models
-- **BPE Visualization**: Interactive Byte Pair Encoding token demonstrator
-- **Rose Pine Theme**: Soothing, carefully crafted color palette
-- **Performance Optimized**: Memoized calculations, proper async handling, static export ready
+- **Token Analysis**: Real-time GPT-style BPE tokenization with support for `o200k_base`, `cl100k_base`, `p50k_base`, `p50k_edit`, and `r50k_base`.
+- **Cost Calculator**: Estimate input, output, and multi-turn agent costs across a variety of models.
+- **Agent Mode**: Calculate costs for multi-turn agent loops with configurable turn presets.
+- **Prompt Format Lab**: Compare the same prompt across different formats including JSON, YAML, XML, CSV, and others for payload planning.
+- **Receipt Export**: Generate and download an image receipt of your cost estimate.
+- **Performance Optimized**: Built for speed and ready for static export.
 
 ## Getting Started
 

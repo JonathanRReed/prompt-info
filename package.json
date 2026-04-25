@@ -42,6 +42,7 @@
     "minimatch": "3.1.5",
     "picomatch": "4.0.4",
     "yaml": "2.8.3",
-    "js-yaml": "4.1.1"
+    "js-yaml": "4.1.1",
+    "postcss": "8.5.10"
   }
 }

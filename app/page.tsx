@@ -20,10 +20,10 @@ const pageJsonLd = {
     url: 'https://helloworldfirm.com/',
     logo: {
       '@type': 'ImageObject',
-      url: 'https://prompt-info.helloworldfirm.com/logo.avif',
+      url: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
     },
   },
-  image: 'https://prompt-info.helloworldfirm.com/logo.avif',
+  image: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
 };
 
 export const metadata: Metadata = {
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     title: 'LLM Token Counter and Cost Calculator',
     description:
       'Count prompt tokens, estimate LLM request costs, compare tokenizers, and plan output budgets before sending model requests.',
-    images: ['/logo.avif'],
+    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
   twitter: {
     title: 'LLM Token Counter and Cost Calculator',

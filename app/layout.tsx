@@ -1,6 +1,7 @@
 import '../styles/globals.css'
 import { ReactNode } from 'react'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { ThemeProvider } from '../components/ThemeProvider'
 import ThemeSelector from '../components/ThemeSelector'
 import Navigation from '../components/Navigation'
@@ -50,7 +51,7 @@ export const metadata: Metadata = {
     description: 'Analyze LLM prompts with real-time token counting and cost estimation across 1000+ models.',
     images: [
       {
-        url: '/logo.avif',
+        url: '/prompt_info_assets/prompt-info-logo-normal-1200w.png',
         width: 1200,
         height: 630,
         alt: 'Prompt Info - LLM Analysis Dashboard',
@@ -62,7 +63,7 @@ export const metadata: Metadata = {
     title: 'Prompt Info - LLM Token Counter & Cost Calculator',
     description: 'Analyze LLM prompts with real-time token counting and cost estimation.',
     creator: '@JonathanRReed',
-    images: ['/logo.avif'],
+    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
   alternates: {
     canonical: 'https://prompt-info.helloworldfirm.com',
@@ -109,6 +110,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       '@type': 'Organization',
       name: 'Hello.World Consulting',
       url: 'https://helloworldfirm.com',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
+      },
     },
     inLanguage: 'en-US',
     keywords: 'LLM token counter, GPT tokenizer, prompt cost calculator, BPE tokenizer',
@@ -146,10 +151,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
         <meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)" />
-        <link rel="icon" type="image/svg+xml" href="/Favicon/favicon.svg" />
-        <link rel="alternate icon" type="image/png" href="/Favicon/favicon-96x96.avif" />
-        <link rel="apple-touch-icon" href="/Favicon/apple-touch-icon.avif" />
-        <link rel="manifest" href="/Favicon/site.webmanifest" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
+        <link rel="manifest" href="/site.webmanifest" />
         <script
           dangerouslySetInnerHTML={{
             __html: themeBootstrap,
@@ -166,7 +172,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <div className="page-bg" aria-hidden="true" />
             <div className="grid-overlay" aria-hidden="true" />
             <header className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rose-highlightMed bg-rose-base px-3 py-3 sm:px-6">
-              <Navigation />
+              <div className="flex min-w-0 items-center gap-3">
+                <Link href="/" className="flex shrink-0 items-center" aria-label="Prompt Info home">
+                  <img
+                    src="/prompt_info_assets/prompt-info-logo-normal-transparent.png"
+                    alt="Prompt Info"
+                    className="h-8 w-auto"
+                    loading="eager"
+                  />
+                </Link>
+                <Navigation />
+              </div>
               <ThemeSelector />
             </header>
             <div className="relative z-10 m-0 flex flex-1 flex-col items-center justify-center bg-transparent p-0">
@@ -176,12 +192,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <div className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px md:grid-cols-[minmax(0,1fr)_minmax(300px,420px)]">
                 <div className="bg-rose-base p-5 sm:p-8 md:p-10">
                   <div className="flex items-center gap-4">
-                    <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center border border-rose-highlightMed bg-rose-surface font-mono text-[10px] font-black uppercase tracking-[0.08em] text-rose-love"
-                      aria-hidden="true"
-                    >
-                      HW
-                    </span>
+                    <Link href="/" className="flex shrink-0 items-center" aria-label="Prompt Info home">
+                      <img
+                        src="/prompt_info_assets/prompt-info-logo-footer-transparent.png"
+                        alt="Prompt Info"
+                        className="h-10 w-auto"
+                        loading="lazy"
+                      />
+                    </Link>
                     <div>
                       <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-rose-muted">
                         Product /{' '}

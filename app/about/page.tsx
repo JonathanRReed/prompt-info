@@ -47,13 +47,13 @@ export const metadata: Metadata = {
     title: 'About Prompt Info',
     description:
       'Learn how Prompt Info helps developers measure prompt tokens, estimate model costs, and compare payload formats before execution.',
-    images: ['/logo.avif'],
+    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
   twitter: {
     title: 'About Prompt Info',
     description:
       'Learn how Prompt Info helps developers measure prompt tokens, estimate model costs, and compare payload formats.',
-    images: ['/logo.avif'],
+    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
 };
 

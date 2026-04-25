@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: 'Contact Prompt Info',
     description:
       'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, bug reports, and AI workflow tooling requests.',
-    images: ['/logo.avif'],
+    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
 };
 

@@ -1,9 +1,5 @@
 Sitemap: https://prompt-info.helloworldfirm.com/sitemap.xml
 
-# LLM-friendly documentation for AI agents and language models
-# See: https://llmstxt.org/
-LLMs-File: https://prompt-info.helloworldfirm.com/llms.txt
-
 User-agent: Googlebot
 Allow: /
 Disallow: /search/
