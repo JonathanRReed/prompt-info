@@ -20,10 +20,10 @@ const pageJsonLd = {
     url: 'https://helloworldfirm.com/',
     logo: {
       '@type': 'ImageObject',
-      url: 'https://prompt-info.helloworldfirm.com/logo.avif',
+      url: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
     },
   },
-  image: 'https://prompt-info.helloworldfirm.com/logo.avif',
+  image: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
 };
 
 export const metadata: Metadata = {
@@ -38,13 +38,13 @@ export const metadata: Metadata = {
     title: 'Prompt Format Comparison Tool',
     description:
       'Convert one prompt into TOON, JSON, YAML, XML, and CSV examples to compare payload shape, readability, and token planning tradeoffs.',
-    images: ['/logo.avif'],
+    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
   twitter: {
     title: 'Prompt Format Comparison Tool',
     description:
       'Convert one prompt into common payload formats to compare readability and token planning tradeoffs.',
-    images: ['/logo.avif'],
+    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
 };
 
