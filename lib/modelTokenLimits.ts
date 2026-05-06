@@ -2,12 +2,31 @@ export const HARD_MAX_OUTPUT_TOKENS = 300000;
 const DEFAULT_OUTPUT_TOKENS = 8192;
 
 export type TokenLimitConfidence = 'high' | 'medium' | 'low';
+export type ModelCompany =
+  | 'OpenAI'
+  | 'Anthropic'
+  | 'Google'
+  | 'xAI'
+  | 'DeepSeek'
+  | 'Mistral'
+  | 'Other';
+
+export const MODEL_COMPANY_CACHE_BILLING_BPS: Record<ModelCompany, number> = {
+  OpenAI: 50,
+  Anthropic: 10,
+  Google: 15,
+  xAI: 20,
+  DeepSeek: 20,
+  Mistral: 20,
+  Other: 20,
+};
 
 export type ModelTokenProfile = {
   maxOutputTokens: number;
   contextWindowTokens?: number;
   source: string;
   confidence: TokenLimitConfidence;
+  company?: ModelCompany;
 };
 
 type LimitFieldMap = Record<string, unknown>;
@@ -153,6 +172,55 @@ function isOpenRouterLimitPath(path: string) {
     normalizedPath.includes('open_router');
 }
 
+function inferModelCompany(model: string): ModelCompany {
+  const normalized = model.toLowerCase();
+
+  if (!normalized) return 'Other';
+
+  if (
+    /chatgpt|gpt-|gpt /i.test(model) ||
+    /\bgpt5\b|\bgpt-5\b/.test(normalized) ||
+    /\bo[1-9]/.test(normalized) ||
+    /\bo 1\b/.test(normalized) ||
+    /\bo 2\b/.test(normalized) ||
+    /\bo 3\b/.test(normalized) ||
+    /\bo 4\b/.test(normalized) ||
+    /\bo 5\b/.test(normalized)
+  ) {
+    return 'OpenAI';
+  }
+
+  if (/claude/.test(normalized) || /anthropic/.test(normalized)) {
+    return 'Anthropic';
+  }
+
+  if (/gemini|gemma/.test(normalized) || /google/.test(normalized)) {
+    return 'Google';
+  }
+
+  if (/grok/.test(normalized) || /xai/.test(normalized)) {
+    return 'xAI';
+  }
+
+  if (/deepseek/.test(normalized)) {
+    return 'DeepSeek';
+  }
+
+  if (/mistral/.test(normalized)) {
+    return 'Mistral';
+  }
+
+  return 'Other';
+}
+
+export function resolveModelCompany(model: string): ModelCompany {
+  return inferModelCompany(model);
+}
+
+export function getCompanyCachedInputBillablePct(company: ModelCompany) {
+  return MODEL_COMPANY_CACHE_BILLING_BPS[company];
+}
+
 function normalizeModelName(model: string) {
   return model.toLowerCase().replace(/[_./-]+/g, ' ');
 }
@@ -277,6 +345,7 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
 }
 
 export function resolveModelTokenProfile(model: string, fields?: LimitFieldMap): ModelTokenProfile {
+  const company = inferModelCompany(model);
   const explicitOutput =
     firstNumericCandidate(fields, [...OPENROUTER_OUTPUT_PATHS, ...OUTPUT_LIMIT_FIELDS]) ??
     (firstNumericField(fields, OUTPUT_LIMIT_FIELDS) !== null
@@ -307,6 +376,7 @@ export function resolveModelTokenProfile(model: string, fields?: LimitFieldMap):
       contextWindowTokens: contextWindow,
       source: explicitSource ?? (isOpenRouterLimitPath(explicitOutput.path) ? 'OpenRouter model data' : 'model data'),
       confidence: explicitConfidence ?? 'high',
+      company,
     };
   }
 
@@ -320,6 +390,7 @@ export function resolveModelTokenProfile(model: string, fields?: LimitFieldMap):
       contextWindowTokens: contextWindow ?? inferred.contextWindowTokens,
       source: contextWindow ? `${inferred.source}, ${contextSourceLabel}` : inferred.source,
       confidence: contextWindow ? 'high' : inferred.confidence,
+      company,
     };
   }
 
@@ -330,6 +401,7 @@ export function resolveModelTokenProfile(model: string, fields?: LimitFieldMap):
       contextWindowTokens: contextWindow,
       source: 'legacy fallback data',
       confidence: 'low',
+      company,
     };
   }
 
@@ -338,5 +410,6 @@ export function resolveModelTokenProfile(model: string, fields?: LimitFieldMap):
     contextWindowTokens: contextWindow,
     source: contextWindow ? `${contextSourceLabel} with default output fallback` : 'default fallback',
     confidence: contextWindow ? 'medium' : 'low',
+    company,
   };
 }

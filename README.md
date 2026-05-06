@@ -18,6 +18,7 @@ Built with Next.js, TypeScript, and Tailwind CSS (Rosé Pine theme).
 - **Token Analysis**: Real-time GPT-style BPE tokenization with support for `o200k_base`, `cl100k_base`, `p50k_base`, `p50k_edit`, and `r50k_base`.
 - **Cost Calculator**: Estimate input, output, and multi-turn agent costs across a variety of models.
 - **Agent Mode**: Calculate costs for multi-turn agent loops with configurable turn presets.
+- **Compaction + Cache Scenario**: Model agent sessions with compaction events, cached input discounts, and configurable output/input cost shares (e.g. 80/20 preset).
 - **Prompt Format Lab**: Compare the same prompt across different formats including JSON, YAML, XML, CSV, and others for payload planning.
 - **Receipt Export**: Generate and download an image receipt of your cost estimate.
 - **Performance Optimized**: Built for speed and ready for static export.
