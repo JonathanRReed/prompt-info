@@ -1,4 +1,9 @@
-import { buildPricingMap } from '../../lib/pricingParser';
+import { buildPricingMap } from '../../../lib/pricingParser';
+
+export const revalidate = 900;
+export const dynamic = 'force-static';
+
+type Rows = unknown[];
 
 type Env = {
   SUPABASE_URL?: string;
@@ -8,23 +13,18 @@ type Env = {
   OPENROUTER_API_BASE_URL?: string;
 };
 
-type Rows = unknown[];
-
-type PagesContext = {
-  env: Env;
-};
-
 const QUERY_LIMIT = 1000;
 const DEFAULT_OPENROUTER_API_BASE_URL = 'https://openrouter.ai/api/v1';
 
-const jsonResponse = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': status === 200 ? 'public, max-age=900, stale-while-revalidate=3600' : 'no-store',
     },
   });
+}
 
 function isTextModel(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false;
@@ -90,7 +90,15 @@ async function fetchSupabaseRows(supabaseUrl: string, supabaseAnonKey: string): 
   }
 }
 
-export const onRequestGet = async ({ env }: PagesContext) => {
+export async function GET(_: Request) {
+  const env: Env = {
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    OPENROUTER_API_BASE_URL: process.env.OPENROUTER_API_BASE_URL,
+  };
+
   const supabaseUrl = env.SUPABASE_URL ?? env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = env.SUPABASE_ANON_KEY ?? env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const openrouterBaseUrl = env.OPENROUTER_API_BASE_URL ?? DEFAULT_OPENROUTER_API_BASE_URL;
@@ -109,5 +117,6 @@ export const onRequestGet = async ({ env }: PagesContext) => {
   if (!rows.length) {
     return jsonResponse({ error: 'Pricing source is not configured' }, 503);
   }
+
   return jsonResponse(buildPricingMap(Array.isArray(rows) ? rows : []));
-};
+}

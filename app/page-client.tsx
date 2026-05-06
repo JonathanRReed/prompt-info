@@ -5,7 +5,21 @@ import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useStat
 import PromptInput from '../components/PromptInput';
 import ModelSelect from '../components/ModelSelect';
 import { fetchPricing, PricingMap } from '../lib/fetchPricing';
-import { HARD_MAX_OUTPUT_TOKENS, resolveModelTokenProfile } from '../lib/modelTokenLimits';
+import {
+  getCompanyCachedInputBillablePct,
+  HARD_MAX_OUTPUT_TOKENS,
+  resolveModelTokenProfile,
+} from '../lib/modelTokenLimits';
+import {
+  DEFAULT_SESSION_COMPACTION_RETENTION_PCT,
+  DEFAULT_SESSION_COMPACTION_SUMMARY_FLOOR_TOKENS,
+  DEFAULT_SESSION_COMPACTION_THRESHOLD_PCT,
+  DEFAULT_SESSION_CACHED_INPUT_BILLED_PCT,
+  DEFAULT_SESSION_OUTPUT_SHARE_PCT,
+  DEFAULT_SESSION_TURN_OVERHEAD_TOKENS,
+  simulateSessionRunCost,
+  type SessionRunMode,
+} from '../lib/sessionMath';
 
 const DEFAULT_OUTPUT_TOKENS = 4096;
 const AUTO_OUTPUT_FALLBACK = 768;
@@ -73,10 +87,24 @@ function formatTokenCount(value: number | undefined) {
   return value && Number.isFinite(value) ? value.toLocaleString() : 'unknown';
 }
 
+function formatRatePerMillion(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return 'N/A';
+  return `$${(value * 1000).toFixed(6)} / M`;
+}
+
 function formatConfidence(confidence: string | undefined) {
   if (confidence === 'high') return 'high confidence';
   if (confidence === 'medium') return 'medium confidence';
   return 'planning estimate';
+}
+
+function formatPercent(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return 'N/A';
+  return `${Math.round(value)}%`;
+}
+
+function formatCompany(company: string | undefined) {
+  return company || 'Unknown';
 }
 
 function compactModelName(model: string) {
@@ -128,6 +156,17 @@ function getRecommendedTokenizer(model: string): TokenizerKey | null {
   if (/(ada|babbage|curie|davinci)/.test(normalized)) return 'r50k_base';
 
   return null;
+}
+
+function deriveModelCacheReadPercent(entry: PricingMap[string] | undefined, fallbackCompany: string) {
+  const entryInputRate = entry?.pricing?.input;
+  const entryCacheReadRate = entry?.pricing?.inputCacheRead;
+
+  if (Number.isFinite(entryInputRate) && Number.isFinite(entryCacheReadRate) && entryInputRate > 0) {
+    return (entryCacheReadRate / entryInputRate) * 100;
+  }
+
+  return getCompanyCachedInputBillablePct(fallbackCompany as Parameters<typeof getCompanyCachedInputBillablePct>[0]);
 }
 
 function ReceiptCard({
@@ -210,9 +249,6 @@ export default function HomePageClient() {
   const [model, setModel] = useState('');
   const [tokens, setTokens] = useState<number[]>([]);
   const [decodedTokens, setDecodedTokens] = useState<{ str: string; id: number }[]>([]);
-  const [cost, setCost] = useState<number | null>(null);
-  const [inputCost, setInputCost] = useState<number | null>(null);
-  const [outputCost, setOutputCost] = useState<number | null>(null);
   const [pricing, setPricing] = useState<PricingMap | null>(null);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState<boolean>(true);
@@ -226,10 +262,18 @@ export default function HomePageClient() {
   const [summaryView, setSummaryView] = useState<'receipt' | 'detail'>('receipt');
   const [animatedSessionCost, setAnimatedSessionCost] = useState(0);
   const [finalReceiptAnimationState, setFinalReceiptAnimationState] = useState<'idle' | 'running' | 'done'>('idle');
+  const [sessionMode, setSessionMode] = useState<SessionRunMode>('baseline');
+  const [sessionTargetOutputSharePct, setSessionTargetOutputSharePct] = useState(DEFAULT_SESSION_OUTPUT_SHARE_PCT);
+  const [sessionCachedInputBillablePct, setSessionCachedInputBillablePct] = useState(DEFAULT_SESSION_CACHED_INPUT_BILLED_PCT);
+  const [sessionCompactionThresholdPct, setSessionCompactionThresholdPct] = useState(DEFAULT_SESSION_COMPACTION_THRESHOLD_PCT);
+  const [sessionCompactionRetentionPct, setSessionCompactionRetentionPct] = useState(DEFAULT_SESSION_COMPACTION_RETENTION_PCT);
+  const [sessionTurnOverheadTokens, setSessionTurnOverheadTokens] = useState(DEFAULT_SESSION_TURN_OVERHEAD_TOKENS);
+  const [sessionCompactionSummaryFloorTokens, setSessionCompactionSummaryFloorTokens] = useState(DEFAULT_SESSION_COMPACTION_SUMMARY_FLOOR_TOKENS);
   const animatedSessionCostRef = useRef(0);
   const finalReceiptRef = useRef<HTMLDivElement | null>(null);
   const finalReceiptAnimationTimerRef = useRef<number | null>(null);
   const [finalReceiptInView, setFinalReceiptInView] = useState(false);
+  const entry = pricing?.[model];
 
   useEffect(() => {
     let mounted = true;
@@ -294,9 +338,11 @@ export default function HomePageClient() {
     }
   }, [availableModels, model, modelsLoading]);
 
-  const modelTokenProfile = useMemo(
-    () => resolveModelTokenProfile(model, pricing?.[model]),
-    [model, pricing]
+  const modelTokenProfile = useMemo(() => resolveModelTokenProfile(model, entry), [entry, model]);
+  const modelCompany = modelTokenProfile.company ?? 'Other';
+  const defaultSessionCachedInputBillablePct = useMemo(
+    () => deriveModelCacheReadPercent(entry, modelCompany),
+    [entry, modelCompany]
   );
   const modelOutputLimit = modelTokenProfile.maxOutputTokens;
   const modelContextWindow = modelTokenProfile.contextWindowTokens;
@@ -342,39 +388,49 @@ export default function HomePageClient() {
   }, [recommendedTokenizer, tokenizerTouched]);
 
   useEffect(() => {
-    if (!pricing || !model || !tokens.length) {
-      setCost(null);
-      setInputCost(null);
-      setOutputCost(null);
-      return;
-    }
+    setSessionCachedInputBillablePct(defaultSessionCachedInputBillablePct);
+  }, [defaultSessionCachedInputBillablePct]);
 
-    const entry = pricing[model];
-    let inCost: number | null = null;
-    let outCost: number | null = null;
+  const inPricePer1k = entry?.pricing ? Number(entry.pricing.input) : null;
+  const outPricePer1k = entry?.pricing ? Number(entry.pricing.output) : null;
 
-    if (entry && entry.pricing) {
-      const inPricePer1k = Number(entry.pricing.input);
-      const outPricePer1k = Number(entry.pricing.output);
+  const effectiveAgentTurns = agentMode ? clampAgentTurns(agentTurns) : 1;
 
-      if (Number.isFinite(inPricePer1k)) {
-        inCost = (tokens.length / 1000) * inPricePer1k;
-      }
+  const baselineEstimate = useMemo(() => {
+    if (!entry || !tokens.length) return null;
+    return simulateSessionRunCost({
+      mode: 'baseline',
+      promptTokens: tokens.length,
+      referenceOutputTokens: plannedOutput,
+      turns: effectiveAgentTurns,
+      inputRatePer1k: inPricePer1k,
+      outputRatePer1k: outPricePer1k,
+      outputTokenLimit: effectiveOutputLimit,
+      contextWindowTokens: modelContextWindow,
+    });
+  }, [entry, tokens.length, plannedOutput, effectiveAgentTurns, inPricePer1k, outPricePer1k, effectiveOutputLimit, modelContextWindow]);
 
-      if (Number.isFinite(outPricePer1k) && plannedOutput > 0) {
-        outCost = (plannedOutput / 1000) * outPricePer1k;
-      }
-    }
+  const scenarioEstimate = useMemo(() => {
+    if (!entry || !agentMode || sessionMode !== 'scenario') return null;
+    return simulateSessionRunCost({
+      mode: 'scenario',
+      promptTokens: tokens.length,
+      referenceOutputTokens: plannedOutput,
+      turns: effectiveAgentTurns,
+      inputRatePer1k: inPricePer1k,
+      outputRatePer1k: outPricePer1k,
+      outputTokenLimit: effectiveOutputLimit,
+      contextWindowTokens: modelContextWindow,
+      targetOutputCostSharePct: sessionTargetOutputSharePct,
+      cachedInputBillablePct: sessionCachedInputBillablePct,
+      compactionThresholdPct: sessionCompactionThresholdPct,
+      compactionRetentionPct: sessionCompactionRetentionPct,
+      turnOverheadTokens: sessionTurnOverheadTokens,
+      compactionSummaryFloorTokens: sessionCompactionSummaryFloorTokens,
+    });
+  }, [entry, tokens.length, plannedOutput, effectiveAgentTurns, inPricePer1k, outPricePer1k, effectiveOutputLimit, modelContextWindow, agentMode, sessionMode, sessionTargetOutputSharePct, sessionCachedInputBillablePct, sessionCompactionThresholdPct, sessionCompactionRetentionPct, sessionTurnOverheadTokens, sessionCompactionSummaryFloorTokens]);
 
-    setInputCost(inCost);
-    setOutputCost(outCost);
-    const total = [inCost, outCost].every(v => typeof v === 'number' && !Number.isNaN(v))
-      ? (inCost as number) + (outCost as number)
-      : typeof inCost === 'number'
-        ? inCost
-        : null;
-    setCost(total);
-  }, [pricing, model, tokens, plannedOutput]);
+  const activeEstimate = scenarioEstimate ?? baselineEstimate;
 
   const tokenizerOption = TOKENIZERS.find(t => t.key === tokenizer) ?? TOKENIZERS[0];
 
@@ -412,12 +468,22 @@ export default function HomePageClient() {
 
   const hasTokens = tokens.length > 0;
   const modelOptions = availableModels;
-  const combinedTokens = tokens.length + plannedOutput;
-  const effectiveAgentTurns = agentMode ? clampAgentTurns(agentTurns) : 1;
-  const totalPromptTokens = tokens.length * effectiveAgentTurns;
-  const totalOutputTokens = plannedOutput * effectiveAgentTurns;
-  const totalSessionTokens = combinedTokens * effectiveAgentTurns;
+
+  const totalPromptTokens = activeEstimate
+    ? activeEstimate.turnInputTokens
+    : tokens.length * effectiveAgentTurns;
+  const totalOutputTokens = activeEstimate
+    ? activeEstimate.turnOutputTokens
+    : plannedOutput * effectiveAgentTurns;
+  const totalSessionTokens = activeEstimate
+    ? activeEstimate.totalTokens
+    : (tokens.length + plannedOutput) * effectiveAgentTurns;
+  const totalCompactionTokens = activeEstimate
+    ? activeEstimate.compactionInputTokens + activeEstimate.compactionOutputTokens
+    : 0;
+
   const contextReferenceWindow = modelContextWindow ?? FALLBACK_CONTEXT_WINDOW;
+  const combinedTokens = tokens.length + plannedOutput;
   const contextCoverage = useMemo(
     () => (hasTokens || plannedOutput > 0 ? Math.min(100, (combinedTokens / contextReferenceWindow) * 100) : 0),
     [combinedTokens, contextReferenceWindow, hasTokens, plannedOutput]
@@ -431,9 +497,12 @@ export default function HomePageClient() {
   const contextRemainingLabel = contextRemaining === null ? 'unknown' : contextRemaining.toLocaleString();
   const contextMeterLabel = modelContextWindow ? 'model context plan' : 'fallback planning window';
   const tokenLimitSource = `${modelTokenProfile.source}, ${formatConfidence(modelTokenProfile.confidence)}`;
-  const sessionInputCost = typeof inputCost === 'number' ? inputCost * effectiveAgentTurns : null;
-  const sessionOutputCost = typeof outputCost === 'number' ? outputCost * effectiveAgentTurns : null;
-  const sessionCost = typeof cost === 'number' ? cost * effectiveAgentTurns : null;
+
+  const sessionInputCost = activeEstimate?.inputCost ?? null;
+  const sessionOutputCost = activeEstimate?.outputCost ?? null;
+  const sessionTurnCost = activeEstimate?.turnCost ?? null;
+  const sessionCompactionCost = activeEstimate?.compactionCost ?? null;
+  const sessionCost = activeEstimate?.totalCost ?? null;
   const animatedSessionCostLabel = sessionCost === null ? 'N/A' : formatCost(animatedSessionCost);
   const finalSessionCostLabel = formatCost(sessionCost);
   const receiptAnimationSignature = useMemo(
@@ -445,8 +514,13 @@ export default function HomePageClient() {
       effectiveAgentTurns,
       totalSessionTokens,
       finalSessionCostLabel,
+      sessionMode,
+      sessionTargetOutputSharePct,
+      sessionCachedInputBillablePct,
+      sessionCompactionThresholdPct,
+      sessionCompactionRetentionPct,
     ].join('|'),
-    [effectiveAgentTurns, finalSessionCostLabel, model, outputMode, plannedOutput, tokenizer, totalSessionTokens]
+    [effectiveAgentTurns, finalSessionCostLabel, model, outputMode, plannedOutput, tokenizer, totalSessionTokens, sessionMode, sessionTargetOutputSharePct, sessionCachedInputBillablePct, sessionCompactionThresholdPct, sessionCompactionRetentionPct]
   );
 
   useEffect(() => {
@@ -540,10 +614,13 @@ export default function HomePageClient() {
     : 'Empty values show until you paste a prompt and choose a priced model.';
   const receiptRows: ReceiptRow[] = [
     ['Model', compactModelName(model)],
+    ['Model provider', formatCompany(modelCompany)],
     ['Mode', agentMode ? `Agent x ${effectiveAgentTurns}` : 'One-shot'],
     ['Tokenizer', tokenizer.replace('_', '/')],
     ['Prompt / turn', tokens.length.toLocaleString()],
     ['Output / turn', outputMode === 'auto' ? `${plannedOutput.toLocaleString()} est.` : plannedOutput.toLocaleString()],
+    ['Input price', inPricePer1k === null ? 'N/A' : `${formatRatePerMillion(inPricePer1k)}`],
+    ['Output price', outPricePer1k === null ? 'N/A' : `${formatRatePerMillion(outPricePer1k)}`],
     ['Total turns', effectiveAgentTurns.toLocaleString()],
     ['Output cap', outputCapLabel],
     ['Available out', availableOutputLabel],
@@ -552,10 +629,31 @@ export default function HomePageClient() {
     ['Input cost', formatCost(sessionInputCost)],
     ['Output cost', formatCost(sessionOutputCost)],
   ];
+  if (activeEstimate) {
+    if (sessionMode === 'scenario') {
+      receiptRows.push(['Session mode', `Scenario ${formatPercent(activeEstimate.targetOutputCostSharePct ?? null)}`]);
+    }
+    receiptRows.push(
+      ['Turn input tokens', (activeEstimate.turnInputTokens ?? 0).toLocaleString()],
+      ['Turn output tokens', (activeEstimate.turnOutputTokens ?? 0).toLocaleString()],
+    );
+    if (activeEstimate.compactionCount) {
+      receiptRows.push(['Compactions', activeEstimate.compactionCount.toLocaleString()]);
+    }
+    if (activeEstimate.compactionCost) {
+      receiptRows.push(['Compaction cost', formatCost(sessionCompactionCost)]);
+    }
+    receiptRows.push(['Achieved output share', formatPercent(activeEstimate.achievedOutputCostSharePct)]);
+  }
+
   const summaryRows: ReceiptRow[] = [
+    ['Model provider', formatCompany(modelCompany)],
     ['Prompt tokens', tokens.length.toLocaleString()],
     ['Planned output', plannedOutput.toLocaleString()],
+    ['Input price', inPricePer1k === null ? 'N/A' : `${formatRatePerMillion(inPricePer1k)}`],
+    ['Output price', outPricePer1k === null ? 'N/A' : `${formatRatePerMillion(outPricePer1k)}`],
     ['Agent mode', agentMode ? 'On' : 'Off'],
+    ['Session mode', sessionMode === 'scenario' ? `Scenario ${formatPercent(activeEstimate?.targetOutputCostSharePct ?? null)}` : 'Baseline'],
     ['AI turns', effectiveAgentTurns.toLocaleString()],
     ['Total prompt tokens', totalPromptTokens.toLocaleString()],
     ['Total output tokens', totalOutputTokens.toLocaleString()],
@@ -563,12 +661,26 @@ export default function HomePageClient() {
     ['Available output', availableOutputLabel],
     ['Context window', contextWindowLabel],
     ['Context left', contextRemainingLabel],
-    ['Combined tokens', combinedTokens.toLocaleString()],
+    ['Combined tokens', (tokens.length + plannedOutput).toLocaleString()],
     ['Session tokens', totalSessionTokens.toLocaleString()],
     ['Input cost', formatCost(sessionInputCost)],
     ['Output cost', formatCost(sessionOutputCost)],
+    ['Turn cost', formatCost(sessionTurnCost)],
     ['Total cost', finalSessionCostLabel],
   ];
+  if (activeEstimate) {
+    summaryRows.push(
+      ['Total input tokens', (activeEstimate.totalInputTokens ?? 0).toLocaleString()],
+      ['Total output tokens', (activeEstimate.totalOutputTokens ?? 0).toLocaleString()],
+      ['Cache billed', formatPercent(activeEstimate.cachedInputBillablePct)],
+      ['Achieved output share', formatPercent(activeEstimate.achievedOutputCostSharePct)],
+    );
+    if (activeEstimate.compactionCost) {
+      summaryRows.push(['Compaction cost', formatCost(sessionCompactionCost)]);
+    }
+  }
+
+
 
   const downloadReceiptImage = () => {
     const scale = 2;
@@ -810,142 +922,174 @@ export default function HomePageClient() {
                 </button>
               )}
             </div>
-          </div>
 
-          <div className="bg-rose-base p-4 sm:p-6 md:p-8">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <span className="stage-tag">Step 04</span>
-                <label className="data-label" htmlFor="expected-out">
-                  Planned output
-                </label>
-                <p className="mt-2 text-sm leading-6 text-rose-subtle">
-                  Output is uncertain, so auto mode estimates from prompt length. Presets and direct edits switch to custom mode.
-                </p>
-              </div>
-              <output className="font-mono text-sm font-bold text-rose-text tabular-nums" aria-live="polite">
-                {plannedOutput.toLocaleString()}
-              </output>
-            </div>
-            <div className="mt-5 grid gap-px bg-rose-highlightMed p-px sm:grid-cols-2">
-              {(['auto', 'custom'] as const).map(mode => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setOutputMode(mode)}
-                  aria-pressed={outputMode === mode}
-                  className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
-                    outputMode === mode
-                      ? 'bg-rose-love text-white'
-                      : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
-                  }`}
-                >
-                  {mode === 'auto' ? 'Auto estimate' : 'Custom'}
-                </button>
-              ))}
-            </div>
-            <div className="mt-5 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(92px,1fr))]">
-              {outputPresets.map(preset => {
-                const isUnavailable = preset.tokens > effectiveOutputLimit;
-                const isActive = outputMode === 'custom' && preset.tokens === plannedOutput;
-                return (
+            {agentMode && (
+              <div className="mt-5 grid gap-px bg-rose-highlightMed sm:grid-cols-2">
+                {[
+                  { label: 'Baseline', mode: 'baseline' as const },
+                  { label: 'Scenario', mode: 'scenario' as const },
+                ].map(option => (
                   <button
-                    key={preset.label}
+                    key={option.label}
                     type="button"
-                    disabled={isUnavailable}
-                    onClick={() => {
-                      setOutputMode('custom');
-                      setCustomOutTokens(preset.tokens);
-                    }}
-                    aria-pressed={isActive}
-                    className={`min-h-16 border px-3 py-2 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none ${
-                      isActive
-                        ? 'border-rose-love bg-rose-love text-white'
-                        : isUnavailable
-                          ? 'cursor-not-allowed border-rose-highlightMed bg-rose-base text-rose-muted opacity-45'
-                        : 'border-rose-highlightMed bg-rose-base text-rose-subtle hover:border-rose-love hover:text-rose-text'
+                    onClick={() => setSessionMode(option.mode)}
+                    aria-pressed={sessionMode === option.mode}
+                    className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
+                      sessionMode === option.mode
+                        ? 'bg-rose-love text-white'
+                        : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
                     }`}
                   >
-                    <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em]">{preset.label}</span>
-                    <span className="mt-1 block font-mono text-xs font-bold tabular-nums">{preset.tokens.toLocaleString()}</span>
-                    <span className="mt-1 block text-xs normal-case text-current opacity-75">
-                      {isUnavailable ? 'above available' : preset.description}
-                    </span>
+                    {option.label}
                   </button>
-                );
-              })}
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_150px] sm:items-center">
-              <input
-                id="expected-out"
-                type="range"
-                min={0}
-                max={effectiveOutputLimit}
-                step={TOKEN_STEP}
-                value={plannedOutput}
-                onChange={e => {
-                  setOutputMode('custom');
-                  setCustomOutTokens(clampOutputTokens(Number(e.target.value), effectiveOutputLimit));
-                }}
-                className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
-                aria-describedby="planned-output-help"
-              />
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={effectiveOutputLimit}
-                step={TOKEN_STEP}
-                value={plannedOutput}
-                onChange={e => {
-                  setOutputMode('custom');
-                  setCustomOutTokens(clampOutputTokens(Number(e.target.value), effectiveOutputLimit));
-                }}
-                className="glass-select w-full border px-4 py-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                aria-label="Custom planned output tokens"
-              />
-            </div>
-            <p id="planned-output-help" className="mt-3 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted tabular-nums">
-              {outputMode === 'auto' ? 'Auto estimate' : 'Custom forecast'} / available {availableOutputLabel} / output cap {outputCapLabel} / {tokenLimitSource}
-            </p>
-          </div>
-
-          <div className="bg-rose-base p-4 sm:p-6 md:p-8">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <span className="stage-tag">Step 05</span>
-                <label className="data-label" htmlFor="agent-turns">
-                  Agent mode
-                </label>
-                <p className="mt-2 text-sm leading-6 text-rose-subtle">
-                  Multiply the prompt, output, and cost by repeated AI turns for IDE agents, tool loops, and deep research.
-                </p>
+                ))}
               </div>
-              <output className="font-mono text-sm font-bold text-rose-text tabular-nums" aria-live="polite">
-                {effectiveAgentTurns.toLocaleString()} turn{effectiveAgentTurns === 1 ? '' : 's'}
-              </output>
-            </div>
+            )}
 
-            <div className="mt-5 grid gap-px bg-rose-highlightMed p-px sm:grid-cols-2">
-              {[
-                { label: 'One-shot', enabled: false },
-                { label: 'Agent work', enabled: true },
-              ].map(option => (
-                <button
-                  key={option.label}
-                  type="button"
-                  onClick={() => setAgentMode(option.enabled)}
-                  aria-pressed={agentMode === option.enabled}
-                  className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
-                    agentMode === option.enabled
-                      ? 'bg-rose-love text-white'
-                      : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+            {agentMode && sessionMode === 'scenario' && (
+              <div className="mt-5 grid gap-4">
+                <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(98px,1fr))]">
+                  {[
+                    { label: '50/50', target: 50 },
+                    { label: '80/20', target: 80 },
+                    { label: '90/10', target: 90 },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setSessionTargetOutputSharePct(preset.target)}
+                      aria-pressed={sessionTargetOutputSharePct === preset.target}
+                      className={`min-h-16 border px-3 py-2 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none ${
+                        sessionTargetOutputSharePct === preset.target
+                          ? 'border-rose-love bg-rose-love text-white'
+                          : 'border-rose-highlightMed bg-rose-base text-rose-subtle hover:border-rose-love hover:text-rose-text'
+                      }`}
+                    >
+                      <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em]">{preset.label}</span>
+                      <span className="mt-1 block font-mono text-xs font-bold tabular-nums">{preset.target}% out</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="data-label" htmlFor="target-output-share">
+                      Output cost share
+                    </label>
+                    <div className="mt-2 grid grid-cols-[1fr_60px] gap-2 items-center">
+                      <input
+                        id="target-output-share"
+                        type="range"
+                        min={50}
+                        max={95}
+                        step={1}
+                        value={sessionTargetOutputSharePct}
+                        onChange={e => setSessionTargetOutputSharePct(Number(e.target.value))}
+                        className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={50}
+                        max={95}
+                        step={1}
+                        value={sessionTargetOutputSharePct}
+                        onChange={e => setSessionTargetOutputSharePct(Number(e.target.value))}
+                        className="glass-select w-full border px-2 py-1 text-right font-mono text-sm font-bold text-rose-text tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="data-label" htmlFor="cached-billed">
+                      Cached input billed % (
+                      {formatCompany(modelCompany)} default:
+                      {' '}
+                      {formatPercent(defaultSessionCachedInputBillablePct)}
+                      )
+                    </label>
+                    <div className="mt-2 grid grid-cols-[1fr_60px] gap-2 items-center">
+                      <input
+                        id="cached-billed"
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={sessionCachedInputBillablePct}
+                        onChange={e => setSessionCachedInputBillablePct(Number(e.target.value))}
+                        className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={sessionCachedInputBillablePct}
+                        onChange={e => setSessionCachedInputBillablePct(Number(e.target.value))}
+                        className="glass-select w-full border px-2 py-1 text-right font-mono text-sm font-bold text-rose-text tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="data-label" htmlFor="compaction-threshold">
+                      Compaction threshold %
+                    </label>
+                    <div className="mt-2 grid grid-cols-[1fr_60px] gap-2 items-center">
+                      <input
+                        id="compaction-threshold"
+                        type="range"
+                        min={50}
+                        max={95}
+                        step={1}
+                        value={sessionCompactionThresholdPct}
+                        onChange={e => setSessionCompactionThresholdPct(Number(e.target.value))}
+                        className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={50}
+                        max={95}
+                        step={1}
+                        value={sessionCompactionThresholdPct}
+                        onChange={e => setSessionCompactionThresholdPct(Number(e.target.value))}
+                        className="glass-select w-full border px-2 py-1 text-right font-mono text-sm font-bold text-rose-text tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="data-label" htmlFor="compaction-retention">
+                      Compaction retention %
+                    </label>
+                    <div className="mt-2 grid grid-cols-[1fr_60px] gap-2 items-center">
+                      <input
+                        id="compaction-retention"
+                        type="range"
+                        min={5}
+                        max={80}
+                        step={1}
+                        value={sessionCompactionRetentionPct}
+                        onChange={e => setSessionCompactionRetentionPct(Number(e.target.value))}
+                        className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={5}
+                        max={80}
+                        step={1}
+                        value={sessionCompactionRetentionPct}
+                        onChange={e => setSessionCompactionRetentionPct(Number(e.target.value))}
+                        className="glass-select w-full border px-2 py-1 text-right font-mono text-sm font-bold text-rose-text tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="mt-5 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(98px,1fr))]">
               {AGENT_TURN_PRESETS.map(preset => {
@@ -1004,10 +1148,11 @@ export default function HomePageClient() {
               />
             </div>
 
-            <div className="mt-5 grid gap-px bg-rose-highlightMed sm:grid-cols-3">
+            <div className="mt-5 grid gap-px bg-rose-highlightMed sm:grid-cols-4">
               {[
                 ['Prompt total', totalPromptTokens.toLocaleString()],
                 ['Output total', totalOutputTokens.toLocaleString()],
+                ['Compaction total', totalCompactionTokens.toLocaleString()],
                 ['Session cost', formatCost(sessionCost)],
               ].map(([label, value]) => (
                 <div key={label} className="bg-rose-base p-3">
