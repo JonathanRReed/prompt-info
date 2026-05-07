@@ -1,6 +1,7 @@
 import '../styles/globals.css'
 import { ReactNode } from 'react'
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import { ThemeProvider } from '../components/ThemeProvider'
 import ThemeSelector from '../components/ThemeSelector'
@@ -174,11 +175,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <header className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rose-highlightMed bg-rose-base px-3 py-3 sm:px-6">
               <div className="flex min-w-0 items-center gap-3">
                 <Link href="/" className="flex shrink-0 items-center" aria-label="Prompt Info home">
-                  <img
+                  <Image
                     src="/prompt_info_assets/prompt-info-logo-normal-transparent.png"
                     alt="Prompt Info"
+                    width={256}
+                    height={64}
                     className="h-8 w-auto"
-                    loading="eager"
+                    priority
                   />
                 </Link>
                 <Navigation />
@@ -193,9 +196,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <div className="bg-rose-base p-5 sm:p-8 md:p-10">
                   <div className="flex items-center gap-4">
                     <Link href="/" className="flex shrink-0 items-center" aria-label="Prompt Info home">
-                      <img
+                      <Image
                         src="/prompt_info_assets/prompt-info-logo-footer-transparent.png"
                         alt="Prompt Info"
+                        width={288}
+                        height={72}
                         className="h-10 w-auto"
                         loading="lazy"
                       />
