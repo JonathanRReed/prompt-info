@@ -162,7 +162,13 @@ function deriveModelCacheReadPercent(entry: PricingMap[string] | undefined, fall
   const entryInputRate = entry?.pricing?.input;
   const entryCacheReadRate = entry?.pricing?.inputCacheRead;
 
-  if (Number.isFinite(entryInputRate) && Number.isFinite(entryCacheReadRate) && entryInputRate > 0) {
+  if (
+    typeof entryInputRate === 'number' &&
+    typeof entryCacheReadRate === 'number' &&
+    Number.isFinite(entryInputRate) &&
+    Number.isFinite(entryCacheReadRate) &&
+    entryInputRate > 0
+  ) {
     return (entryCacheReadRate / entryInputRate) * 100;
   }
 
