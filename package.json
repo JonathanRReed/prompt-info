@@ -1,16 +1,17 @@
 {
-  "name": "ai-insight-dashboard",
+  "name": "prompt-info",
   "version": "1.0.0",
   "private": true,
-  "description": "Simple Dev Tools – A product of Hello.World Consulting.",
+  "description": "Prompt Info - LLM token counter and cost calculator.",
   "author": "Jonathan Reed",
   "license": "SEE LICENSE IN LICENSE",
   "packageManager": "bun@1.2.22",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "bunx serve@latest out",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "typecheck": "tsc --noEmit",
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {

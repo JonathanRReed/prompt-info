@@ -41,7 +41,7 @@ Built with Next.js, TypeScript, and Tailwind CSS (Rosé Pine theme).
 
    ```bash
    bun run build
-   bun run start
+   bun run start  # serves the static export from out/ via bunx serve@latest
    ```
 
 ---
