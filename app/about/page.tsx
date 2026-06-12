@@ -22,7 +22,7 @@ const pageJsonLd = {
   name: 'About Prompt Info',
   url: 'https://prompt-info.helloworldfirm.com/about/',
   datePublished: '2026-04-21',
-  dateModified: '2026-04-21',
+  dateModified: '2026-06-11',
   author: {
     '@type': 'Organization',
     name: 'Hello.World Consulting',
@@ -77,7 +77,7 @@ export default function AboutPage() {
             The product is intentionally narrow. It focuses on client-side measurement, transparent assumptions, and repeatable reference examples for teams evaluating model usage. That scope keeps the interface quick, reduces data handling surface area, and makes the results easier to verify during engineering review.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
+            By Hello.World Consulting. <time dateTime="2026-06-11">Updated June 11, 2026</time>.
           </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">

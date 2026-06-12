@@ -11,6 +11,7 @@
     "build": "next build",
     "start": "bunx serve@latest out",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "test": "bun test",
     "typecheck": "tsc --noEmit",
     "analyze": "ANALYZE=true next build"
   },
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^15.5.19",
+    "@types/bun": "^1.3.14",
     "@types/node": "^20.19.41",
     "@types/react": "^18.3.30",
     "@types/react-dom": "^18.3.7",

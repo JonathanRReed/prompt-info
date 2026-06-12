@@ -42,6 +42,7 @@ function normalizeModelNameForDedupe(name: string) {
   return name
     .replace(/\([^)]*\)/g, ' ')
     .toLowerCase()
+    .replace(/\+/g, ' plus ')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -64,7 +65,7 @@ function parseNumberLike(value: unknown) {
   if (typeof value !== 'string') return NaN;
 
   const normalized = value.trim().toLowerCase().replace(/[$,]/g, '');
-  const match = normalized.match(/^(\d+(?:\.\d+)?)\s*([kmb])?$/);
+  const match = normalized.match(/^(\d+(?:\.\d+)?(?:e[+-]?\d+)?)\s*([kmb])?$/);
   if (!match) return NaN;
 
   const [, rawNumber, suffix] = match;
@@ -94,8 +95,15 @@ function toPer1k(raw: unknown) {
   return raw / MILLION_TO_THOUSAND_RATIO;
 }
 
+// Cache rates may legitimately be zero (a provider offering free cache reads),
+// so unlike base prices they are only rejected when negative or non-finite.
+function toCacheRatePer1k(raw: unknown) {
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) return NaN;
+  return raw / MILLION_TO_THOUSAND_RATIO;
+}
+
 function readCacheRatePer1k(fields: Record<string, unknown>, perMillionPaths: string[], perTokenPaths: string[]) {
-  return toPer1k(readPerMillionPrice(fields, perMillionPaths, perTokenPaths));
+  return toCacheRatePer1k(readPerMillionPrice(fields, perMillionPaths, perTokenPaths));
 }
 
 type RowShape = {
@@ -129,10 +137,18 @@ function isPreferredModelRow(a: RowShape, b: RowShape) {
   }
 
   if (a.perMillionIn !== b.perMillionIn) {
-    return a.perMillionIn > b.perMillionIn;
+    return a.perMillionIn < b.perMillionIn;
   }
 
   return a.name.length < b.name.length;
+}
+
+function hasSameOffering(a: RowShape, b: RowShape) {
+  return (
+    a.perMillionIn === b.perMillionIn &&
+    a.perMillionOut === b.perMillionOut &&
+    (a.contextWindowTokens ?? 0) === (b.contextWindowTokens ?? 0)
+  );
 }
 
 export function buildPricingMap(data: unknown[]): PricingMap {
@@ -156,15 +172,19 @@ export function buildPricingMap(data: unknown[]): PricingMap {
       ['price_1m_output_tokens', 'pricing.price_1m_output_tokens', 'openrouter.price_1m_output_tokens', 'openrouter.pricing.price_1m_output_tokens', 'openrouter_data.pricing.price_1m_output_tokens', 'open_router.pricing.price_1m_output_tokens', 'metadata.pricing.price_1m_output_tokens'],
       ['pricing.completion', 'completion', 'openrouter.pricing.completion', 'openrouter.completion', 'openrouter_data.pricing.completion', 'open_router.pricing.completion', 'metadata.pricing.completion']
     );
+    // Per-million keys must be explicit `price_1m_*` fields. OpenRouter's raw
+    // `pricing.input_cache_read` / `input_cache_write` are per-token dollar
+    // values and must only ever be read through the per-token path list;
+    // classifying them as per-million silently shrinks cache rates by 10^6.
     const inputCacheRead = readCacheRatePer1k(
       fields,
-      ['pricing.price_1m_input_cache_read', 'input_cache_read', 'pricing.input_cache_read', 'openrouter.pricing.input_cache_read', 'open_router.pricing.input_cache_read', 'metadata.pricing.input_cache_read'],
-      ['pricing.input_cache_read', 'input_cache_read', 'openrouter.input_cache_read', 'open_router.input_cache_read', 'metadata.input_cache_read']
+      ['price_1m_input_cache_read', 'pricing.price_1m_input_cache_read', 'openrouter.pricing.price_1m_input_cache_read', 'open_router.pricing.price_1m_input_cache_read', 'metadata.pricing.price_1m_input_cache_read'],
+      ['pricing.input_cache_read', 'input_cache_read', 'openrouter.pricing.input_cache_read', 'openrouter.input_cache_read', 'open_router.pricing.input_cache_read', 'open_router.input_cache_read', 'metadata.input_cache_read']
     );
     const inputCacheWrite = readCacheRatePer1k(
       fields,
-      ['pricing.price_1m_input_cache_write', 'input_cache_write', 'pricing.input_cache_write', 'openrouter.pricing.input_cache_write', 'open_router.pricing.input_cache_write', 'metadata.pricing.input_cache_write'],
-      ['pricing.input_cache_write', 'input_cache_write', 'openrouter.input_cache_write', 'open_router.input_cache_write', 'metadata.input_cache_write']
+      ['price_1m_input_cache_write', 'pricing.price_1m_input_cache_write', 'openrouter.pricing.price_1m_input_cache_write', 'open_router.pricing.price_1m_input_cache_write', 'metadata.pricing.price_1m_input_cache_write'],
+      ['pricing.input_cache_write', 'input_cache_write', 'openrouter.pricing.input_cache_write', 'openrouter.input_cache_write', 'open_router.pricing.input_cache_write', 'open_router.input_cache_write', 'metadata.input_cache_write']
     );
     const blended = readFirstNumber(fields, [
       'price_1m_blended_3_to_1',
@@ -213,12 +233,22 @@ export function buildPricingMap(data: unknown[]): PricingMap {
   const logMin = minPrice > 0 ? Math.log(minPrice) : 0;
   const logMax = maxPrice > 0 ? Math.log(maxPrice) : 0;
 
+  // Collapse only true duplicates (same price and context window). Qualified
+  // variants that are genuinely different offerings (dated snapshots, (Fast)
+  // tiers, (extended) listings) keep their own entry so the prices shown
+  // match the variant a user would actually call.
   const dedupedRows = new Map<string, RowShape>();
 
   for (const row of rows) {
     const existing = dedupedRows.get(row.dedupeKey);
-    if (!existing || isPreferredModelRow(row, existing)) {
+    if (!existing) {
       dedupedRows.set(row.dedupeKey, row);
+    } else if (hasSameOffering(row, existing)) {
+      if (isPreferredModelRow(row, existing)) {
+        dedupedRows.set(row.dedupeKey, row);
+      }
+    } else {
+      dedupedRows.set(row.name, row);
     }
   }
 

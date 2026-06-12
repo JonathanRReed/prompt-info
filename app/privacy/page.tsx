@@ -6,7 +6,7 @@ const pageJsonLd = {
   name: 'Prompt Info Privacy Policy',
   url: 'https://prompt-info.helloworldfirm.com/privacy/',
   datePublished: '2026-04-21',
-  dateModified: '2026-04-21',
+  dateModified: '2026-06-11',
   author: {
     '@type': 'Organization',
     name: 'Hello.World Consulting',
@@ -51,7 +51,7 @@ export default function PrivacyPage() {
           Treat the app as a planning aid for synthetic or approved material. Teams with regulated data, customer records, or internal launch details should use their own review process before placing that material into any public browser utility, even when the calculation happens locally.
         </p>
         <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-          By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
+          By Hello.World Consulting. <time dateTime="2026-06-11">Updated June 11, 2026</time>.
         </p>
         <div className="mt-10 grid gap-px bg-rose-highlightMed md:grid-cols-3">
           {[

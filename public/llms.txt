@@ -1,8 +1,9 @@
 # Prompt Info
 
 Prompt Info is a Next.js app for planning prompts before you spend tokens. It includes:
-- Token Planner: live token counts, tokenizer switching, and cost estimation by model.
-- Format Comparison: render your prompt as TOON, JSON (pretty/compact), YAML, XML, and CSV with one click copy.
+- Token Planner: live token counts, tokenizer switching, and cost estimation by model, with per-provider tokenizer calibration for non-OpenAI models.
+- Agent session math: baseline (stateless) and scenario (full conversation history with prompt-cache read/write pricing and compaction) cost simulation.
+- Format Comparison: render your prompt as TOON, JSON (pretty/compact), YAML, XML, and CSV with live o200k token counts per format and one click copy.
 - Rosé Pine theming (Night/Dawn) with accessible, readable glass styling.
 
 ## Tech Stack

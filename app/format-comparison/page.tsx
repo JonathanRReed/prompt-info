@@ -8,7 +8,7 @@ const pageJsonLd = {
   headline: 'Prompt Format Comparison Tool',
   url: 'https://prompt-info.helloworldfirm.com/format-comparison/',
   datePublished: '2026-04-21',
-  dateModified: '2026-04-21',
+  dateModified: '2026-06-11',
   author: {
     '@type': 'Organization',
     name: 'Hello.World Consulting',
@@ -59,19 +59,13 @@ export default function FormatComparisonPage() {
             One prompt. Six payload shells.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Convert one prompt into TOON, JSON, compact JSON, YAML, XML, and CSV examples. The comparison helps teams choose payload formats that are readable, compact, and easy to inspect before model execution.
+            Wrap one prompt in TOON, JSON, compact JSON, YAML, XML, and CSV, and compare token counts side by side. Every card carries the same payload, so any difference you see is pure format overhead.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            Use the format lab to compare how field names, nested values, lists, and repeated metadata change across payload styles. The examples are designed for planning and review, so teams can spot verbosity, escaping, and readability tradeoffs before adopting a prompt transport format.
-          </p>
-          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            The generated examples are deliberately simple, which makes the differences easier to inspect. Use them to decide whether a structured request should favor compactness, strict syntax, human editing, or compatibility with an existing ingestion pipeline.
-          </p>
-          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            For implementation reviews, compare indentation, escaping rules, repeated labels, and how comfortably a teammate can scan the same information during a code review. A compact representation can save tokens, while a more verbose representation may be easier to debug, document, and hand off across teams.
+            Punctuation is the whole story. Braces, quotes, and closing tags all tokenize, which is why compact JSON and TOON usually land near the bottom of the bill and XML near the top. Pick the cheapest format your pipeline can parse without extra ceremony.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
+            By Hello.World Consulting. <time dateTime="2026-06-11">Updated June 11, 2026</time>.
           </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">
@@ -80,8 +74,8 @@ export default function FormatComparisonPage() {
             <li>TOON for compact structured prompts.</li>
             <li>JSON and compact JSON for API payloads.</li>
             <li>YAML, XML, and CSV for common exchange formats.</li>
-            <li>Side-by-side token estimates for planning tradeoffs.</li>
-            <li>Copyable examples for documentation, tests, and review notes.</li>
+            <li>Live o200k token counts on every card.</li>
+            <li>One-click copy for each example.</li>
           </ul>
         </aside>
       </section>

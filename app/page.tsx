@@ -8,7 +8,7 @@ const pageJsonLd = {
   name: 'LLM Token Counter and Cost Calculator',
   url: 'https://prompt-info.helloworldfirm.com/',
   datePublished: '2026-04-21',
-  dateModified: '2026-04-21',
+  dateModified: '2026-06-11',
   author: {
     '@type': 'Organization',
     name: 'Hello.World Consulting',
@@ -58,10 +58,10 @@ export default function Page() {
             Know the bill before the model runs.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Prompt Info is a browser-based LLM token counter and cost calculator for people who need to check how many tokens are in a prompt before a model request runs. Paste draft text, choose a model, compare OpenAI tokenizer families, estimate output size, and export a planning receipt for longer agent sessions.
+            Prompt Info is a browser-based LLM token counter and cost calculator. Paste a draft prompt, pick a model, and see what the request will cost before you send it. Agent sessions get the full treatment: history re-sends, prompt caching, and compaction.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
+            By Hello.World Consulting. <time dateTime="2026-06-11">Updated June 11, 2026</time>.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <a className="action-primary" href="#planner">

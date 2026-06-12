@@ -3,7 +3,7 @@
 const highlights = [
   { title: 'Token planning', body: 'Paste a prompt, pick a model, change tokenizers, and estimate cost before sending.' },
   { title: 'Format comparison', body: 'Render the same prompt as TOON, JSON, YAML, XML, and CSV for practical payload review.' },
-  { title: 'Resilient data path', body: 'Use a same-origin pricing API when available, with a static model catalog as the fallback.' },
+  { title: 'Data sources', body: 'Live pricing from a same-origin API when available, with a static model catalog as the fallback.' },
 ];
 
 const links = [
@@ -29,10 +29,10 @@ export default function AboutPageClient() {
             Prompt Info is a small technical workspace for measuring token count, projected cost, and payload format before model execution.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            The product is intentionally narrow. It focuses on client-side measurement, transparent assumptions, and repeatable reference examples for teams evaluating model usage.
+            The scope is deliberately narrow. Everything runs in the browser, the assumptions are printed next to the numbers, and there is nothing to sign up for.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Hello.World Consulting. <time dateTime="2026-04-21">Updated April 21, 2026</time>.
+            By Hello.World Consulting. <time dateTime="2026-06-11">Updated June 11, 2026</time>.
           </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">
@@ -62,7 +62,9 @@ export default function AboutPageClient() {
         <article className="bg-rose-base p-5 sm:p-8 md:p-10">
           <p className="data-label">Operational notes</p>
           <ul className="mt-6 space-y-4 text-sm leading-7 text-rose-subtle">
-            <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k.</li>
+            <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k. OpenAI counts are exact.</li>
+            <li>Non-OpenAI vendors bill with their own tokenizers, which typically produce more tokens than OpenAI BPE for the same text. Cost math applies a per-provider calibration multiplier so estimates do not undercount.</li>
+            <li>Agent scenario estimates re-send conversation history each turn, bill cached context at the provider&apos;s cache read rate, apply cache write premiums where charged, and simulate compaction summarization calls.</li>
             <li>Cost estimates are planning values. Provider billing may differ by model version and feature use.</li>
             <li>The interface is designed for preflight review, not storage or user account management.</li>
           </ul>

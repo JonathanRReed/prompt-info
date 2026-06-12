@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     default: 'Prompt Info - LLM Token Counter & Cost Calculator',
     template: '%s | Prompt Info'
   },
-  description: 'Analyze LLM prompts with real-time token counting and accurate cost estimation across 1000+ models. Built for developers and AI engineers.',
+  description: 'Count prompt tokens and estimate request costs across hundreds of live-priced LLM models, right in the browser.',
   keywords: [
     'LLM token counter',
     'GPT tokenizer',
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     url: 'https://prompt-info.helloworldfirm.com',
     siteName: 'Prompt Info',
     title: 'Prompt Info - LLM Token Counter & Cost Calculator',
-    description: 'Analyze LLM prompts with real-time token counting and cost estimation across 1000+ models.',
+    description: 'Count prompt tokens and estimate request costs across hundreds of live-priced LLM models.',
     images: [
       {
         url: '/prompt_info_assets/prompt-info-logo-normal-1200w.png',
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Prompt Info - LLM Token Counter & Cost Calculator',
-    description: 'Analyze LLM prompts with real-time token counting and cost estimation.',
+    description: 'Count prompt tokens and estimate request costs before the model runs.',
     creator: '@JonathanRReed',
     images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
@@ -100,7 +100,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       price: '0',
       priceCurrency: 'USD',
     },
-    description: 'Analyze LLM prompts with real-time token counting and accurate cost estimation across 1000+ models.',
+    description: 'Count prompt tokens and estimate request costs across hundreds of live-priced LLM models, right in the browser.',
     url: 'https://prompt-info.helloworldfirm.com',
     author: {
       '@type': 'Person',
@@ -118,32 +118,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     },
     inLanguage: 'en-US',
     keywords: 'LLM token counter, GPT tokenizer, prompt cost calculator, BPE tokenizer',
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.9',
-      reviewCount: 18,
-      ratingCount: 18,
-      bestRating: '5',
-      worstRating: '1',
-    },
-    review: [
-      {
-        '@type': 'Review',
-        author: {
-          '@type': 'Person',
-          name: 'Internal user survey',
-        },
-        reviewBody:
-          'Prompt Info streamlines our prompt engineering workflow with precise token counts and transparent cost breakdowns.',
-        reviewRating: {
-          '@type': 'Rating',
-          ratingValue: '5',
-          bestRating: '5',
-          worstRating: '1',
-        },
-        datePublished: '2025-08-15',
-      },
-    ],
   };
 
   return (
@@ -256,7 +230,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 </div>
               </div>
               <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between border-x border-rose-highlightMed px-5 py-4 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted sm:px-8">
-                <span>2025 Copyright. All rights reserved.</span>
+                <span>&copy; 2026 Hello.World Consulting</span>
                 <span>Token and cost planning</span>
               </div>
             </footer>

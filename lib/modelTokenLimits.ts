@@ -11,15 +11,68 @@ export type ModelCompany =
   | 'Mistral'
   | 'Other';
 
-export const MODEL_COMPANY_CACHE_BILLING_BPS: Record<ModelCompany, number> = {
-  OpenAI: 50,
-  Anthropic: 10,
-  Google: 15,
-  xAI: 20,
-  DeepSeek: 20,
-  Mistral: 20,
-  Other: 20,
+// Cache READ price as a percent of the base input price (10 = 10%), used only
+// when the model's own published cache pricing is unavailable.
+// Verified against official provider pricing pages, June 2026.
+export const MODEL_COMPANY_CACHE_READ_PCT: Record<ModelCompany, number> = {
+  OpenAI: 10, // GPT-5.x cached input is 10% of base input, no write premium (older 4o-era was 50%)
+  Anthropic: 10, // cache read = 10% of base input
+  Google: 10, // Gemini 2.5/3.x context-cache read = 10% of base input (storage billed separately per hour)
+  xAI: 16, // Grok 4.3: $0.20 cached vs $1.25 input
+  DeepSeek: 2, // V4 cache-hit pricing is ~2% of cache-miss input
+  Mistral: 100, // Mistral publishes no cached-input discount; bill re-sent history at full price
+  Other: 50,
 };
+
+// Cache WRITE premium as a multiplier on the base input price for tokens that
+// are new to the cached prefix. Only Anthropic charges an explicit write
+// premium (1.25x for the default 5-minute TTL); others write at base price.
+export const MODEL_COMPANY_CACHE_WRITE_MULTIPLIER: Record<ModelCompany, number> = {
+  OpenAI: 1,
+  Anthropic: 1.25,
+  Google: 1,
+  xAI: 1,
+  DeepSeek: 1,
+  Mistral: 1,
+  Other: 1,
+};
+
+// The site tokenizes with OpenAI BPE encodings (gpt-tokenizer). Other vendors'
+// native tokenizers segment text differently and typically produce MORE tokens
+// than o200k/cl100k for the same text, so a raw BPE count undercounts what the
+// provider actually bills. These multipliers calibrate the BPE count into a
+// planning estimate per provider (English prose; code usually runs higher).
+// Based on empirical tokenizer comparisons against o200k_base, June 2026.
+export const MODEL_COMPANY_TOKENIZER_MULTIPLIER: Record<ModelCompany, number> = {
+  OpenAI: 1,
+  Anthropic: 1.16, // Claude tokenizer yields ~16% more tokens than o200k on prose (~30% on code)
+  Google: 1.05, // Gemini SentencePiece is near-parity on prose, ~1.2x on indented code
+  xAI: 1.05,
+  DeepSeek: 1.05, // parity on prose, ~1.1x on code
+  Mistral: 1.05, // Tekken tokenizer is near-parity with o200k
+  Other: 1.05,
+};
+
+export function getCompanyTokenizerMultiplier(company: ModelCompany) {
+  return MODEL_COMPANY_TOKENIZER_MULTIPLIER[company] ?? 1;
+}
+
+// Claude Opus 4.7 shipped a re-tuned tokenizer that maps the same text to
+// roughly 1.2-1.45x the token count of earlier Claude tokenizers, so models on
+// it (Opus 4.7/4.8, Fable 5) bill well above an o200k count. Planning estimate.
+const ANTHROPIC_RETUNED_TOKENIZER_MULTIPLIER = 1.4;
+
+export function getModelTokenizerMultiplier(model: string, company?: ModelCompany) {
+  const resolvedCompany = company ?? inferModelCompany(model);
+  if (resolvedCompany === 'Anthropic' && /opus[ ._-]?4[ ._-]?[78]|fable/i.test(model)) {
+    return ANTHROPIC_RETUNED_TOKENIZER_MULTIPLIER;
+  }
+  return getCompanyTokenizerMultiplier(resolvedCompany);
+}
+
+export function getCompanyCacheWriteMultiplier(company: ModelCompany) {
+  return MODEL_COMPANY_CACHE_WRITE_MULTIPLIER[company] ?? 1;
+}
 
 export type ModelTokenProfile = {
   maxOutputTokens: number;
@@ -97,7 +150,9 @@ function parseNumberLike(value: unknown) {
 
 function toPositiveInteger(value: unknown) {
   const num = parseNumberLike(value);
-  return Number.isFinite(num) && num > 0 ? Math.floor(num) : null;
+  if (!Number.isFinite(num)) return null;
+  const floored = Math.floor(num);
+  return floored > 0 ? floored : null;
 }
 
 function firstNumericField(fields: LimitFieldMap | undefined, names: string[]) {
@@ -190,7 +245,7 @@ function inferModelCompany(model: string): ModelCompany {
     return 'OpenAI';
   }
 
-  if (/claude/.test(normalized) || /anthropic/.test(normalized)) {
+  if (/claude/.test(normalized) || /anthropic/.test(normalized) || /fable/.test(normalized)) {
     return 'Anthropic';
   }
 
@@ -218,7 +273,7 @@ export function resolveModelCompany(model: string): ModelCompany {
 }
 
 export function getCompanyCachedInputBillablePct(company: ModelCompany) {
-  return MODEL_COMPANY_CACHE_BILLING_BPS[company];
+  return MODEL_COMPANY_CACHE_READ_PCT[company];
 }
 
 function normalizeModelName(model: string) {
@@ -240,7 +295,15 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
     return { maxOutputTokens: 272000, contextWindowTokens: 400000, source: 'OpenAI GPT-5 Pro family', confidence: 'high' };
   }
 
-  if (/\bgpt 5 4\b/.test(name) && !/\bmini\b|\bnano\b/.test(name)) {
+  if (/\bgpt 5 5\b/.test(name)) {
+    return { maxOutputTokens: 128000, contextWindowTokens: 1050000, source: 'OpenAI GPT-5.5 family', confidence: 'high' };
+  }
+
+  if (/\bgpt 5 4\b/.test(name) && /\bmini\b|\bnano\b/.test(name)) {
+    return { maxOutputTokens: 128000, contextWindowTokens: 400000, source: 'OpenAI GPT-5.4 mini/nano family', confidence: 'high' };
+  }
+
+  if (/\bgpt 5 4\b/.test(name)) {
     return { maxOutputTokens: 128000, contextWindowTokens: 1050000, source: 'OpenAI GPT-5.4 family', confidence: 'high' };
   }
 
@@ -291,12 +354,18 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
     return { maxOutputTokens: 8192, source: 'Google model family estimate', confidence: 'low' };
   }
 
-  if (/claude/.test(name)) {
-    if (/opus 4 7/.test(name)) {
-      return { maxOutputTokens: 128000, contextWindowTokens: 1000000, source: 'Claude Opus 4.7 family', confidence: 'high' };
+  if (/claude|fable/.test(name)) {
+    if (/fable 5/.test(name)) {
+      return { maxOutputTokens: 128000, contextWindowTokens: 1000000, source: 'Claude Fable 5 family', confidence: 'high' };
+    }
+    if (/opus 4 [678]/.test(name)) {
+      return { maxOutputTokens: 128000, contextWindowTokens: 1000000, source: 'Claude Opus 4.6-4.8 family', confidence: 'high' };
     }
     if (/sonnet 4 6/.test(name)) {
       return { maxOutputTokens: 64000, contextWindowTokens: 1000000, source: 'Claude Sonnet 4.6 family', confidence: 'high' };
+    }
+    if (/sonnet 4 5/.test(name)) {
+      return { maxOutputTokens: 64000, contextWindowTokens: 200000, source: 'Claude Sonnet 4.5 family', confidence: 'high' };
     }
     if (/haiku 4 5/.test(name)) {
       return { maxOutputTokens: 64000, contextWindowTokens: 200000, source: 'Claude Haiku 4.5 family', confidence: 'high' };
@@ -308,6 +377,9 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
   }
 
   if (/deepseek/.test(name)) {
+    if (/v4|\b4 (flash|pro)\b/.test(name)) {
+      return { maxOutputTokens: 131072, contextWindowTokens: 1000000, source: 'DeepSeek V4 family', confidence: 'medium' };
+    }
     if (!isNonReasoning && /reason|r1|speciale/.test(name)) {
       return { maxOutputTokens: 64000, contextWindowTokens: 128000, source: 'DeepSeek reasoning family', confidence: 'high' };
     }
@@ -315,10 +387,14 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
   }
 
   if (/grok/.test(name)) {
-    if (/4 20|fast/.test(name)) {
-      return { maxOutputTokens: 8192, contextWindowTokens: 2000000, source: 'xAI long-context family estimate', confidence: 'low' };
+    if (/\bgrok 4\b|grok 4 /.test(name)) {
+      return { maxOutputTokens: 32768, contextWindowTokens: 1000000, source: 'xAI Grok 4.x family', confidence: 'medium' };
     }
     return { maxOutputTokens: 8192, contextWindowTokens: 128000, source: 'xAI Grok family estimate', confidence: 'low' };
+  }
+
+  if (/mistral|magistral|ministral/.test(name)) {
+    return { maxOutputTokens: 16384, contextWindowTokens: 256000, source: 'Mistral 2026 family estimate', confidence: 'low' };
   }
 
   if (/mini ?max m1 80k/.test(name)) {

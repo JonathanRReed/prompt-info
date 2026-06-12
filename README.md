@@ -15,13 +15,11 @@ Built with Next.js, TypeScript, and Tailwind CSS (Rosé Pine theme).
 
 ## Features
 
-- **Token Analysis**: Real-time GPT-style BPE tokenization with support for `o200k_base`, `cl100k_base`, `p50k_base`, `p50k_edit`, and `r50k_base`.
-- **Cost Calculator**: Estimate input, output, and multi-turn agent costs across a variety of models.
-- **Agent Mode**: Calculate costs for multi-turn agent loops with configurable turn presets.
-- **Compaction + Cache Scenario**: Model agent sessions with compaction events, cached input discounts, and configurable output/input cost shares (e.g. 80/20 preset).
-- **Prompt Format Lab**: Compare the same prompt across different formats including JSON, YAML, XML, CSV, and others for payload planning.
-- **Receipt Export**: Generate and download an image receipt of your cost estimate.
-- **Performance Optimized**: Built for speed and ready for static export.
+- **Token counting**: BPE tokenization with `o200k_base`, `cl100k_base`, `p50k_base`, `p50k_edit`, and `r50k_base`, plus per-provider calibration for vendors that bill with their own tokenizers.
+- **Cost calculator**: Live pricing from OpenRouter with a static catalog fallback, input/output cost breakdowns, and per-million rate display.
+- **Agent sessions**: Baseline (stateless) and scenario modes. Scenario re-sends conversation history each turn, prices cache reads and writes per provider, and simulates compaction summarization calls.
+- **Prompt format lab**: The same payload as TOON, JSON, compact JSON, YAML, XML, and CSV, with live token counts per format.
+- **Receipt export**: Download an image receipt of the estimate.
 
 ## Getting Started
 
