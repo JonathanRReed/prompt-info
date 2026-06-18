@@ -14,7 +14,7 @@ Prompt Info is a Next.js app for planning prompts before you spend tokens. It in
 ## Key Pages
 - / : Token Planner
 - /format-comparison : Format Comparison
-- /about : About & references
+- /about/ : About & references
 
 ## References
 - TOON: https://github.com/toon-format/toon

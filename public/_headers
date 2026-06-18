@@ -13,6 +13,24 @@
 /data/*
   Cache-Control: public, max-age=3600
 
+/Favicon/*
+  X-Robots-Tag: noindex
+
+/prompt_info_assets/*
+  X-Robots-Tag: noindex
+
+/favicon*
+  X-Robots-Tag: noindex
+
+/apple-touch-icon-180x180.png
+  X-Robots-Tag: noindex
+
+/jonathan.avif
+  X-Robots-Tag: noindex
+
+/logo.avif
+  X-Robots-Tag: noindex
+
 https://prompt-info.pages.dev/*
   X-Robots-Tag: noindex
 
