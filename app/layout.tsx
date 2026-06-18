@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://prompt-info.helloworldfirm.com',
+    url: 'https://prompt-info.helloworldfirm.com/',
     siteName: 'Prompt Info',
     title: 'Prompt Info - LLM Token Counter & Cost Calculator',
     description: 'Count prompt tokens and estimate request costs across hundreds of live-priced LLM models.',
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
   alternates: {
-    canonical: 'https://prompt-info.helloworldfirm.com',
+    canonical: 'https://prompt-info.helloworldfirm.com/',
   },
   category: 'Technology',
 }
@@ -91,17 +91,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'WebApplication',
+    '@type': 'WebSite',
     name: 'Prompt Info',
-    applicationCategory: 'DeveloperApplication',
-    operatingSystem: 'Any',
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-    },
     description: 'Count prompt tokens and estimate request costs across hundreds of live-priced LLM models, right in the browser.',
-    url: 'https://prompt-info.helloworldfirm.com',
+    url: 'https://prompt-info.helloworldfirm.com/',
     author: {
       '@type': 'Person',
       name: 'Jonathan Reed',
