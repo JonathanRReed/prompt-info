@@ -148,7 +148,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <div className="flex min-w-0 items-center gap-3">
                 <Link href="/" className="flex shrink-0 items-center" aria-label="Prompt Info home">
                   <Image
-                    src="/prompt_info_assets/prompt-info-logo-normal-transparent.png"
+                    src="/prompt_info_assets/prompt-info-logo-normal-600w.png"
                     alt="Prompt Info"
                     width={256}
                     height={64}
@@ -169,12 +169,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   <div className="flex items-center gap-4">
                     <Link href="/" className="flex shrink-0 items-center" aria-label="Prompt Info home">
                       <Image
-                        src="/prompt_info_assets/prompt-info-logo-footer-transparent.png"
+                        src="/prompt_info_assets/prompt-info-logo-footer-600w.png"
                         alt="Prompt Info"
                         width={288}
                         height={72}
                         className="h-10 w-auto"
-                        loading="lazy"
+                        loading="eager"
                       />
                     </Link>
                     <div>
