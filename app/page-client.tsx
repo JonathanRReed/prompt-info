@@ -1353,6 +1353,7 @@ export default function HomePageClient() {
                   setAgentMode(nextTurns > 1);
                 }}
                 className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
+                aria-label="Agent turn count"
                 aria-describedby="agent-mode-help"
               />
               <input
