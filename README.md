@@ -3,13 +3,13 @@
 **LLM Token Counter and Cost Calculator**
 
 A product of [Hello.World Consulting](https://helloworldfirm.com).
-Made by Jonathan Reed.
+Made by Jonathan R. Reed.
 
 ---
 
 ## Overview
 
-Prompt Info is a browser-based LLM token counter and cost calculator. It allows you to check how many tokens are in a prompt before running a model request. You can paste draft text, choose a model, compare OpenAI tokenizer families, estimate output size, and export a planning receipt for multi-turn agent sessions.
+Prompt Info is a browser-based LLM token counter and cost calculator. Paste draft text, choose a model, compare OpenAI tokenizer families, inspect the assumptions, and export a planning receipt for multi-turn agent sessions.
 
 Built with Next.js, TypeScript, and Tailwind CSS (Rosé Pine theme).
 

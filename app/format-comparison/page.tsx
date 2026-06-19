@@ -8,11 +8,11 @@ const pageJsonLd = {
   headline: 'Prompt Format Comparison Tool',
   url: 'https://prompt-info.helloworldfirm.com/format-comparison/',
   datePublished: '2026-04-21',
-  dateModified: '2026-06-11',
+  dateModified: '2026-06-19',
   author: {
-    '@type': 'Organization',
-    name: 'Hello.World Consulting',
-    url: 'https://helloworldfirm.com/',
+    '@type': 'Person',
+    name: 'Jonathan R. Reed',
+    url: 'https://jonathanrreed.com/',
   },
   publisher: {
     '@type': 'Organization',
@@ -62,10 +62,10 @@ export default function FormatComparisonPage() {
             Wrap one prompt in TOON, JSON, compact JSON, YAML, XML, and CSV, and compare token counts side by side. Every card carries the same payload, so any difference you see is pure format overhead.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            Punctuation is the whole story. Braces, quotes, and closing tags all tokenize, which is why compact JSON and TOON usually land near the bottom of the bill and XML near the top. Pick the cheapest format your pipeline can parse without extra ceremony.
+            Punctuation drives the difference. Braces, quotes, and closing tags all tokenize, which is why compact JSON and TOON usually land near the bottom of the bill and XML near the top. Pick the cheapest format your pipeline can parse without extra ceremony.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Hello.World Consulting. <time dateTime="2026-06-11">Updated June 11, 2026</time>.
+            By Jonathan R. Reed for Hello.World Consulting. <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">

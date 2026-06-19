@@ -27,10 +27,10 @@ export const metadata: Metadata = {
     'prompt engineering tools'
   ],
   authors: [
-    { name: 'Jonathan Reed', url: 'https://jonathanrreed.com' },
+    { name: 'Jonathan R. Reed', url: 'https://jonathanrreed.com' },
     { name: 'Hello.World Consulting', url: 'https://helloworldfirm.com' }
   ],
-  creator: 'Jonathan Reed',
+  creator: 'Jonathan R. Reed',
   publisher: 'Hello.World Consulting',
   robots: {
     index: true,
@@ -97,7 +97,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     url: 'https://prompt-info.helloworldfirm.com/',
     author: {
       '@type': 'Person',
-      name: 'Jonathan Reed',
+      name: 'Jonathan R. Reed',
       url: 'https://jonathanrreed.com',
     },
     publisher: {
@@ -192,7 +192,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                           rel="noopener noreferrer"
                           className="transition duration-200 hover:text-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
                         >
-                          Jonathan Reed
+                          Jonathan R. Reed
                         </a>
                       </p>
                     </div>
@@ -208,7 +208,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     ['Privacy policy', '/privacy/'],
                     ['Contact', '/contact/'],
                     ['Hello.World Consulting', 'https://helloworldfirm.com/'],
-                    ['Jonathan Reed', 'https://jonathanrreed.com/'],
+                    ['Jonathan R. Reed', 'https://jonathanrreed.com/'],
                   ].map(([label, href]) => (
                     <a
                       key={href}

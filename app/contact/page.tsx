@@ -6,11 +6,11 @@ const pageJsonLd = {
   name: 'Contact Prompt Info',
   url: 'https://prompt-info.helloworldfirm.com/contact/',
   datePublished: '2026-04-21',
-  dateModified: '2026-06-11',
+  dateModified: '2026-06-19',
   author: {
-    '@type': 'Organization',
-    name: 'Hello.World Consulting',
-    url: 'https://helloworldfirm.com/',
+    '@type': 'Person',
+    name: 'Jonathan R. Reed',
+    url: 'https://jonathanrreed.com/',
   },
   publisher: {
     '@type': 'Organization',
@@ -46,13 +46,13 @@ export default function ContactPage() {
             Talk with the team behind Prompt Info.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Prompt Info is maintained by Hello.World Consulting. Write in with product questions, bug reports, pricing corrections, or consulting work on prompt tooling and model evaluation.
+            Prompt Info is maintained by Jonathan R. Reed through Hello.World Consulting. Write in with product questions, bug reports, pricing corrections, or consulting work on prompt tooling and model evaluation.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
             The fastest reports include what you were trying to estimate, the model or tokenizer selected, the browser used, and the result that looked off.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Hello.World Consulting. <time dateTime="2026-06-11">Updated June 11, 2026</time>.
+            By Jonathan R. Reed for Hello.World Consulting. <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">

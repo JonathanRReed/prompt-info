@@ -32,14 +32,14 @@ export default function AboutPageClient() {
             The scope is deliberately narrow. Everything runs in the browser, the assumptions are printed next to the numbers, and there is nothing to sign up for.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Hello.World Consulting. <time dateTime="2026-06-11">Updated June 11, 2026</time>.
+            By Jonathan R. Reed for Hello.World Consulting. <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">
           {[
             ['Status', 'Public web utility'],
             ['Data', 'Same-origin API plus fallback JSON'],
-            ['Owner', 'Hello.World Consulting'],
+            ['Owner', 'Jonathan R. Reed'],
           ].map(([label, value]) => (
             <dl key={label} className="bg-rose-base p-5">
               <dt className="data-label">{label}</dt>

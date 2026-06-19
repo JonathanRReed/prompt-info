@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Prompt Info - LLM token counter and cost calculator.",
-  "author": "Jonathan Reed",
+  "author": "Jonathan R. Reed",
   "license": "SEE LICENSE IN LICENSE",
   "packageManager": "bun@1.2.22",
   "scripts": {

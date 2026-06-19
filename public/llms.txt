@@ -1,22 +1,27 @@
 # Prompt Info
 
-Prompt Info is a Next.js app for planning prompts before you spend tokens. It includes:
-- Token Planner: live token counts, tokenizer switching, and cost estimation by model, with per-provider tokenizer calibration for non-OpenAI models.
-- Agent session math: baseline (stateless) and scenario (full conversation history with prompt-cache read/write pricing and compaction) cost simulation.
-- Format Comparison: render your prompt as TOON, JSON (pretty/compact), YAML, XML, and CSV with live o200k token counts per format and one click copy.
-- Rosé Pine theming (Night/Dawn) with accessible, readable glass styling.
+Prompt Info is a browser-based LLM token counter and cost planner built by Jonathan R. Reed through Hello.World Consulting.
 
-## Tech Stack
-- Next.js (App Router), TypeScript, Tailwind CSS
-- gpt-tokenizer for token counts
-- Same-origin pricing API with local JSON fallback
+Use it to inspect prompt size, tokenizer behavior, model pricing assumptions, output budgets, cache reads, cache writes, and multi-turn agent-session cost before sending a request to a model provider. The estimates are planning values, not billing guarantees.
 
 ## Key Pages
+
 - / : Token Planner
-- /format-comparison : Format Comparison
-- /about/ : About & references
+- /format-comparison/ : Format Comparison
+- /about/ : About and references
+- /contact/ : Product questions, bug reports, pricing corrections, and consulting requests
+- /privacy/ : Data-boundary notes for prompt handling and support requests
+
+## Data Boundaries
+
+- Prompt text is handled in the browser for token counting and format comparison.
+- Pricing data uses a same-origin pricing API when available and a bundled model catalog as fallback.
+- Do not paste API keys, customer records, unreleased launch material, or confidential transcripts into a public browser utility.
 
 ## References
+
+- Jonathan R. Reed: https://jonathanrreed.com/
+- Hello.World Consulting: https://helloworldfirm.com/
 - TOON: https://github.com/toon-format/toon
 - YAML 1.2.2: https://yaml.org/spec/1.2.2/
 - JSON RFC 8259: https://www.rfc-editor.org/info/rfc8259

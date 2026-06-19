@@ -8,11 +8,11 @@ const pageJsonLd = {
   name: 'LLM Token Counter and Cost Calculator',
   url: 'https://prompt-info.helloworldfirm.com/',
   datePublished: '2026-04-21',
-  dateModified: '2026-06-11',
+  dateModified: '2026-06-19',
   author: {
-    '@type': 'Organization',
-    name: 'Hello.World Consulting',
-    url: 'https://helloworldfirm.com/',
+    '@type': 'Person',
+    name: 'Jonathan R. Reed',
+    url: 'https://jonathanrreed.com/',
   },
   publisher: {
     '@type': 'Organization',
@@ -58,10 +58,10 @@ export default function Page() {
             Know the bill before the model runs.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Prompt Info is a browser-based LLM token counter and cost calculator. Paste a draft prompt, pick a model, and see what the request will cost before you send it. Agent sessions get the full treatment: history re-sends, prompt caching, and compaction.
+            Prompt Info is a browser-based LLM token counter and cost calculator. Paste a draft prompt, pick a model, and see the planning assumptions before you send the request. Agent sessions include history re-sends, prompt caching, and compaction so the estimate is easier to inspect.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Hello.World Consulting. <time dateTime="2026-06-11">Updated June 11, 2026</time>.
+            By Jonathan R. Reed for Hello.World Consulting. <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <a className="action-primary" href="#planner">
