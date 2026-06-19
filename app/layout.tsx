@@ -99,6 +99,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       '@type': 'Person',
       name: 'Jonathan R. Reed',
       url: 'https://jonathanrreed.com',
+      sameAs: [
+        'https://jonathanrreed.com/',
+        'https://github.com/JonathanRReed',
+        'https://helloworldfirm.com/',
+      ],
     },
     publisher: {
       '@type': 'Organization',
