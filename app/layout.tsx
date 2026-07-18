@@ -121,7 +121,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="m-0 p-0" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
         <meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)" />
         <link rel="icon" href="/favicon.ico" sizes="any" />

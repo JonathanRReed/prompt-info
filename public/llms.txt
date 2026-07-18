@@ -6,11 +6,11 @@ Use it to inspect prompt size, tokenizer behavior, model pricing assumptions, ou
 
 ## Key Pages
 
-- / : Token Planner
-- /format-comparison/ : Format Comparison
-- /about/ : About and references
-- /contact/ : Product questions, bug reports, pricing corrections, and consulting requests
-- /privacy/ : Data-boundary notes for prompt handling and support requests
+- [Token Planner](https://prompt-info.helloworldfirm.com/): Count tokens and estimate LLM request and session costs.
+- [Format Comparison](https://prompt-info.helloworldfirm.com/format-comparison/): Compare the token footprint of JSON, YAML, XML, CSV, and TOON.
+- [About and references](https://prompt-info.helloworldfirm.com/about/): Product scope, methodology, and technical references.
+- [Contact](https://prompt-info.helloworldfirm.com/contact/): Product questions, bug reports, pricing corrections, and consulting requests.
+- [Privacy](https://prompt-info.helloworldfirm.com/privacy/): Data-boundary notes for prompt handling and support requests.
 
 ## Data Boundaries
 
@@ -20,12 +20,12 @@ Use it to inspect prompt size, tokenizer behavior, model pricing assumptions, ou
 
 ## References
 
-- Jonathan R. Reed: https://jonathanrreed.com/
-- Hello.World Consulting: https://helloworldfirm.com/
-- TOON: https://github.com/toon-format/toon
-- YAML 1.2.2: https://yaml.org/spec/1.2.2/
-- JSON RFC 8259: https://www.rfc-editor.org/info/rfc8259
-- XML 1.1: https://www.w3.org/TR/xml11/
-- CSV RFC 4180: https://www.rfc-editor.org/rfc/rfc4180
-- OpenAPI 3.1: https://spec.openapis.org/oas/latest.html
-- JSON Schema 2020-12: https://json-schema.org/draft/2020-12/schema
+- [Jonathan R. Reed](https://jonathanrreed.com/)
+- [Hello.World Consulting](https://helloworldfirm.com/)
+- [TOON](https://github.com/toon-format/toon)
+- [YAML 1.2.2](https://yaml.org/spec/1.2.2/)
+- [JSON RFC 8259](https://www.rfc-editor.org/info/rfc8259)
+- [XML 1.1](https://www.w3.org/TR/xml11/)
+- [CSV RFC 4180](https://www.rfc-editor.org/rfc/rfc4180)
+- [OpenAPI 3.1](https://spec.openapis.org/oas/latest.html)
+- [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/schema)
