@@ -18,20 +18,20 @@
   },
   "dependencies": {
     "gpt-tokenizer": "^2.9.0",
-    "next": "^15.5.19",
+    "next": "^15.5.22",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^15.5.19",
+    "@next/bundle-analyzer": "^15.5.22",
     "@types/bun": "^1.3.14",
-    "@types/node": "^20.19.41",
-    "@types/react": "^18.3.30",
+    "@types/node": "^20.19.43",
+    "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
-    "autoprefixer": "^10.5.0",
+    "autoprefixer": "^10.5.4",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^15.5.19",
-    "postcss": "8.5.15",
+    "eslint-config-next": "^15.5.22",
+    "postcss": "8.5.23",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3"
   },
@@ -40,13 +40,15 @@
   },
   "overrides": {
     "ajv": "6.14.0",
-    "brace-expansion": "1.1.14",
+    "brace-expansion": "1.1.18",
     "flatted": "3.4.2",
     "glob": "10.5.0",
     "minimatch": "3.1.5",
     "picomatch": "4.0.4",
     "yaml": "2.8.3",
-    "js-yaml": "4.1.1",
-    "postcss": "8.5.15"
+    "js-yaml": "4.3.1",
+    "postcss": "8.5.23",
+    "sharp": "0.35.3",
+    "ws": "7.5.13"
   }
 }
