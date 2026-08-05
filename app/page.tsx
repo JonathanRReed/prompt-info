@@ -17,7 +17,6 @@ const pageJsonLd = {
     sameAs: [
       'https://jonathanrreed.com/',
       'https://github.com/JonathanRReed',
-      'https://helloworldfirm.com/',
     ],
   },
   publisher: {
