@@ -52,13 +52,10 @@ export default function PrivacyPage() {
           Prompt Info is built for preflight prompt checks.
         </h1>
         <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-          This page explains the practical data boundaries for Prompt Info. The utility is designed for browser-based estimation, public model metadata, and support conversations. It does not do account management or long-term storage of private work.
-        </p>
-        <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-          Treat the app as a planning aid for synthetic or approved material. Teams with regulated data, customer records, or internal launch details should use their own review process before placing that material into any public browser utility, even when the calculation happens locally.
+          This page explains the practical data boundaries for Prompt Info. The utility is designed for browser-based estimation, public model metadata, and support conversations.
         </p>
         <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-          By Jonathan R. Reed for Hello.World Consulting. <time dateTime="2026-06-19">Updated June 19, 2026</time>.
+          <time dateTime="2026-06-19">Updated June 19, 2026</time>.
         </p>
         <div className="mt-10 grid gap-px bg-rose-highlightMed md:grid-cols-3">
           {[
@@ -75,7 +72,7 @@ export default function PrivacyPage() {
         </div>
         <div className="mt-px grid gap-px bg-rose-highlightMed md:grid-cols-2">
           {[
-            ['No account profile', 'Prompt Info does not ask visitors to create an account, submit payment details, or store private model credentials. Keep sensitive prompts, API keys, and customer data out of public browser tools unless your own policy allows that use.'],
+            ['No account profile', 'Prompt Info does not ask visitors to create an account, submit payment details, or store private model credentials.'],
             ['Operational data', 'Basic site delivery may involve normal hosting logs, browser requests, and pricing or model metadata requests. These records are used to operate the site and evaluate issues. They are not used to build visitor accounts.'],
             ['Support requests', 'When you contact Hello.World Consulting, include only the details needed to reproduce the issue or discuss the workflow. Synthetic examples are preferred for troubleshooting.'],
             ['Third-party references', 'External documentation links and provider references are included for review context. Those destinations are governed by their own policies and availability.'],

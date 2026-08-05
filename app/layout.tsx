@@ -190,9 +190,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                       </p>
                     </div>
                   </div>
-                  <p className="mt-8 max-w-3xl text-sm leading-7 text-rose-subtle">
-                    Prompt Info is a compact utility for token counts, cost estimates, and prompt format checks before sending model requests.
-                  </p>
                 </div>
                 <div className="grid gap-px bg-rose-highlightMed">
                   {[
@@ -200,8 +197,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     ['About Prompt Info', '/about/'],
                     ['Privacy policy', '/privacy/'],
                     ['Contact', '/contact/'],
-                    ['Hello.World Consulting', 'https://helloworldfirm.com/'],
-                    ['Jonathan R. Reed', 'https://jonathanrreed.com/'],
                   ].map(([label, href]) => (
                     <a
                       key={href}

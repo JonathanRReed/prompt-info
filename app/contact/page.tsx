@@ -53,25 +53,16 @@ export default function ContactPage() {
             Reach the person who maintains Prompt Info.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Prompt Info is maintained by Jonathan R. Reed through Hello.World Consulting. Write in with product questions, bug reports, pricing corrections, or consulting work on prompt tooling and model evaluation.
-          </p>
-          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            The fastest reports include what you were trying to estimate, the model or tokenizer selected, the browser used, and the result that looked off.
+            Product questions, bug reports, and pricing corrections all land in the same inbox.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Jonathan R. Reed for Hello.World Consulting. <time dateTime="2026-06-19">Updated June 19, 2026</time>.
+            <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">
           <p className="data-label">Primary contact</p>
           <p className="mt-8 block break-words text-2xl font-black text-rose-text">
             hello [at] helloworldfirm [dot] com
-          </p>
-          <p className="mt-6 text-sm leading-7 text-rose-subtle">
-            Include the page URL, browser, and a short description if you are reporting a tool issue.
-          </p>
-          <p className="mt-6 text-sm leading-7 text-rose-subtle">
-            For pricing corrections, include the model name, the provider page you checked, the expected price, and the date. Provider units differ, so note whether the source quotes per-token or per-million prices.
           </p>
           <p className="mt-6 text-sm leading-7 text-rose-subtle">
             Do not send API keys, customer data, or confidential transcripts. A short synthetic example is enough for most troubleshooting.
@@ -83,7 +74,7 @@ export default function ContactPage() {
           ['Bug reports', 'Send the prompt size, selected tokenizer, model, browser, and exact result that looked wrong. Reproducible reports are easier to verify.'],
           ['Integration requests', 'Describe the target workflow, expected input format, and output you need from the token or cost planning utility.'],
           ['Consulting', 'For advisory or implementation work, include the project stage, stack, decision deadline, and the model providers under evaluation.'],
-          ['Data corrections', 'Share the provider source, model identifier, pricing unit, observed value, expected value, and the date the provider page was checked.'],
+          ['Data corrections', 'Share the provider source, model identifier, observed value, expected value, and the date the page was checked. Provider units differ, so note whether the source quotes per-token or per-million prices.'],
         ].map(([title, body]) => (
           <article key={title} className="bg-rose-base p-5 sm:p-7">
             <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{title}</h2>

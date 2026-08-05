@@ -66,7 +66,7 @@ export default function FormatComparisonPage() {
             Punctuation drives the difference. Braces, quotes, and closing tags all tokenize, which is why compact JSON and TOON usually land near the bottom of the bill and XML near the top. Pick the cheapest format your pipeline can parse without extra ceremony.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Jonathan R. Reed for Hello.World Consulting. <time dateTime="2026-06-19">Updated June 19, 2026</time>.
+            <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">

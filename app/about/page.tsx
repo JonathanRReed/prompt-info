@@ -69,23 +69,16 @@ export default function AboutPage() {
             Prompt inspection for model operators.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Prompt Info is a small technical workspace for measuring token count, projected cost, and payload format before model execution. Jonathan R. Reed built it through Hello.World Consulting for developers who need a fast prompt check without signing in to anything.
-          </p>
-          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            The tool is meant for preflight review: paste or draft a request, choose a tokenizer, inspect estimated usage, and compare structured payload shapes before a call reaches a provider. It keeps the practical planning details close to the prompt instead of burying them in separate spreadsheets or docs.
-          </p>
-          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            The scope is deliberately narrow. Everything runs in the browser, the assumptions are printed next to the numbers, and there is nothing to sign up for. That keeps the page fast and makes the math easy to check during an engineering review.
+            The scope is deliberately narrow. Everything runs in the browser, the assumptions are printed next to the numbers, and there is nothing to sign up for.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            By Jonathan R. Reed for Hello.World Consulting. <time dateTime="2026-06-19">Updated June 19, 2026</time>.
+            <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">
           {[
             ['Status', 'Public web utility'],
             ['Data', 'Same-origin API plus fallback JSON'],
-            ['Owner', 'Jonathan R. Reed'],
           ].map(([label, value]) => (
             <dl key={label} className="bg-rose-base p-5">
               <dt className="data-label">{label}</dt>
@@ -110,9 +103,8 @@ export default function AboutPage() {
           <ul className="mt-6 space-y-4 text-sm leading-7 text-rose-subtle">
             <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k.</li>
             <li>Cost estimates are planning values. Provider billing may differ by model version and feature use.</li>
-            <li>Nothing you paste is stored and there are no accounts. The interface only does preflight review.</li>
+            <li>Nothing you paste is stored and there are no accounts.</li>
             <li>Format output is for inspection and planning. Downstream APIs will not all accept the same structure.</li>
-            <li>Model metadata is treated as a working catalog. When the live pricing endpoint is unavailable, the interface falls back to the bundled reference file so the utility remains usable.</li>
           </ul>
         </article>
         <article className="bg-rose-base p-5 sm:p-8 md:p-10">
