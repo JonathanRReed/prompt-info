@@ -50,7 +50,7 @@ export default function ContactPage() {
         <div className="border-rose-highlightMed px-4 py-16 sm:px-6 md:border-r md:px-12 md:py-24">
           <p className="data-label text-rose-love">Contact</p>
           <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
-            Talk with the team behind Prompt Info.
+            Reach the person who maintains Prompt Info.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
             Prompt Info is maintained by Jonathan R. Reed through Hello.World Consulting. Write in with product questions, bug reports, pricing corrections, or consulting work on prompt tooling and model evaluation.

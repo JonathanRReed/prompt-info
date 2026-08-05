@@ -2,7 +2,7 @@
 
 Prompt Info is a browser-based LLM token counter and cost planner built by Jonathan R. Reed through Hello.World Consulting.
 
-Use it to inspect prompt size, tokenizer behavior, model pricing assumptions, output budgets, cache reads, cache writes, and multi-turn agent-session cost before sending a request to a model provider. The estimates are planning values, not billing guarantees.
+Use it to inspect prompt size, tokenizer behavior, model pricing assumptions, output budgets, cache reads, cache writes, and multi-turn agent-session cost before sending a request to a model provider. The estimates are planning values, so a provider invoice will not match them line for line.
 
 ## Key Pages
 

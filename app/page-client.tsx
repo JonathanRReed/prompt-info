@@ -1537,7 +1537,7 @@ export default function HomePageClient() {
             </div>
           )}
           <p className="mt-5 text-sm leading-7 text-rose-muted">
-            The estimate uses the selected model price, planned output length, and agent turn count. It is meant for prompt planning, not provider billing reconciliation.
+            The estimate uses the selected model price, planned output length, and agent turn count. It is for prompt planning. A provider invoice will not match it line for line.
           </p>
         </aside>
 
@@ -1599,7 +1599,7 @@ export default function HomePageClient() {
       <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-16 sm:px-6 md:px-12 md:py-24">
         <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_340px] md:items-end">
           <div>
-            <p className="data-label">Need a different payload shape?</p>
+            <p className="data-label">Payload shapes</p>
             <h2 className="mt-5 max-w-5xl text-[clamp(2.8rem,7vw,6.6rem)] font-black uppercase leading-[0.86] tracking-[-0.07em] text-rose-text">
               Compare the same prompt as TOON, JSON, YAML, XML, and CSV.
             </h2>
