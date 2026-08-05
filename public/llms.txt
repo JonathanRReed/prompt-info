@@ -12,6 +12,23 @@ Use it to inspect prompt size, tokenizer behavior, model pricing assumptions, ou
 - [Contact](https://prompt-info.helloworldfirm.com/contact/): Product questions, bug reports, pricing corrections, and consulting requests.
 - [Privacy](https://prompt-info.helloworldfirm.com/privacy/): Data-boundary notes for prompt handling and support requests.
 
+## Usage Policy
+
+This mirrors the Content-Signal declarations in
+[robots.txt](https://prompt-info.helloworldfirm.com/robots.txt), which is the
+authoritative source.
+
+- search = yes. Indexing this site and returning links or short excerpts is permitted.
+- ai-input = yes. Using this content as real-time grounding or retrieval input for a generative answer is permitted when the answer cites and links back to the source page.
+- ai-train = no. Using this content to train or fine-tune a model is not permitted. This is an express reservation of rights under Article 4 of EU Directive 2019/790.
+
+Crawlers refused in robots.txt include GPTBot, ClaudeBot, Google-Extended,
+Applebot-Extended, meta-externalagent, CCBot, Bytespider, Amazonbot, AI2Bot,
+cohere-ai, anthropic-ai, claude-web, Diffbot, ImagesiftBot, and omgili.
+Search and answer-engine crawlers (Googlebot, Bingbot, OAI-SearchBot,
+Claude-SearchBot, PerplexityBot, Amzn-SearchBot, meta-webindexer, Applebot)
+and user-initiated fetchers remain allowed.
+
 ## Data Boundaries
 
 - Prompt text is handled in the browser for token counting and format comparison.
