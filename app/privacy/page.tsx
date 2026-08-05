@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 
 const pageJsonLd = {
   '@context': 'https://schema.org',
@@ -27,11 +28,17 @@ export const metadata: Metadata = {
     canonical: 'https://prompt-info.helloworldfirm.com/privacy/',
   },
   openGraph: {
+    ...OG_BASE,
     url: 'https://prompt-info.helloworldfirm.com/privacy/',
     title: 'Prompt Info Privacy Policy',
     description:
       'Privacy notes for Prompt Info, covering prompt handling, browser processing, model pricing data, analytics, and support requests.',
-    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
+  },
+  twitter: {
+    ...TWITTER_BASE,
+    title: 'Prompt Info Privacy Policy',
+    description:
+      'Privacy notes for Prompt Info, covering prompt handling, browser processing, and model pricing data.',
   },
 };
 

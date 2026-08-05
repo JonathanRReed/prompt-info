@@ -32,6 +32,13 @@
 /logo.avif
   X-Robots-Tag: noindex
 
+# The 1200w logo is the declared og:image, twitter:image and schema.org
+# publisher logo. The /prompt_info_assets/* rule above would serve it with
+# X-Robots-Tag: noindex, which keeps Google from using it for rich results.
+# This rule comes last so it detaches that header for this one file.
+/prompt_info_assets/prompt-info-logo-normal-1200w.png
+  ! X-Robots-Tag
+
 https://prompt-info.pages.dev/*
   X-Robots-Tag: noindex
 

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 
 const highlights = [
   { title: 'Token planning', body: 'Paste a prompt, pick a model, change tokenizers, and estimate cost before sending.' },
@@ -43,17 +44,17 @@ export const metadata: Metadata = {
     canonical: 'https://prompt-info.helloworldfirm.com/about/',
   },
   openGraph: {
+    ...OG_BASE,
     url: 'https://prompt-info.helloworldfirm.com/about/',
     title: 'About Prompt Info',
     description:
       'Learn how Prompt Info helps developers measure prompt tokens, estimate model costs, and compare payload formats before execution.',
-    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
   twitter: {
+    ...TWITTER_BASE,
     title: 'About Prompt Info',
     description:
       'Learn how Prompt Info helps developers measure prompt tokens, estimate model costs, and compare payload formats.',
-    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
 };
 

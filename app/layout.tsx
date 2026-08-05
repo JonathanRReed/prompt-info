@@ -7,6 +7,7 @@ import { ThemeProvider } from '../components/ThemeProvider'
 import ThemeSelector from '../components/ThemeSelector'
 import Navigation from '../components/Navigation'
 import { themes } from '../lib/themes'
+import { OG_BASE, TWITTER_BASE } from '../lib/seo'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://prompt-info.helloworldfirm.com'),
@@ -44,27 +45,15 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    type: 'website',
-    locale: 'en_US',
+    ...OG_BASE,
     url: 'https://prompt-info.helloworldfirm.com/',
-    siteName: 'Prompt Info',
     title: 'Prompt Info - LLM Token Counter & Cost Calculator',
     description: 'Count prompt tokens and estimate request costs across hundreds of live-priced LLM models.',
-    images: [
-      {
-        url: '/prompt_info_assets/prompt-info-logo-normal-1200w.png',
-        width: 1200,
-        height: 630,
-        alt: 'Prompt Info - LLM Analysis Dashboard',
-      },
-    ],
   },
   twitter: {
-    card: 'summary_large_image',
+    ...TWITTER_BASE,
     title: 'Prompt Info - LLM Token Counter & Cost Calculator',
     description: 'Count prompt tokens and estimate request costs before the model runs.',
-    creator: '@JonathanRReed',
-    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
   alternates: {
     canonical: 'https://prompt-info.helloworldfirm.com/',
@@ -149,8 +138,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   <Image
                     src="/prompt_info_assets/prompt-info-logo-normal-600w.png"
                     alt="Prompt Info"
-                    width={256}
-                    height={64}
+                    width={600}
+                    height={225}
                     className="h-8 w-auto"
                     priority
                   />
@@ -170,8 +159,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                       <Image
                         src="/prompt_info_assets/prompt-info-logo-footer-600w.png"
                         alt="Prompt Info"
-                        width={288}
-                        height={72}
+                        width={600}
+                        height={212}
                         className="h-10 w-auto"
                         loading="eager"
                       />

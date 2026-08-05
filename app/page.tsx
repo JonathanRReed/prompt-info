@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { OG_BASE, TWITTER_BASE } from '../lib/seo';
 import Link from 'next/link';
 import HomePageClient from './page-client';
 
@@ -39,13 +40,14 @@ export const metadata: Metadata = {
     canonical: 'https://prompt-info.helloworldfirm.com/',
   },
   openGraph: {
+    ...OG_BASE,
     url: 'https://prompt-info.helloworldfirm.com/',
     title: 'LLM Token Counter and Cost Calculator',
     description:
       'Count prompt tokens, estimate LLM request costs, compare tokenizers, and plan output budgets before sending model requests.',
-    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
   twitter: {
+    ...TWITTER_BASE,
     title: 'LLM Token Counter and Cost Calculator',
     description:
       'Count prompt tokens, estimate LLM request costs, compare tokenizers, and plan output budgets.',

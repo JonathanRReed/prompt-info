@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 import FormatComparisonPageClient from './page-client';
 
 const pageJsonLd = {
@@ -34,17 +35,17 @@ export const metadata: Metadata = {
     canonical: 'https://prompt-info.helloworldfirm.com/format-comparison/',
   },
   openGraph: {
+    ...OG_BASE,
     url: 'https://prompt-info.helloworldfirm.com/format-comparison/',
     title: 'Prompt Format Comparison Tool',
     description:
       'Convert one prompt into TOON, JSON, YAML, XML, and CSV examples to compare payload shape, readability, and token planning tradeoffs.',
-    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
   twitter: {
+    ...TWITTER_BASE,
     title: 'Prompt Format Comparison Tool',
     description:
       'Convert one prompt into common payload formats to compare readability and token planning tradeoffs.',
-    images: ['/prompt_info_assets/prompt-info-logo-normal-1200w.png'],
   },
 };
 
