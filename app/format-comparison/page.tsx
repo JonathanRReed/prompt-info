@@ -63,7 +63,7 @@ export default function FormatComparisonPage() {
             Wrap one prompt in TOON, JSON, compact JSON, YAML, XML, and CSV, and compare token counts side by side. Every card carries the same payload, so any difference you see is pure format overhead.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            Punctuation drives the difference. Braces, quotes, and closing tags all tokenize, which is why compact JSON and TOON usually land near the bottom of the bill and XML near the top. Pick the cheapest format your pipeline can parse without extra ceremony.
+            Punctuation drives the difference. Braces, quotes, and closing tags all tokenize, which is why compact JSON and TOON usually cost the least and XML the most. Pick the cheapest format your pipeline can parse.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
             <time dateTime="2026-06-19">Updated June 19, 2026</time>.

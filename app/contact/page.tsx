@@ -23,7 +23,7 @@ const pageJsonLd = {
 export const metadata: Metadata = {
   title: 'Contact Prompt Info',
   description:
-    'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, bug reports, and AI workflow tooling requests.',
+    'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, bug reports, and pricing corrections.',
   alternates: {
     canonical: 'https://prompt-info.helloworldfirm.com/contact/',
   },
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     url: 'https://prompt-info.helloworldfirm.com/contact/',
     title: 'Contact Prompt Info',
     description:
-      'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, bug reports, and AI workflow tooling requests.',
+      'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, bug reports, and pricing corrections.',
   },
   twitter: {
     ...TWITTER_BASE,
@@ -73,7 +73,6 @@ export default function ContactPage() {
         {[
           ['Bug reports', 'Send the prompt size, selected tokenizer, model, browser, and exact result that looked wrong. Reproducible reports are easier to verify.'],
           ['Integration requests', 'Describe the target workflow, expected input format, and output you need from the token or cost planning utility.'],
-          ['Consulting', 'For advisory or implementation work, include the project stage, stack, decision deadline, and the model providers under evaluation.'],
           ['Data corrections', 'Share the provider source, model identifier, observed value, expected value, and the date the page was checked. Provider units differ, so note whether the source quotes per-token or per-million prices.'],
         ].map(([title, body]) => (
           <article key={title} className="bg-rose-base p-5 sm:p-7">

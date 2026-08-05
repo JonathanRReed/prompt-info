@@ -9,7 +9,7 @@ Use it to inspect prompt size, tokenizer behavior, model pricing assumptions, ou
 - [Token Planner](https://prompt-info.helloworldfirm.com/): Count tokens and estimate LLM request and session costs.
 - [Format Comparison](https://prompt-info.helloworldfirm.com/format-comparison/): Compare the token footprint of JSON, YAML, XML, CSV, and TOON.
 - [About and references](https://prompt-info.helloworldfirm.com/about/): Product scope, methodology, and technical references.
-- [Contact](https://prompt-info.helloworldfirm.com/contact/): Product questions, bug reports, pricing corrections, and consulting requests.
+- [Contact](https://prompt-info.helloworldfirm.com/contact/): Product questions, bug reports, and pricing corrections.
 - [Privacy](https://prompt-info.helloworldfirm.com/privacy/): Data-boundary notes for prompt handling and support requests.
 
 ## Usage Policy

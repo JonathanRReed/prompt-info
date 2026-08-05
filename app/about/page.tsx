@@ -69,6 +69,9 @@ export default function AboutPage() {
             Prompt inspection for model operators.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
+            Prompt Info is a small technical workspace for measuring token count, projected cost, and payload format before model execution.
+          </p>
+          <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
             The scope is deliberately narrow. Everything runs in the browser, the assumptions are printed next to the numbers, and there is nothing to sign up for.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
