@@ -69,7 +69,7 @@ export default function AboutPage() {
             Prompt inspection for model operators.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Prompt Info is a small technical workspace for measuring token count, projected cost, and payload format before model execution. Jonathan R. Reed built it through Hello.World Consulting for people who need a fast prompt check without signing in to anything.
+            Prompt Info is a small technical workspace for measuring token count, projected cost, and payload format before model execution. Jonathan R. Reed built it through Hello.World Consulting for developers who need a fast prompt check without signing in to anything.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
             The tool is meant for preflight review: paste or draft a request, choose a tokenizer, inspect estimated usage, and compare structured payload shapes before a call reaches a provider. It keeps the practical planning details close to the prompt instead of burying them in separate spreadsheets or docs.
@@ -110,7 +110,7 @@ export default function AboutPage() {
           <ul className="mt-6 space-y-4 text-sm leading-7 text-rose-subtle">
             <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k.</li>
             <li>Cost estimates are planning values. Provider billing may differ by model version and feature use.</li>
-            <li>Nothing is stored and there are no accounts. The interface only does preflight review.</li>
+            <li>Nothing you paste is stored and there are no accounts. The interface only does preflight review.</li>
             <li>Format output is for inspection and planning. Downstream APIs will not all accept the same structure.</li>
             <li>Model metadata is treated as a working catalog. When the live pricing endpoint is unavailable, the interface falls back to the bundled reference file so the utility remains usable.</li>
           </ul>
