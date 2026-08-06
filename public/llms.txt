@@ -1,8 +1,8 @@
 # Prompt Info
 
-Prompt Info is a browser-based LLM token counter and cost planner built by Jonathan R. Reed through Hello.World Consulting.
+> Prompt Info is a browser-based LLM token counter and cost planner built by Jonathan R. Reed through Hello.World Consulting. It shows prompt size, tokenizer behavior, model pricing assumptions, output budgets, cache reads and writes, and multi-turn agent-session cost before a request ever reaches a provider.
 
-Use it to inspect prompt size, tokenizer behavior, model pricing assumptions, output budgets, cache reads, cache writes, and multi-turn agent-session cost before sending a request to a model provider. The estimates are planning values, so a provider invoice will not match them line for line.
+The estimates are planning values, so a provider invoice will not match them line for line.
 
 ## Key Pages
 
@@ -11,16 +11,14 @@ Use it to inspect prompt size, tokenizer behavior, model pricing assumptions, ou
 - [About and references](https://prompt-info.helloworldfirm.com/about/): Product scope, methodology, and technical references.
 - [Contact](https://prompt-info.helloworldfirm.com/contact/): Product questions, bug reports, and pricing corrections.
 - [Privacy](https://prompt-info.helloworldfirm.com/privacy/): Data-boundary notes for prompt handling and support requests.
+- [Sitemap](https://prompt-info.helloworldfirm.com/sitemap.xml): Every indexable URL on the site.
 
-## Usage Policy
+## Policies
 
-This mirrors the Content-Signal declarations in
-[robots.txt](https://prompt-info.helloworldfirm.com/robots.txt), which is the
-authoritative source.
-
-- search = yes. Indexing this site and returning links or short excerpts is permitted.
-- ai-input = yes. Using this content as real-time grounding or retrieval input for a generative answer is permitted when the answer cites and links back to the source page.
-- ai-train = no. Using this content to train or fine-tune a model is not permitted. This is an express reservation of rights under Article 4 of EU Directive 2019/790.
+- [robots.txt](https://prompt-info.helloworldfirm.com/robots.txt): The authoritative machine-readable version of everything below (Content-Signal: search=yes, ai-input=yes, ai-train=no, use=reference).
+- **search = yes.** Indexing this site and returning links or short excerpts is permitted.
+- **ai-input = yes.** Using this content as real-time grounding or retrieval input for a generative answer is permitted when the answer cites and links back to the source page.
+- **ai-train = no.** Using this content to train or fine-tune a model is not permitted. This is an express reservation of rights under Article 4 of EU Directive 2019/790.
 
 Crawlers refused in robots.txt include GPTBot, ClaudeBot, Google-Extended,
 Applebot-Extended, meta-externalagent, CCBot, Bytespider, Amazonbot, AI2Bot,
