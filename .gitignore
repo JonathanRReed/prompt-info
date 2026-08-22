@@ -25,6 +25,9 @@ build/
 Thumbs.db
 # Test output
 coverage/
+playwright-report/
+test-results/
+.wrangler/
 # Editor directories and files
 *.sublime-workspace
 *.sublime-project

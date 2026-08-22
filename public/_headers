@@ -5,13 +5,15 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Cross-Origin-Opener-Policy: same-origin-allow-popups
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://openrouter.ai https://static.cloudflareinsights.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://openrouter.ai https://static.cloudflareinsights.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
   Cache-Control: public, max-age=300, must-revalidate, stale-while-revalidate=86400
 
 /_next/static/*
+  ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
 /data/*
+  ! Cache-Control
   Cache-Control: public, max-age=3600
 
 /Favicon/*
@@ -32,11 +34,13 @@
 /logo.avif
   X-Robots-Tag: noindex
 
-# The 1200w logo is the declared og:image, twitter:image and schema.org
-# publisher logo. The /prompt_info_assets/* rule above would serve it with
-# X-Robots-Tag: noindex, which keeps Google from using it for rich results.
-# This rule comes last so it detaches that header for this one file.
+# The publisher logo and social card are declared in structured data and
+# social metadata. These rules detach the asset-directory noindex header so
+# crawlers can use both images in rich results and link previews.
 /prompt_info_assets/prompt-info-logo-normal-1200w.png
+  ! X-Robots-Tag
+
+/prompt_info_assets/prompt-info-social-card-1200x630.png
   ! X-Robots-Tag
 
 https://prompt-info.pages.dev/*

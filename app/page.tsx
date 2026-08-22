@@ -28,7 +28,7 @@ const pageJsonLd = {
       url: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
     },
   },
-  image: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
+  image: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-social-card-1200x630.png',
 };
 
 export const metadata: Metadata = {
@@ -67,6 +67,7 @@ export default function Page() {
             Prompt Info is a browser-based LLM token counter and cost calculator. Paste a draft prompt, pick a model, and see the planning assumptions before you send the request. Agent sessions account for history re-sends, prompt caching, and compaction.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+            <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
             <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">

@@ -1,19 +1,8 @@
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
-
 /** @type {import('next').NextConfig} */
-module.exports = withBundleAnalyzer({
+module.exports = {
   output: 'export',
   trailingSlash: true,
   images: {
     unoptimized: true,
   },
-  experimental: {
-  },
-  webpack: (config, { isServer }) => {
-    config.experiments = config.experiments || {};
-    config.experiments.asyncWebAssembly = true;
-    return config;
-  },
-});
+};

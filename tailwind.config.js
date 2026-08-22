@@ -26,7 +26,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Outfit', 'Nebula Sans', 'sans-serif'],
+        sans: ['var(--font-outfit)', 'Nebula Sans', 'sans-serif'],
+        mono: ['var(--font-space-mono)', 'monospace'],
       }
     }
   },

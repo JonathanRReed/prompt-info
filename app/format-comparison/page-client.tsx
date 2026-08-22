@@ -109,7 +109,7 @@ export default function FormatComparisonPageClient() {
 
   useEffect(() => {
     let cancelled = false;
-    import('gpt-tokenizer/esm/encoding/o200k_base')
+    import('gpt-tokenizer/encoding/o200k_base')
       .then(({ encode }) => {
         if (!cancelled) setTokenizer({ status: 'ready', encode });
       })

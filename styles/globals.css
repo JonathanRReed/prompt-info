@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap');
+@config "../tailwind.config.js";
+@import "tailwindcss";
 
 @font-face {
   font-family: 'Nebula Sans';
@@ -7,10 +8,6 @@
   font-style: normal;
   font-display: swap;
 }
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 :root {
   --color-rose-base: #0a0a0a;
@@ -41,7 +38,7 @@ body {
   overflow-x: hidden;
   background-color: var(--color-rose-base);
   color: var(--color-rose-text);
-  font-family: 'Outfit', 'Nebula Sans', sans-serif;
+  font-family: var(--font-outfit), 'Nebula Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
@@ -204,7 +201,7 @@ input[type='range'] {
 }
 
 .data-label {
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -215,7 +212,7 @@ input[type='range'] {
 .metric-value {
   display: block;
   margin-top: 1rem;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   font-size: clamp(2.5rem, 8vw, 5.4rem);
   font-weight: 700;
   line-height: 0.9;
@@ -285,7 +282,7 @@ input[type='range'] {
   grid-template-columns: minmax(0, 0.78fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: baseline;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
@@ -313,7 +310,7 @@ input[type='range'] {
   gap: 1rem;
   border-top: 1px solid var(--color-rose-highlightMed);
   padding-top: 1rem;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   text-transform: uppercase;
 }
 
@@ -347,7 +344,7 @@ input[type='range'] {
   gap: 1rem;
   border-top: 1px solid var(--color-rose-highlightMed);
   padding-top: 0.85rem;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   text-transform: uppercase;
 }
 
@@ -384,7 +381,7 @@ input[type='range'] {
   border: 1px solid var(--color-rose-highlightMed);
   background: color-mix(in srgb, var(--color-rose-love) 8%, var(--color-rose-base));
   padding: 0.65rem 0.75rem;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -408,7 +405,7 @@ input[type='range'] {
   border: 1px solid var(--color-rose-love);
   background: var(--color-rose-love);
   padding: 0.8rem 1rem;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -704,7 +701,7 @@ input[type='range'] {
   position: absolute;
   right: 1rem;
   bottom: -0.35rem;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   font-size: clamp(3.8rem, 10vw, 7rem);
   font-weight: 700;
   line-height: 1;
@@ -719,7 +716,7 @@ input[type='range'] {
   border: 1px solid var(--color-rose-highlightMed);
   background: var(--color-rose-surface);
   padding: 0.25rem 0.55rem;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -741,7 +738,7 @@ input[type='range'] {
   justify-content: center;
   border: 1px solid var(--color-rose-highlightMed);
   padding: 0.9rem 1.15rem;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -790,7 +787,7 @@ textarea:focus-visible {
   border: 1px solid var(--color-rose-highlightMed);
   background: var(--color-rose-base);
   padding: 0.55rem 0.7rem;
-  font-family: 'Space Mono', monospace;
+  font-family: var(--font-space-mono), monospace;
   font-size: 0.75rem;
   transition: transform 220ms ease, background-color 220ms ease, border-color 220ms ease;
 }

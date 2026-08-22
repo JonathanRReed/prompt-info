@@ -3,11 +3,25 @@ import { ReactNode } from 'react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { Outfit, Space_Mono } from 'next/font/google'
 import { ThemeProvider } from '../components/ThemeProvider'
 import ThemeSelector from '../components/ThemeSelector'
 import Navigation from '../components/Navigation'
 import { themes } from '../lib/themes'
 import { OG_BASE, TWITTER_BASE } from '../lib/seo'
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-outfit',
+})
+
+const spaceMono = Space_Mono({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  display: 'swap',
+  variable: '--font-space-mono',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://prompt-info.helloworldfirm.com'),
@@ -33,17 +47,6 @@ export const metadata: Metadata = {
   ],
   creator: 'Jonathan R. Reed',
   publisher: 'Hello.World Consulting',
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
   openGraph: {
     ...OG_BASE,
     url: 'https://prompt-info.helloworldfirm.com/',
@@ -107,7 +110,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <html lang="en" className="m-0 p-0" suppressHydrationWarning>
+    <html lang="en" className={`${outfit.variable} ${spaceMono.variable} m-0 p-0`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
         <meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)" />

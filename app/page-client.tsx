@@ -76,11 +76,11 @@ type TokenizerModule = {
 };
 
 const TOKENIZER_IMPORTERS: Record<TokenizerKey, () => Promise<TokenizerModule>> = {
-  o200k_base: () => import('gpt-tokenizer/esm/encoding/o200k_base'),
-  cl100k_base: () => import('gpt-tokenizer/esm/encoding/cl100k_base'),
-  p50k_base: () => import('gpt-tokenizer/esm/encoding/p50k_base'),
-  p50k_edit: () => import('gpt-tokenizer/esm/encoding/p50k_edit'),
-  r50k_base: () => import('gpt-tokenizer/esm/encoding/r50k_base'),
+  o200k_base: () => import('gpt-tokenizer/encoding/o200k_base'),
+  cl100k_base: () => import('gpt-tokenizer/encoding/cl100k_base'),
+  p50k_base: () => import('gpt-tokenizer/encoding/p50k_base'),
+  p50k_edit: () => import('gpt-tokenizer/encoding/p50k_edit'),
+  r50k_base: () => import('gpt-tokenizer/encoding/r50k_base'),
 };
 
 function formatCost(value: number | null) {
@@ -324,13 +324,40 @@ export default function HomePageClient() {
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
+      const staticPricingPromise = fetch('/data/llm-data.json')
+        .then(async response => {
+          if (!response.ok) throw new Error(`Static pricing request failed with ${response.status}`);
+          return (await response.json()) as PricingMap;
+        })
+        .catch(error => {
+          console.warn('Failed to load bundled pricing data', error);
+          return {} as PricingMap;
+        });
+
+      const livePricingPromise = fetchPricing().catch(error => {
+        console.error('Failed to refresh live pricing data', error);
+        return {} as PricingMap;
+      });
+
+      const staticPricing = await staticPricingPromise;
+      if (mounted && Object.keys(staticPricing).length > 0) {
+        setPricing(staticPricing);
+      }
+
       try {
-        const data = await fetchPricing();
-        if (mounted) setPricing(data);
-      } catch (e) {
-        console.error('Failed to load pricing data', e);
-        if (mounted) setPricing({});
+        const livePricing = await livePricingPromise;
+        if (!mounted) return;
+
+        if (Object.keys(livePricing).length > 0) {
+          setPricing(livePricing);
+        } else if (Object.keys(staticPricing).length === 0) {
+          setPricing({});
+        }
+      } catch (error) {
+        console.error('Failed to load pricing data', error);
+        if (mounted && Object.keys(staticPricing).length === 0) setPricing({});
       }
     })();
     return () => {
@@ -963,7 +990,7 @@ export default function HomePageClient() {
               </p>
             </div>
             <output className="font-mono text-sm font-bold text-rose-text tabular-nums">
-              {tokens.length.toLocaleString()} tokens
+              {tokens.length.toLocaleString()} {tokens.length === 1 ? 'token' : 'tokens'}
               {isCalibrated && hasTokens && (
                 <span className="ml-2 text-rose-muted">~{billedPromptTokens.toLocaleString()} billed est.</span>
               )}

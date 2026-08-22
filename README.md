@@ -11,7 +11,7 @@ Made by Jonathan R. Reed.
 
 Prompt Info is a browser-based LLM token counter and cost calculator. Paste draft text, choose a model, compare OpenAI tokenizer families, inspect the assumptions, and export a planning receipt for multi-turn agent sessions.
 
-Built with Next.js, TypeScript, and Tailwind CSS (Rosé Pine theme).
+Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Bun 1.4.
 
 ## Features
 
@@ -21,12 +21,17 @@ Built with Next.js, TypeScript, and Tailwind CSS (Rosé Pine theme).
 - **Prompt format lab**: The same payload as TOON, JSON, compact JSON, YAML, XML, and CSV, with live token counts per format.
 - **Receipt export**: Download an image receipt of the estimate.
 
+## Requirements
+
+- Bun 1.4
+- Node.js 22.12 or newer
+
 ## Getting Started
 
 1. **Install dependencies:**
 
    ```bash
-   bun install
+   bun install --frozen-lockfile
    ```
 
 2. **Run locally:**
@@ -39,8 +44,28 @@ Built with Next.js, TypeScript, and Tailwind CSS (Rosé Pine theme).
 
    ```bash
    bun run build
-   bun run start  # serves the static export from out/ via bunx serve@latest
+   bun run preview:cloudflare
    ```
+
+`preview:cloudflare` serves the `out/` static export together with the Pages Function in `functions/api/pricing.ts`.
+
+## Quality Checks
+
+```bash
+bun run lint
+bun run typecheck
+bun test
+bun run test:e2e
+bun audit
+```
+
+Regenerate the 1200×630 social preview card with `bun run assets:social`.
+
+## Cloudflare Pages
+
+- Build command: `bun install --frozen-lockfile && bun run build`
+- Build output directory: `out`
+- Production hostname: `prompt-info.helloworldfirm.com`
 
 ---
 

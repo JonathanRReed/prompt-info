@@ -74,8 +74,8 @@ export default function ThemeSelector() {
           <span style={{ backgroundColor: themes[theme].colors.surface }} />
           <span style={{ backgroundColor: themes[theme].colors.love }} />
         </span>
-        <span className="hidden sm:inline">{themes[theme].name}</span>
-        <span className="sm:hidden">Theme</span>
+        <span className="hidden lg:inline">{themes[theme].name}</span>
+        <span className="lg:hidden">Theme</span>
       </button>
 
       {isOpen && (

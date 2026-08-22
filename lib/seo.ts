@@ -15,11 +15,11 @@ import type { Metadata } from 'next';
 
 export const SITE_URL = 'https://prompt-info.helloworldfirm.com';
 
-/** Dimensions must match the file on disk (verified 1200x450). */
+/** Dimensions must match the file on disk (verified 1200x630). */
 export const SHARE_IMAGE = {
-  url: '/prompt_info_assets/prompt-info-logo-normal-1200w.png',
+  url: '/prompt_info_assets/prompt-info-social-card-1200x630.png',
   width: 1200,
-  height: 450,
+  height: 630,
   alt: 'Prompt Info - LLM token counter and cost calculator',
 } as const;
 

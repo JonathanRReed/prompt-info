@@ -24,7 +24,7 @@ const pageJsonLd = {
       url: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
     },
   },
-  image: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
+  image: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-social-card-1200x630.png',
 };
 
 export const metadata: Metadata = {
@@ -66,6 +66,7 @@ export default function FormatComparisonPage() {
             Punctuation drives the difference. Braces, quotes, and closing tags all tokenize, which is why compact JSON and TOON usually cost the least and XML the most. Pick the cheapest format your pipeline can parse.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+            <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
             <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
         </div>

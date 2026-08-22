@@ -4,10 +4,6 @@ import Link from 'next/link';
 export const metadata: Metadata = {
   title: 'Page not found',
   description: 'That Prompt Info URL does not exist. Use the links here to reach the token planner, format lab, about, privacy, or contact pages.',
-  robots: {
-    index: false,
-    follow: true,
-  },
   alternates: {
     canonical: null,
   },
