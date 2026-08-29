@@ -19,6 +19,7 @@ Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Bun 1.4.
 - **Cost calculator**: Live pricing from OpenRouter with a static catalog fallback, input/output cost breakdowns, and per-million rate display.
 - **Agent sessions**: Baseline (stateless) and scenario modes. Scenario re-sends conversation history each turn, prices cache reads and writes per provider, and simulates compaction summarization calls.
 - **Prompt format lab**: The same payload as TOON, JSON, compact JSON, YAML, XML, and CSV, with live token counts per format.
+- **Token efficiency**: Cost-per-task comparison showing how a cheaper per-token model that emits more tokens can cost more overall, with an editable calculator seeded from published benchmark token counts.
 - **Receipt export**: Download an image receipt of the estimate.
 
 ## Requirements

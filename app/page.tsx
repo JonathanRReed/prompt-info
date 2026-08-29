@@ -9,7 +9,7 @@ const pageJsonLd = {
   name: 'LLM Token Counter and Cost Calculator',
   url: 'https://prompt-info.helloworldfirm.com/',
   datePublished: '2026-04-21',
-  dateModified: '2026-06-19',
+  dateModified: '2026-08-29',
   author: {
     '@type': 'Person',
     name: 'Jonathan R. Reed',
@@ -68,7 +68,7 @@ export default function Page() {
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
             <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
-            <time dateTime="2026-06-19">Updated June 19, 2026</time>.
+            <time dateTime="2026-08-29">Updated August 29, 2026</time>.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <a className="action-primary" href="#planner">
@@ -77,15 +77,19 @@ export default function Page() {
             <Link className="action-secondary" href="/format-comparison/">
               Convert format
             </Link>
+            <Link className="action-secondary" href="/token-efficiency/">
+              Compare efficiency
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px md:grid-cols-3">
+      <section className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px sm:grid-cols-2 lg:grid-cols-4">
         {[
           ['Token counter', 'Count GPT-style BPE tokens with o200k, cl100k, p50k, p50k edit, and r50k tokenizers.'],
           ['Cost calculator', 'Estimate input, output, and multi-turn agent costs before sending expensive model calls.'],
           ['Prompt format lab', 'Compare the same prompt as TOON, JSON, YAML, XML, CSV, and compact JSON for payload planning.'],
+          ['Token efficiency', 'Compare cost per completed task: a cheaper per-token model that talks twice as much can bill more.'],
         ].map(([title, body]) => (
           <article key={title} className="bg-rose-base p-5 sm:p-7 md:min-h-64">
             <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{title}</h2>

@@ -21,6 +21,19 @@ test('format comparison updates the shared payload', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Copy TOON snippet' })).toBeVisible();
 });
 
+test('token efficiency lab recomputes cost per task from edited inputs', async ({ page }) => {
+  await page.goto('/token-efficiency/');
+
+  await expect(page).toHaveTitle(/LLM Token Efficiency Comparison/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Cheap per token is not cheap per task.' })).toBeVisible();
+
+  const solCard = page.locator('#efficiency-lab article', { hasText: 'GPT-5.6 Sol' });
+  await expect(solCard.locator('output').first()).toHaveText('$0.3200');
+
+  await solCard.getByLabel('Output tokens per task').fill('30000');
+  await expect(solCard.locator('output').first()).toHaveText('$0.6200');
+});
+
 test('theme selection persists across reloads', async ({ page }) => {
   await page.goto('/');
 

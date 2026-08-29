@@ -3,7 +3,7 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://prompt-info.helloworldfirm.com/</loc>
-    <lastmod>2026-06-19</lastmod>
+    <lastmod>2026-08-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -14,8 +14,14 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://prompt-info.helloworldfirm.com/token-efficiency/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://prompt-info.helloworldfirm.com/about/</loc>
-    <lastmod>2026-06-19</lastmod>
+    <lastmod>2026-08-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

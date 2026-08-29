@@ -8,6 +8,7 @@ The estimates are planning values, so a provider invoice will not match them lin
 
 - [Token Planner](https://prompt-info.helloworldfirm.com/): Count tokens and estimate LLM request and session costs.
 - [Format Comparison](https://prompt-info.helloworldfirm.com/format-comparison/): Compare the token footprint of JSON, YAML, XML, CSV, and TOON.
+- [Token Efficiency](https://prompt-info.helloworldfirm.com/token-efficiency/): Compare cost per completed task; a cheaper per-token model that emits more tokens can cost more overall.
 - [About and references](https://prompt-info.helloworldfirm.com/about/): Product scope, methodology, and technical references.
 - [Contact](https://prompt-info.helloworldfirm.com/contact/): Product questions, bug reports, and pricing corrections.
 - [Privacy](https://prompt-info.helloworldfirm.com/privacy/): Data-boundary notes for prompt handling and support requests.
@@ -37,6 +38,7 @@ and user-initiated fetchers remain allowed.
 
 - [Jonathan R. Reed](https://jonathanrreed.com/)
 - [Hello.World Consulting](https://helloworldfirm.com/)
+- [Artificial Analysis](https://artificialanalysis.ai/)
 - [TOON](https://github.com/toon-format/toon)
 - [YAML 1.2.2](https://yaml.org/spec/1.2.2/)
 - [JSON RFC 8259](https://www.rfc-editor.org/info/rfc8259)
