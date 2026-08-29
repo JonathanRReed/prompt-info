@@ -27,6 +27,36 @@ describe('resolveModelTokenProfile', () => {
       expect(profile.maxOutputTokens).toBe(128000);
     }
   });
+
+  test('GPT-5.6 Sol, Terra, and Luna infer the shared 5.6 family limits', () => {
+    for (const name of ['OpenAI: GPT-5.6 Sol', 'OpenAI: GPT-5.6 Terra', 'OpenAI: GPT-5.6 Luna']) {
+      const profile = resolveModelTokenProfile(name);
+      expect(profile.company).toBe('OpenAI');
+      expect(profile.contextWindowTokens).toBe(1050000);
+      expect(profile.maxOutputTokens).toBe(128000);
+    }
+  });
+
+  test('Claude 5 rules do not swallow the 4.5-era models', () => {
+    expect(resolveModelTokenProfile('Anthropic: Claude Opus 5').contextWindowTokens).toBe(1000000);
+    expect(resolveModelTokenProfile('Anthropic: Claude Sonnet 5').maxOutputTokens).toBe(128000);
+    expect(resolveModelTokenProfile('Anthropic: Claude Sonnet 4.5').maxOutputTokens).toBe(64000);
+    expect(resolveModelTokenProfile('Anthropic: Claude Sonnet 4.5').contextWindowTokens).toBe(200000);
+  });
+
+  test('Kimi K3 resolves as Moonshot with the 1M context and a clamped explicit cap', () => {
+    const inferred = resolveModelTokenProfile('Moonshot: Kimi K3');
+    expect(inferred.company).toBe('Moonshot');
+    expect(inferred.contextWindowTokens).toBe(1048576);
+
+    const explicit = resolveModelTokenProfile('Moonshot: Kimi K3', { maxOutputTokens: 1048576, contextWindowTokens: 1048576 });
+    expect(explicit.maxOutputTokens).toBe(300000);
+  });
+
+  test('Grok 4.6 infers the 500K context window, other Grok 4.x keep 1M', () => {
+    expect(resolveModelTokenProfile('xAI: Grok 4.6').contextWindowTokens).toBe(500000);
+    expect(resolveModelTokenProfile('xAI: Grok 4.3').contextWindowTokens).toBe(1000000);
+  });
 });
 
 describe('getModelTokenizerMultiplier', () => {

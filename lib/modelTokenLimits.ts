@@ -9,24 +9,28 @@ export type ModelCompany =
   | 'xAI'
   | 'DeepSeek'
   | 'Mistral'
+  | 'Moonshot'
   | 'Other';
 
 // Cache READ price as a percent of the base input price (10 = 10%), used only
 // when the model's own published cache pricing is unavailable.
-// Verified against official provider pricing pages, June 2026.
+// Verified against official provider pricing pages, August 2026.
 export const MODEL_COMPANY_CACHE_READ_PCT: Record<ModelCompany, number> = {
-  OpenAI: 10, // GPT-5.x cached input is 10% of base input, no write premium (older 4o-era was 50%)
+  OpenAI: 10, // GPT-5.x cached input is 10% of base input (older 4o-era was 50%)
   Anthropic: 10, // cache read = 10% of base input
   Google: 10, // Gemini 2.5/3.x context-cache read = 10% of base input (storage billed separately per hour)
-  xAI: 16, // Grok 4.3: $0.20 cached vs $1.25 input
+  xAI: 25, // Grok 4.6: $0.50 cached vs $2.00 input (Grok 4.3 was 16%)
   DeepSeek: 2, // V4 cache-hit pricing is ~2% of cache-miss input
   Mistral: 100, // Mistral publishes no cached-input discount; bill re-sent history at full price
+  Moonshot: 10, // Kimi K3 cache-hit input is $0.30 vs $3.00 base
   Other: 50,
 };
 
 // Cache WRITE premium as a multiplier on the base input price for tokens that
-// are new to the cached prefix. Only Anthropic charges an explicit write
-// premium (1.25x for the default 5-minute TTL); others write at base price.
+// are new to the cached prefix. Anthropic charges 1.25x (default 5-minute
+// TTL); GPT-5.6 Sol also bills cache writes at 1.25x, but that comes through
+// the model's explicit inputCacheWrite rate in the catalog rather than a
+// company-wide default. Everyone else writes at base price.
 export const MODEL_COMPANY_CACHE_WRITE_MULTIPLIER: Record<ModelCompany, number> = {
   OpenAI: 1,
   Anthropic: 1.25,
@@ -34,6 +38,7 @@ export const MODEL_COMPANY_CACHE_WRITE_MULTIPLIER: Record<ModelCompany, number> 
   xAI: 1,
   DeepSeek: 1,
   Mistral: 1,
+  Moonshot: 1,
   Other: 1,
 };
 
@@ -50,6 +55,7 @@ export const MODEL_COMPANY_TOKENIZER_MULTIPLIER: Record<ModelCompany, number> = 
   xAI: 1.05,
   DeepSeek: 1.05, // parity on prose, ~1.1x on code
   Mistral: 1.05, // Tekken tokenizer is near-parity with o200k
+  Moonshot: 1.05, // Kimi BPE vocabulary is near-parity with o200k on prose
   Other: 1.05,
 };
 
@@ -265,6 +271,10 @@ function inferModelCompany(model: string): ModelCompany {
     return 'Mistral';
   }
 
+  if (/kimi/.test(normalized) || /moonshot/.test(normalized)) {
+    return 'Moonshot';
+  }
+
   return 'Other';
 }
 
@@ -293,6 +303,10 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
 
   if (/\bgpt 5\b/.test(name) && /\bpro\b/.test(name) && !/\bgpt 5 [124]\b/.test(name)) {
     return { maxOutputTokens: 272000, contextWindowTokens: 400000, source: 'OpenAI GPT-5 Pro family', confidence: 'high' };
+  }
+
+  if (/\bgpt 5 6\b/.test(name)) {
+    return { maxOutputTokens: 128000, contextWindowTokens: 1050000, source: 'OpenAI GPT-5.6 family (Sol, Terra, Luna)', confidence: 'high' };
   }
 
   if (/\bgpt 5 5\b/.test(name)) {
@@ -358,6 +372,12 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
     if (/fable 5/.test(name)) {
       return { maxOutputTokens: 128000, contextWindowTokens: 1000000, source: 'Claude Fable 5 family', confidence: 'high' };
     }
+    if (/\bopus 5\b/.test(name)) {
+      return { maxOutputTokens: 128000, contextWindowTokens: 1000000, source: 'Claude Opus 5 family', confidence: 'high' };
+    }
+    if (/\bsonnet 5\b/.test(name)) {
+      return { maxOutputTokens: 128000, contextWindowTokens: 1000000, source: 'Claude Sonnet 5 family', confidence: 'high' };
+    }
     if (/opus 4 [678]/.test(name)) {
       return { maxOutputTokens: 128000, contextWindowTokens: 1000000, source: 'Claude Opus 4.6-4.8 family', confidence: 'high' };
     }
@@ -387,6 +407,9 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
   }
 
   if (/grok/.test(name)) {
+    if (/grok 4 6/.test(name)) {
+      return { maxOutputTokens: 32768, contextWindowTokens: 500000, source: 'xAI Grok 4.6 (output cap unpublished)', confidence: 'medium' };
+    }
     if (/\bgrok 4\b|grok 4 /.test(name)) {
       return { maxOutputTokens: 32768, contextWindowTokens: 1000000, source: 'xAI Grok 4.x family', confidence: 'medium' };
     }
@@ -395,6 +418,12 @@ function inferModelTokenProfile(model: string): ModelTokenProfile | null {
 
   if (/mistral|magistral|ministral/.test(name)) {
     return { maxOutputTokens: 16384, contextWindowTokens: 256000, source: 'Mistral 2026 family estimate', confidence: 'low' };
+  }
+
+  if (/kimi k3/.test(name)) {
+    // Moonshot lists the output cap as the full 1M context; the planner's
+    // HARD_MAX_OUTPUT_TOKENS clamp keeps the working cap at 300K.
+    return { maxOutputTokens: 1048576, contextWindowTokens: 1048576, source: 'Moonshot Kimi K3 family', confidence: 'medium' };
   }
 
   if (/mini ?max m1 80k/.test(name)) {
