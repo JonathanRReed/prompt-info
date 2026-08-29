@@ -4,6 +4,7 @@ import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 const highlights = [
   { title: 'Token planning', body: 'Paste a prompt, pick a model, change tokenizers, and estimate cost before sending.' },
   { title: 'Format comparison', body: 'Render the same prompt as TOON, JSON, YAML, XML, and CSV for practical payload review.' },
+  { title: 'Token efficiency', body: 'Compare cost per completed task, where a verbose model with cheap tokens can out-bill a pricier, terser one.' },
   { title: 'Pricing data', body: 'Pricing loads from a same-origin API. When that endpoint is down, the bundled model catalog takes over.' },
 ];
 
@@ -23,7 +24,7 @@ const pageJsonLd = {
   name: 'About Prompt Info',
   url: 'https://prompt-info.helloworldfirm.com/about/',
   datePublished: '2026-04-21',
-  dateModified: '2026-06-19',
+  dateModified: '2026-08-29',
   author: {
     '@type': 'Person',
     name: 'Jonathan R. Reed',
@@ -76,13 +77,14 @@ export default function AboutPage() {
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
             <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
-            <time dateTime="2026-06-19">Updated June 19, 2026</time>.
+            <time dateTime="2026-08-29">Updated August 29, 2026</time>.
           </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">
           {[
             ['Status', 'Public web utility'],
             ['Data', 'Same-origin API plus fallback JSON'],
+            ['Owner', 'Jonathan R. Reed'],
           ].map(([label, value]) => (
             <dl key={label} className="bg-rose-base p-5">
               <dt className="data-label">{label}</dt>
@@ -92,7 +94,7 @@ export default function AboutPage() {
         </aside>
       </section>
 
-      <section className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px md:grid-cols-3">
+      <section className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px sm:grid-cols-2 lg:grid-cols-4">
         {highlights.map(item => (
           <article key={item.title} className="bg-rose-base p-5 sm:p-7 md:min-h-72">
             <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{item.title}</h2>
@@ -105,7 +107,9 @@ export default function AboutPage() {
         <article className="bg-rose-base p-5 sm:p-8 md:p-10">
           <p className="data-label">Operational notes</p>
           <ul className="mt-6 space-y-4 text-sm leading-7 text-rose-subtle">
-            <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k.</li>
+            <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k. OpenAI counts are exact.</li>
+            <li>Non-OpenAI vendors bill with their own tokenizers, which typically produce more tokens than OpenAI BPE for the same text. Cost math applies a per-provider calibration multiplier so estimates do not undercount.</li>
+            <li>Agent scenario estimates re-send conversation history each turn, bill cached context at the provider&apos;s cache read rate, apply cache write premiums where charged, and simulate compaction summarization calls.</li>
             <li>Cost estimates are planning values. Provider billing may differ by model version and feature use.</li>
             <li>Nothing you paste is stored and there are no accounts.</li>
             <li>Format output is for inspection and planning. Downstream APIs will not all accept the same structure.</li>

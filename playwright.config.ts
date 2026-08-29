@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Override with PREVIEW_PORT when 4173 is taken (reuseExistingServer would
+// otherwise silently run the suite against whatever is squatting the port).
+const previewPort = Number(process.env.PREVIEW_PORT ?? 4173);
+const previewUrl = `http://127.0.0.1:${previewPort}`;
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -7,7 +12,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'line',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: previewUrl,
     trace: 'retain-on-failure',
   },
   projects: [
@@ -21,8 +26,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'bun run build && bun run preview:cloudflare',
-    url: 'http://127.0.0.1:4173',
+    command: `bun run build && bunx wrangler pages dev out --port ${previewPort} --compatibility-date=2026-08-04`,
+    url: previewUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
