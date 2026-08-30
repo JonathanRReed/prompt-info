@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { breakEvenOutputRate, costPerTask, EFFICIENCY_PRESETS } from './tokenEfficiency';
+import { breakEvenOutputRate, costPerTask, EFFICIENCY_PRESETS, scaleOutputTokensByEfficiency } from './tokenEfficiency';
 
 describe('costPerTask', () => {
   test('prices input and output tokens at per-million rates', () => {
@@ -53,6 +53,24 @@ describe('breakEvenOutputRate', () => {
       { inputTokensPerTask: 100, outputTokensPerTask: 0, inputPerMillion: 1 }
     );
     expect(rate).toBeNull();
+  });
+});
+
+describe('scaleOutputTokensByEfficiency', () => {
+  test('translates one measured task into another model using relative verbosity', () => {
+    expect(scaleOutputTokensByEfficiency({
+      measuredOutputTokens: 12_000,
+      referenceOutputTokens: 15_000,
+      comparisonOutputTokens: 30_000,
+    })).toBe(24_000);
+  });
+
+  test('returns the measured value when the reference assumption is unusable', () => {
+    expect(scaleOutputTokensByEfficiency({
+      measuredOutputTokens: 12_000,
+      referenceOutputTokens: 0,
+      comparisonOutputTokens: 30_000,
+    })).toBe(12_000);
   });
 });
 

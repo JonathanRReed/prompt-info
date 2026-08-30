@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import PromptInput from '../components/PromptInput';
 import ModelSelect from '../components/ModelSelect';
+import { usePromptScenario } from '../components/ScenarioProvider';
 import { fetchPricing, PricingMap } from '../lib/fetchPricing';
 import {
   getCompanyCachedInputBillablePct,
@@ -24,6 +25,8 @@ import {
   type SessionOutputSizing,
   type SessionRunMode,
 } from '../lib/sessionMath';
+import { projectWorkload, type WorkloadCadence } from '../lib/workloadMath';
+import { chooseDefaultModel } from '../lib/modelSelection';
 
 const DEFAULT_OUTPUT_TOKENS = 4096;
 const AUTO_OUTPUT_FALLBACK = 768;
@@ -32,6 +35,13 @@ const TOKEN_STEP = 64;
 const DEFAULT_AGENT_TURNS = 8;
 const MAX_AGENT_TURNS = 200;
 const RECEIPT_ANIMATION_MS = 2800;
+
+const WORKLOAD_CADENCES: Array<{ value: WorkloadCadence; label: string }> = [
+  { value: 'once', label: 'One-time batch' },
+  { value: 'day', label: 'Per day' },
+  { value: 'week', label: 'Per week' },
+  { value: 'month', label: 'Per month' },
+];
 
 const TOKENIZERS = [
   { key: 'o200k_base', label: 'o200k_base', description: 'Newest OpenAI GPT-4o, o-series, and GPT-5 style models' },
@@ -216,6 +226,8 @@ function deriveModelCacheWriteMultiplier(entry: PricingMap[string] | undefined, 
 function ReceiptCard({
   rows,
   totalTokens,
+  totalTokensLabel = 'Billable tokens',
+  totalLabel = 'Total cost',
   totalCostLabel,
   note,
   action,
@@ -225,6 +237,8 @@ function ReceiptCard({
 }: {
   rows: ReceiptRow[];
   totalTokens: number;
+  totalTokensLabel?: string;
+  totalLabel?: string;
   totalCostLabel: string;
   note: string;
   action?: ReactNode;
@@ -254,7 +268,7 @@ function ReceiptCard({
 
       {showRegister && (
         <div className="register-strip mt-5" aria-hidden="true">
-          <span>Ringing up session total</span>
+          <span>Ringing up {totalLabel.toLowerCase()}</span>
           <span>{totalCostLabel}</span>
         </div>
       )}
@@ -273,11 +287,11 @@ function ReceiptCard({
       </div>
 
       <div className="receipt-total mt-8">
-        <span>Billable tokens</span>
+        <span>{totalTokensLabel}</span>
         <data value={totalTokens}>{totalTokens.toLocaleString()}</data>
       </div>
       <div className="receipt-cost-total mt-3">
-        <span>Total cost</span>
+        <span>{totalLabel}</span>
         <output>{totalCostLabel}</output>
       </div>
       <p className="receipt-note mt-5 text-sm leading-6 text-rose-muted">
@@ -289,6 +303,7 @@ function ReceiptCard({
 }
 
 export default function HomePageClient() {
+  const { setScenario } = usePromptScenario();
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState('');
   const [tokens, setTokens] = useState<number[]>([]);
@@ -316,6 +331,8 @@ export default function HomePageClient() {
   const [sessionCompactionRetentionPct, setSessionCompactionRetentionPct] = useState(DEFAULT_SESSION_COMPACTION_RETENTION_PCT);
   const [sessionTurnOverheadTokens, setSessionTurnOverheadTokens] = useState(DEFAULT_SESSION_TURN_OVERHEAD_TOKENS);
   const [sessionCompactionSummaryFloorTokens, setSessionCompactionSummaryFloorTokens] = useState(DEFAULT_SESSION_COMPACTION_SUMMARY_FLOOR_TOKENS);
+  const [workloadRuns, setWorkloadRuns] = useState(1);
+  const [workloadCadence, setWorkloadCadence] = useState<WorkloadCadence>('once');
   const animatedSessionCostRef = useRef(0);
   const finalReceiptRef = useRef<HTMLDivElement | null>(null);
   const finalReceiptAnimationTimerRef = useRef<number | null>(null);
@@ -408,7 +425,7 @@ export default function HomePageClient() {
   useEffect(() => {
     if (modelsLoading || availableModels.length === 0) return;
     if (!model || !availableModels.includes(model)) {
-      setModel(availableModels[0]);
+      setModel(chooseDefaultModel(availableModels));
     }
   }, [availableModels, model, modelsLoading]);
 
@@ -601,8 +618,24 @@ export default function HomePageClient() {
   const sessionTurnCost = activeEstimate?.turnCost ?? null;
   const sessionCompactionCost = activeEstimate?.compactionCost ?? null;
   const sessionCost = activeEstimate?.totalCost ?? null;
-  const animatedSessionCostLabel = sessionCost === null ? 'N/A' : formatCost(animatedSessionCost);
+  const workloadProjection = sessionCost === null
+    ? null
+    : projectWorkload({ costPerRun: sessionCost, runs: workloadRuns, cadence: workloadCadence });
+  const headlineCost = workloadProjection?.costPerPeriod ?? sessionCost;
+  const cadenceNoun = workloadCadence === 'once' ? 'batch' : workloadCadence;
+  const headlineCostTitle = workloadCadence === 'once' && workloadRuns === 1
+    ? 'Total cost'
+    : workloadCadence === 'once'
+      ? 'Batch cost'
+      : workloadCadence === 'day'
+        ? 'Daily cost'
+        : workloadCadence === 'week'
+          ? 'Weekly cost'
+          : 'Monthly cost';
+  const animatedSessionCostLabel = headlineCost === null ? 'N/A' : formatCost(animatedSessionCost);
   const finalSessionCostLabel = formatCost(sessionCost);
+  const finalHeadlineCostLabel = formatCost(headlineCost);
+  const isScaledWorkload = workloadRuns > 1 || workloadCadence !== 'once';
   const receiptAnimationSignature = useMemo(
     () => [
       model,
@@ -612,7 +645,7 @@ export default function HomePageClient() {
       agentMode,
       effectiveAgentTurns,
       totalSessionTokens,
-      finalSessionCostLabel,
+      finalHeadlineCostLabel,
       sessionMode,
       sessionOutputSizing,
       sessionTargetOutputSharePct,
@@ -620,8 +653,10 @@ export default function HomePageClient() {
       sessionCacheWriteMultiplier,
       sessionCompactionThresholdPct,
       sessionCompactionRetentionPct,
+      workloadRuns,
+      workloadCadence,
     ].join('|'),
-    [agentMode, effectiveAgentTurns, finalSessionCostLabel, model, outputMode, plannedOutput, tokenizer, totalSessionTokens, sessionMode, sessionOutputSizing, sessionTargetOutputSharePct, sessionCachedInputBillablePct, sessionCacheWriteMultiplier, sessionCompactionThresholdPct, sessionCompactionRetentionPct]
+    [agentMode, effectiveAgentTurns, finalHeadlineCostLabel, model, outputMode, plannedOutput, tokenizer, totalSessionTokens, sessionMode, sessionOutputSizing, sessionTargetOutputSharePct, sessionCachedInputBillablePct, sessionCacheWriteMultiplier, sessionCompactionThresholdPct, sessionCompactionRetentionPct, workloadCadence, workloadRuns]
   );
   // Debounced so continuous typing or slider drags settle before the receipt
   // animation resets and replays; also avoids remounting the card per keystroke.
@@ -632,7 +667,7 @@ export default function HomePageClient() {
   }, [receiptAnimationSignature]);
 
   useEffect(() => {
-    const target = typeof sessionCost === 'number' ? sessionCost : 0;
+    const target = typeof headlineCost === 'number' ? headlineCost : 0;
     const start = animatedSessionCostRef.current;
     let frame = 0;
     let latest = start;
@@ -666,7 +701,7 @@ export default function HomePageClient() {
       cancelAnimationFrame(frame);
       animatedSessionCostRef.current = latest;
     };
-  }, [sessionCost]);
+  }, [headlineCost]);
 
   useEffect(() => {
     if (summaryView !== 'receipt') return;
@@ -717,6 +752,28 @@ export default function HomePageClient() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!prompt.trim()) {
+      setScenario(null);
+      return;
+    }
+
+    setScenario({
+      prompt,
+      model,
+      tokenizer,
+      inputTokensPerRun: totalPromptTokens,
+      outputTokensPerRun: totalOutputTokens,
+      turns: effectiveAgentTurns,
+      sessionMode,
+      inputPerMillion: inPricePer1k === null ? null : inPricePer1k * 1000,
+      outputPerMillion: outPricePer1k === null ? null : outPricePer1k * 1000,
+      costPerRun: sessionCost,
+      workloadRuns,
+      workloadCadence,
+    });
+  }, [effectiveAgentTurns, inPricePer1k, model, outPricePer1k, prompt, sessionCost, sessionMode, setScenario, tokenizer, totalOutputTokens, totalPromptTokens, workloadCadence, workloadRuns]);
+
   const isCalibrated = tokenizerMultiplier !== 1;
   const sessionModeLabel = sessionMode === 'scenario'
     ? sessionOutputSizing === 'costShare'
@@ -727,7 +784,9 @@ export default function HomePageClient() {
     ? sessionMode === 'scenario'
       ? 'Scenario mode re-sends conversation history each turn, bills cached context at the cache read rate, and simulates compaction calls.'
       : 'Baseline mode bills each turn as an independent one-shot request. Switch to Scenario for full-history session math.'
-    : 'Empty values show until you paste a prompt and choose a priced model.';
+    : sessionCost === null
+      ? 'Empty values show until you paste a prompt and choose a priced model.'
+      : 'One-shot mode prices one prompt and one planned response with the selected model rates.';
   const receiptRows: ReceiptRow[] = [
     ['Model', compactModelName(model)],
     ['Model provider', formatCompany(modelCompany)],
@@ -772,6 +831,19 @@ export default function HomePageClient() {
     }
     receiptRows.push(['Achieved output share', formatPercent(activeEstimate.achievedOutputCostSharePct)]);
   }
+  if (workloadProjection && (workloadRuns > 1 || workloadCadence !== 'once')) {
+    receiptRows.push(
+      ['Cost / run', finalSessionCostLabel],
+      [`Runs / ${cadenceNoun}`, workloadRuns.toLocaleString()],
+      [headlineCostTitle, finalHeadlineCostLabel],
+    );
+    if (workloadProjection.monthlyCost !== null) {
+      receiptRows.push(['Monthly average', formatCost(workloadProjection.monthlyCost)]);
+    }
+    if (workloadProjection.annualCost !== null) {
+      receiptRows.push(['Annual estimate', formatCost(workloadProjection.annualCost)]);
+    }
+  }
 
   const summaryRows: ReceiptRow[] = [
     ['Model provider', formatCompany(modelCompany)],
@@ -798,7 +870,7 @@ export default function HomePageClient() {
     ['Input cost', formatCost(sessionInputCost)],
     ['Output cost', formatCost(sessionOutputCost)],
     ['Turn cost', formatCost(sessionTurnCost)],
-    ['Total cost', finalSessionCostLabel],
+    ['Cost / run', finalSessionCostLabel],
   );
   if (activeEstimate) {
     summaryRows.push(
@@ -816,6 +888,18 @@ export default function HomePageClient() {
     summaryRows.push(['Achieved output share', formatPercent(activeEstimate.achievedOutputCostSharePct)]);
     if (activeEstimate.compactionCost) {
       summaryRows.push(['- of which compaction', formatCost(sessionCompactionCost)]);
+    }
+  }
+  if (workloadProjection) {
+    summaryRows.push(
+      [`Runs / ${cadenceNoun}`, workloadRuns.toLocaleString()],
+      [headlineCostTitle, finalHeadlineCostLabel],
+    );
+    if (workloadProjection.monthlyCost !== null) {
+      summaryRows.push(['Monthly average', formatCost(workloadProjection.monthlyCost)]);
+    }
+    if (workloadProjection.annualCost !== null) {
+      summaryRows.push(['Annual estimate', formatCost(workloadProjection.annualCost)]);
     }
   }
 
@@ -905,7 +989,7 @@ export default function HomePageClient() {
     context.font = '700 28px Space Mono, monospace';
     context.fillStyle = accentColor;
     context.textAlign = 'right';
-    drawRightText(finalSessionCostLabel, contentRight, cardY + 82, 360, '28px Space Mono, monospace');
+    drawRightText(finalHeadlineCostLabel, contentRight, cardY + 82, 360, '28px Space Mono, monospace');
     context.textAlign = 'left';
 
     context.strokeStyle = '#555555';
@@ -937,7 +1021,7 @@ export default function HomePageClient() {
     context.fillStyle = '#8b8b8b';
     context.textAlign = 'left';
     context.font = '700 26px Space Mono, monospace';
-    context.fillText('BILLABLE TOKENS', contentLeft, y);
+    context.fillText(isScaledWorkload ? 'BILLABLE TOKENS / RUN' : 'BILLABLE TOKENS', contentLeft, y);
     context.fillStyle = accentColor;
     context.textAlign = 'right';
     drawRightText(totalSessionTokens.toLocaleString(), contentRight, y + 34, 760, '92px Space Mono, monospace');
@@ -946,10 +1030,10 @@ export default function HomePageClient() {
     context.fillStyle = '#8b8b8b';
     context.textAlign = 'left';
     context.font = '700 26px Space Mono, monospace';
-    context.fillText('TOTAL COST', contentLeft, y);
+    context.fillText(headlineCostTitle.toUpperCase(), contentLeft, y);
     context.fillStyle = accentColor;
     context.textAlign = 'right';
-    drawRightText(finalSessionCostLabel, contentRight, y + 10, 520, '48px Space Mono, monospace');
+    drawRightText(finalHeadlineCostLabel, contentRight, y + 10, 520, '48px Space Mono, monospace');
 
     context.textAlign = 'left';
     context.font = '500 24px Outfit, sans-serif';
@@ -1026,6 +1110,7 @@ export default function HomePageClient() {
                 }}
                 models={modelOptions}
                 loading={modelsLoading}
+                pricing={pricing}
               />
             </div>
           </div>
@@ -1502,6 +1587,70 @@ export default function HomePageClient() {
                 ? `Auto sizes the reply from your prompt length: currently ${plannedOutput.toLocaleString()} tokens per turn.`
                 : `Planned output is capped at the ${availableOutputLabel} tokens this model can still produce alongside your prompt.`}
             </p>
+
+            <div className="mt-7 border-t border-rose-highlightMed pt-6">
+              <p className="data-label">Workload scale</p>
+              <p className="mt-3 text-sm leading-6 text-rose-muted">
+                Price this complete AI run once, then scale the same run across a recurring workload. Human labor is not included.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="data-label" htmlFor="workload-runs">
+                    Runs per period
+                  </label>
+                  <input
+                    id="workload-runs"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={1_000_000}
+                    step={1}
+                    value={workloadRuns}
+                    onChange={event => {
+                      const value = Number(event.target.value);
+                      setWorkloadRuns(Number.isFinite(value) ? Math.min(1_000_000, Math.max(1, Math.floor(value))) : 1);
+                    }}
+                    className="glass-select mt-2 w-full border px-4 py-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
+                </div>
+                <div>
+                  <label className="data-label" htmlFor="workload-cadence">
+                    Workload cadence
+                  </label>
+                  <select
+                    id="workload-cadence"
+                    value={workloadCadence}
+                    onChange={event => setWorkloadCadence(event.target.value as WorkloadCadence)}
+                    className="glass-select mt-2 w-full appearance-none border px-4 py-3 text-sm font-semibold text-rose-text focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love"
+                  >
+                    {WORKLOAD_CADENCES.map(option => (
+                      <option key={option.value} value={option.value} className="bg-rose-base text-rose-text">
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {workloadProjection && (
+                <div className="mt-4 grid gap-px bg-rose-highlightMed sm:grid-cols-3">
+                  <div className="bg-rose-base p-3">
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-muted">Cost / run</p>
+                    <output className="mt-2 block font-mono text-sm font-bold text-rose-text tabular-nums">{finalSessionCostLabel}</output>
+                  </div>
+                  <div className="bg-rose-base p-3">
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-muted">{headlineCostTitle}</p>
+                    <output className="mt-2 block font-mono text-sm font-bold text-rose-love tabular-nums">{finalHeadlineCostLabel}</output>
+                  </div>
+                  <div className="bg-rose-base p-3">
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-muted">Annual estimate</p>
+                    <output className="mt-2 block font-mono text-sm font-bold text-rose-text tabular-nums">
+                      {workloadProjection.annualCost === null ? 'One time' : formatCost(workloadProjection.annualCost)}
+                    </output>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </aside>
       </section>
@@ -1537,6 +1686,8 @@ export default function HomePageClient() {
               <ReceiptCard
                 rows={receiptRows}
                 totalTokens={totalSessionTokens}
+                totalTokensLabel={isScaledWorkload ? 'Billable tokens / run' : 'Billable tokens'}
+                totalLabel={headlineCostTitle}
                 totalCostLabel={animatedSessionCostLabel}
                 note={receiptNote}
                 className="receipt-card-final"

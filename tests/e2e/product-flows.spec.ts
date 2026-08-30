@@ -10,6 +10,42 @@ test('token planner loads live pricing and tokenizes a prompt', async ({ page })
   await page.getByRole('textbox', { name: 'Prompt' }).fill('hello');
   await expect(page.locator('#planner article output').first()).toContainText(/^1 token/);
   await expect(page.getByText('Paste a prompt to see token fragments and IDs.')).toBeHidden();
+  await expect(page.getByText(/One-shot mode prices one prompt and one planned response/)).toBeVisible();
+  await expect(page.getByText('Empty values show until you paste a prompt and choose a priced model.')).toBeHidden();
+});
+
+test('model browser shows rates and context before selection', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Open model results' }).click();
+  const firstOption = page.getByRole('option').first();
+  await expect(firstOption).toContainText(/\$.*in.*\$.*out/i);
+  await expect(firstOption).toContainText(/context/i);
+});
+
+test('token planner scales one AI session into a recurring workload', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByRole('textbox', { name: 'Prompt' }).fill('Summarize this support ticket and draft a reply.');
+  await page.getByRole('button', { name: /Quick/ }).click();
+  await page.getByLabel('Runs per period').fill('40');
+  await page.getByLabel('Workload cadence').selectOption('week');
+
+  await expect(page.getByText('Runs / week')).toBeVisible();
+  await expect(page.getByText('Monthly average')).toBeVisible();
+  await expect(page.locator('#planner').getByText('Annual estimate')).toBeVisible();
+});
+
+test('format lab reuses the in-memory prompt scenario from the planner', async ({ page }) => {
+  await page.goto('/');
+
+  const prompt = 'Compare the two migration plans and return a risk table.';
+  await page.getByRole('textbox', { name: 'Prompt' }).fill(prompt);
+  await page.getByRole('link', { name: 'Open format lab' }).click();
+
+  await expect(page).toHaveURL(/\/format-comparison\/$/);
+  await expect(page.getByLabel('Source prompt')).toHaveValue(prompt);
+  await expect(page.getByText('Planner scenario loaded')).toBeVisible();
 });
 
 test('format comparison updates the shared payload', async ({ page }) => {
@@ -21,17 +57,49 @@ test('format comparison updates the shared payload', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Copy TOON snippet' })).toBeVisible();
 });
 
+test('format comparison can switch tokenizers and exposes raw wrapper overhead', async ({ page }) => {
+  await page.goto('/format-comparison/');
+
+  await page.getByLabel('Tokenizer').selectOption('cl100k_base');
+  await expect(page.getByText('Tokenized with cl100k_base')).toBeVisible();
+  await expect(page.getByText('Raw prompt baseline')).toBeVisible();
+  await expect(page.getByText(/wrapper tokens/).first()).toBeVisible();
+});
+
 test('token efficiency lab recomputes cost per task from edited inputs', async ({ page }) => {
   await page.goto('/token-efficiency/');
 
   await expect(page).toHaveTitle(/LLM Token Efficiency Comparison/);
   await expect(page.getByRole('heading', { level: 1, name: 'Cheap per token is not cheap per task.' })).toBeVisible();
 
-  const solCard = page.locator('#efficiency-lab article', { hasText: 'GPT-5.6 Sol' });
+  const solCard = page.locator('#efficiency-lab article').first();
   await expect(solCard.locator('output').first()).toHaveText('$0.3200');
 
-  await solCard.getByLabel('Output tokens per task').fill('30000');
+  await page.locator('#gpt-5-6-sol-output-tokens').fill('30000');
   await expect(solCard.locator('output').first()).toHaveText('$0.6200');
+});
+
+test('token efficiency lab loads an attributed model catalog', async ({ page }) => {
+  await page.goto('/token-efficiency/');
+
+  await expect(page.getByText(/Artificial Analysis catalog/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Artificial Analysis', exact: true })).toHaveAttribute(
+    'href',
+    'https://artificialanalysis.ai/',
+  );
+  await expect(page.getByLabel('Comparison model 1')).toBeVisible();
+});
+
+test('token efficiency lab can reuse the active planner workload', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('textbox', { name: 'Prompt' }).fill('Audit this pull request for regressions.');
+  await page.getByLabel('Runs per period').fill('25');
+  await page.getByLabel('Workload cadence').selectOption('month');
+  await page.getByRole('link', { name: 'Compare efficiency' }).click();
+
+  await page.getByRole('button', { name: 'Use planner workload' }).click();
+  await expect(page.getByLabel('Tasks in workload')).toHaveValue('25');
+  await expect(page.getByText('Planner scenario applied')).toBeVisible();
 });
 
 test('theme selection persists across reloads', async ({ page }) => {
@@ -52,6 +120,16 @@ test('pricing function returns a populated, cacheable model map', async ({ reque
   expect(response.headers()['cache-control']).toContain('max-age=900');
   const body = await response.json();
   expect(Object.keys(body).length).toBeGreaterThan(100);
+});
+
+test('benchmark function returns an attributed Artificial Analysis catalog', async ({ request }) => {
+  const response = await request.get('/api/benchmarks');
+
+  expect(response.status()).toBe(200);
+  expect(response.headers()['cache-control']).toContain('max-age=900');
+  const body = await response.json();
+  expect(body.attribution.url).toBe('https://artificialanalysis.ai/');
+  expect(body.data.length).toBeGreaterThanOrEqual(3);
 });
 
 test('unknown routes return a noindex 404 with recovery navigation', async ({ page }) => {

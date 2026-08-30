@@ -4,11 +4,13 @@ import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 const highlights = [
   { title: 'Token planning', body: 'Paste a prompt, pick a model, change tokenizers, and estimate cost before sending.' },
   { title: 'Format comparison', body: 'Render the same prompt as TOON, JSON, YAML, XML, and CSV for practical payload review.' },
-  { title: 'Token efficiency', body: 'Compare cost per completed task, where a verbose model with cheap tokens can out-bill a pricier, terser one.' },
-  { title: 'Pricing data', body: 'Pricing loads from a same-origin API. When that endpoint is down, the bundled model catalog takes over.' },
+  { title: 'Token efficiency', body: 'Compare cost per completed task with Artificial Analysis evidence kept separate from your workload assumptions.' },
+  { title: 'Pricing data', body: 'Model rate cards load from the pricing API. Artificial Analysis scores, speed, and cost-per-task data use their own attributed catalog.' },
 ];
 
 const links = [
+  { label: 'Artificial Analysis', href: 'https://artificialanalysis.ai/' },
+  { label: 'Artificial Analysis Data API', href: 'https://artificialanalysis.ai/data-api/docs' },
   { label: 'TOON spec', href: 'https://github.com/toon-format/toon' },
   { label: 'YAML 1.2.2', href: 'https://yaml.org/spec/1.2.2/' },
   { label: 'RFC 8259 JSON', href: 'https://www.rfc-editor.org/info/rfc8259' },
@@ -83,7 +85,7 @@ export default function AboutPage() {
         <aside className="grid gap-px bg-rose-highlightMed">
           {[
             ['Status', 'Public web utility'],
-            ['Data', 'Same-origin API plus fallback JSON'],
+            ['Data', 'Pricing API plus Artificial Analysis'],
             ['Owner', 'Jonathan R. Reed'],
           ].map(([label, value]) => (
             <dl key={label} className="bg-rose-base p-5">
@@ -110,6 +112,8 @@ export default function AboutPage() {
             <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k. OpenAI counts are exact.</li>
             <li>Non-OpenAI vendors bill with their own tokenizers, which typically produce more tokens than OpenAI BPE for the same text. Cost math applies a per-provider calibration multiplier so estimates do not undercount.</li>
             <li>Agent scenario estimates re-send conversation history each turn, bill cached context at the provider&apos;s cache read rate, apply cache write premiums where charged, and simulate compaction summarization calls.</li>
+            <li>Artificial Analysis supplies the attributed benchmark catalog for intelligence, coding, agentic, speed, and cost-per-task evidence when the active source provides each field.</li>
+            <li>Recurring workload projections include model usage only. They do not add human labor or review costs.</li>
             <li>Cost estimates are planning values. Provider billing may differ by model version and feature use.</li>
             <li>Nothing you paste is stored and there are no accounts.</li>
             <li>Format output is for inspection and planning. Downstream APIs will not all accept the same structure.</li>

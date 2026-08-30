@@ -77,6 +77,21 @@ export type TaskCostInput = {
   outputPerMillion: number;
 };
 
+export function scaleOutputTokensByEfficiency({
+  measuredOutputTokens,
+  referenceOutputTokens,
+  comparisonOutputTokens,
+}: {
+  measuredOutputTokens: number;
+  referenceOutputTokens: number;
+  comparisonOutputTokens: number;
+}) {
+  const measured = Math.max(0, Math.round(Number.isFinite(measuredOutputTokens) ? measuredOutputTokens : 0));
+  if (!Number.isFinite(referenceOutputTokens) || referenceOutputTokens <= 0) return measured;
+  if (!Number.isFinite(comparisonOutputTokens) || comparisonOutputTokens < 0) return measured;
+  return Math.max(0, Math.round(measured * comparisonOutputTokens / referenceOutputTokens));
+}
+
 function isUsableNumber(value: number, { allowZero = true } = {}) {
   return Number.isFinite(value) && (allowZero ? value >= 0 : value > 0);
 }

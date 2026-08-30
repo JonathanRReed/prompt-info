@@ -9,7 +9,7 @@ const pageJsonLd = {
   headline: 'Prompt Format Comparison Tool',
   url: 'https://prompt-info.helloworldfirm.com/format-comparison/',
   datePublished: '2026-04-21',
-  dateModified: '2026-06-19',
+  dateModified: '2026-08-29',
   author: {
     '@type': 'Person',
     name: 'Jonathan R. Reed',
@@ -67,7 +67,7 @@ export default function FormatComparisonPage() {
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
             <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
-            <time dateTime="2026-06-19">Updated June 19, 2026</time>.
+            <time dateTime="2026-08-29">Updated August 29, 2026</time>.
           </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">
@@ -76,7 +76,8 @@ export default function FormatComparisonPage() {
             <li>TOON for compact structured prompts.</li>
             <li>JSON and compact JSON for API payloads.</li>
             <li>YAML, XML, and CSV for common exchange formats.</li>
-            <li>Live o200k token counts on every card.</li>
+            <li>Selectable o200k, cl100k, p50k, and r50k token counts.</li>
+            <li>Raw-prompt overhead and planner-model input cost on every card.</li>
             <li>One-click copy for each example.</li>
           </ul>
         </aside>

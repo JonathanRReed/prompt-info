@@ -7,6 +7,7 @@ import { Outfit, Space_Mono } from 'next/font/google'
 import { ThemeProvider } from '../components/ThemeProvider'
 import ThemeSelector from '../components/ThemeSelector'
 import Navigation from '../components/Navigation'
+import { ScenarioProvider } from '../components/ScenarioProvider'
 import { themes } from '../lib/themes'
 import { OG_BASE, TWITTER_BASE } from '../lib/seo'
 
@@ -131,7 +132,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="m-0 min-h-screen bg-rose-base p-0 font-sans text-rose-text antialiased">
         <ThemeProvider>
-          <div className="relative m-0 flex min-h-screen flex-col overflow-x-hidden p-0">
+          <ScenarioProvider>
+            <div className="relative m-0 flex min-h-screen flex-col overflow-x-hidden p-0">
             <div className="page-bg" aria-hidden="true" />
             <div className="grid-overlay" aria-hidden="true" />
             <header className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rose-highlightMed bg-rose-base px-3 py-3 sm:px-6">
@@ -217,7 +219,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <span>Token and cost planning</span>
               </div>
             </footer>
-          </div>
+            </div>
+          </ScenarioProvider>
         </ThemeProvider>
       </body>
     </html>

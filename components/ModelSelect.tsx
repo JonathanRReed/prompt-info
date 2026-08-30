@@ -9,6 +9,7 @@ type ModelSelectProps = {
   id?: string;
   models?: string[];
   loading?: boolean;
+  pricing?: PricingMap | null;
 };
 
 const MAX_VISIBLE_MODELS = 80;
@@ -35,7 +36,20 @@ function filterModels(models: string[], query: string) {
     .slice(0, MAX_VISIBLE_MODELS);
 }
 
-function ModelSelect({ onChange, value, id, models: externalModels, loading: externalLoading }: ModelSelectProps) {
+function formatRate(ratePerThousand: number | undefined) {
+  if (typeof ratePerThousand !== 'number' || !Number.isFinite(ratePerThousand)) return 'N/A';
+  const ratePerMillion = ratePerThousand * 1000;
+  return `$${ratePerMillion.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
+}
+
+function formatContext(tokens: number | undefined) {
+  if (typeof tokens !== 'number' || !Number.isFinite(tokens)) return 'Context unknown';
+  if (tokens >= 1_000_000) return `${Number((tokens / 1_000_000).toPrecision(3))}M context`;
+  if (tokens >= 1_000) return `${Number((tokens / 1_000).toPrecision(3))}K context`;
+  return `${tokens.toLocaleString()} context`;
+}
+
+function ModelSelect({ onChange, value, id, models: externalModels, loading: externalLoading, pricing }: ModelSelectProps) {
   const generatedId = useId();
   const inputId = id ?? `model-select-${generatedId}`;
   const listboxId = `${inputId}-listbox`;
@@ -53,6 +67,7 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
   const selectedModel = value && optionList.includes(value) ? value : '';
   const filteredModels = useMemo(() => filterModels(optionList, query), [optionList, query]);
   const activeModel = filteredModels[activeIndex] ?? filteredModels[0] ?? '';
+  const selectedEntry = pricing?.[selectedModel || optionList[0]];
 
   useEffect(() => {
     if (!shouldFetch) return;
@@ -193,6 +208,13 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
         <span>Selected: <span className="text-rose-text">{selectedModel || optionList[0]}</span></span>
         <span>{optionList.length.toLocaleString()} models</span>
       </div>
+      {selectedEntry && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-rose-muted">
+          <span>{formatRate(selectedEntry.pricing.input)} in</span>
+          <span>{formatRate(selectedEntry.pricing.output)} out</span>
+          <span>{formatContext(selectedEntry.contextWindowTokens)}</span>
+        </div>
+      )}
 
       {isOpen && (
         <div
@@ -207,6 +229,7 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
             filteredModels.map((model, index) => {
               const isSelected = model === selectedModel;
               const isActive = index === activeIndex;
+              const modelEntry = pricing?.[model];
               return (
                 <button
                   key={model}
@@ -221,7 +244,16 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
                     isActive ? 'bg-rose-overlay text-rose-text' : 'bg-rose-base text-rose-subtle'
                   } ${isSelected ? 'text-rose-love' : ''}`}
                 >
-                  <span className="truncate font-mono text-sm font-bold">{model}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-mono text-sm font-bold">{model}</span>
+                    {modelEntry && (
+                      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.1em] text-rose-muted">
+                        <span>{formatRate(modelEntry.pricing.input)} in</span>
+                        <span>{formatRate(modelEntry.pricing.output)} out</span>
+                        <span>{formatContext(modelEntry.contextWindowTokens)}</span>
+                      </span>
+                    )}
+                  </span>
                   <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-rose-muted">
                     {isSelected ? 'Selected' : 'Use'}
                   </span>

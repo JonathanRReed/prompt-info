@@ -81,6 +81,18 @@ export default function Page() {
               Compare efficiency
             </Link>
           </div>
+          <p className="mt-6 max-w-3xl font-mono text-[11px] uppercase leading-6 tracking-[0.14em] text-rose-muted">
+            Efficiency evidence and benchmark catalog by{' '}
+            <a
+              href="https://artificialanalysis.ai/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-rose-text underline decoration-rose-love underline-offset-4 hover:text-rose-love"
+            >
+              Artificial Analysis
+            </a>
+            . Model rate cards refresh separately through the pricing API.
+          </p>
         </div>
       </section>
 

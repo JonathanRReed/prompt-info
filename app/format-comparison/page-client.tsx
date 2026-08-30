@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { usePromptScenario } from '../../components/ScenarioProvider';
 
 const SAMPLE_PROMPT = 'Summarize the latest product launch in 3 bullet points.';
 
@@ -15,6 +16,36 @@ type TokenizerState =
   | { status: 'loading' }
   | { status: 'ready'; encode: (text: string) => number[] }
   | { status: 'error' };
+
+const FORMAT_TOKENIZERS = [
+  { key: 'o200k_base', label: 'o200k_base', description: 'GPT-4o, o-series, and GPT-5 style models' },
+  { key: 'cl100k_base', label: 'cl100k_base', description: 'GPT-4, GPT-3.5, and compatible estimates' },
+  { key: 'p50k_base', label: 'p50k_base', description: 'Codex and older code models' },
+  { key: 'p50k_edit', label: 'p50k_edit', description: 'Legacy edit models' },
+  { key: 'r50k_base', label: 'r50k_base', description: 'Legacy GPT-3 models' },
+] as const;
+
+type FormatTokenizerKey = typeof FORMAT_TOKENIZERS[number]['key'];
+
+const FORMAT_TOKENIZER_IMPORTERS: Record<
+  FormatTokenizerKey,
+  () => Promise<{ encode: (text: string) => number[] }>
+> = {
+  o200k_base: () => import('gpt-tokenizer/encoding/o200k_base'),
+  cl100k_base: () => import('gpt-tokenizer/encoding/cl100k_base'),
+  p50k_base: () => import('gpt-tokenizer/encoding/p50k_base'),
+  p50k_edit: () => import('gpt-tokenizer/encoding/p50k_edit'),
+  r50k_base: () => import('gpt-tokenizer/encoding/r50k_base'),
+};
+
+function isFormatTokenizerKey(value: string | undefined): value is FormatTokenizerKey {
+  return FORMAT_TOKENIZERS.some(tokenizer => tokenizer.key === value);
+}
+
+function formatInputCost(tokenCount: number, ratePerMillion: number) {
+  const cost = tokenCount / 1_000_000 * ratePerMillion;
+  return cost < 0.01 ? `$${cost.toFixed(6)}` : `$${cost.toFixed(4)}`;
+}
 
 function yamlScalar(value: string) {
   // Quote when YAML would otherwise misparse the scalar: special punctuation,
@@ -103,13 +134,23 @@ function buildFormats(prompt: string): FormatCard[] {
 }
 
 export default function FormatComparisonPageClient() {
-  const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
+  const { scenario } = usePromptScenario();
+  const [prompt, setPrompt] = useState(() => scenario?.prompt || SAMPLE_PROMPT);
+  const [selectedTokenizer, setSelectedTokenizer] = useState<FormatTokenizerKey>(() =>
+    isFormatTokenizerKey(scenario?.tokenizer) ? scenario.tokenizer : 'o200k_base'
+  );
   const [tokenizer, setTokenizer] = useState<TokenizerState>({ status: 'loading' });
   const cards = useMemo(() => buildFormats(prompt), [prompt]);
 
   useEffect(() => {
+    if (scenario?.prompt) setPrompt(scenario.prompt);
+    if (isFormatTokenizerKey(scenario?.tokenizer)) setSelectedTokenizer(scenario.tokenizer);
+  }, [scenario?.prompt, scenario?.tokenizer]);
+
+  useEffect(() => {
     let cancelled = false;
-    import('gpt-tokenizer/encoding/o200k_base')
+    setTokenizer({ status: 'loading' });
+    FORMAT_TOKENIZER_IMPORTERS[selectedTokenizer]()
       .then(({ encode }) => {
         if (!cancelled) setTokenizer({ status: 'ready', encode });
       })
@@ -119,7 +160,7 @@ export default function FormatComparisonPageClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedTokenizer]);
 
   // Counts derive in the same render pass as card content, so stats never lag
   // a keystroke behind what the cards display.
@@ -128,6 +169,8 @@ export default function FormatComparisonPageClient() {
     return Object.fromEntries(cards.map(card => [card.key, tokenizer.encode(card.content).length]));
   }, [cards, tokenizer]);
 
+  const rawPromptTokens = tokenizer.status === 'ready' ? tokenizer.encode(prompt.trim() || SAMPLE_PROMPT).length : null;
+
   const minTokens = tokenCounts
     ? Math.min(...cards.map(card => tokenCounts[card.key] ?? Number.POSITIVE_INFINITY))
     : null;
@@ -135,6 +178,16 @@ export default function FormatComparisonPageClient() {
   return (
     <>
       <section className="mx-auto w-full max-w-[1500px] border-b border-rose-highlightMed bg-rose-base p-4 sm:p-6 md:p-10">
+        {scenario?.prompt && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border border-rose-highlightMed bg-rose-overlay px-4 py-3">
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-love">
+              Planner scenario loaded
+            </span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-rose-muted">
+              {scenario.model || 'Model not selected'} · {scenario.turns.toLocaleString()} {scenario.turns === 1 ? 'turn' : 'turns'}
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-4">
           <label className="data-label" htmlFor="format-prompt">
             Source prompt
@@ -148,8 +201,33 @@ export default function FormatComparisonPageClient() {
           placeholder={SAMPLE_PROMPT}
           className="mt-5 min-h-[180px] w-full border border-rose-highlightMed bg-rose-surface p-4 font-mono text-sm leading-7 text-rose-text placeholder:text-rose-muted transition duration-200 focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
         />
+        <div className="mt-4 grid gap-px bg-rose-highlightMed border border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_minmax(260px,0.6fr)]">
+          <div className="bg-rose-base p-4">
+            <label className="data-label" htmlFor="format-tokenizer">Tokenizer</label>
+            <select
+              id="format-tokenizer"
+              value={selectedTokenizer}
+              onChange={event => setSelectedTokenizer(event.target.value as FormatTokenizerKey)}
+              className="glass-select mt-2 min-h-11 w-full border px-3 font-mono text-sm font-bold text-rose-text focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love"
+            >
+              {FORMAT_TOKENIZERS.map(option => (
+                <option key={option.key} value={option.key}>{option.label} · {option.description}</option>
+              ))}
+            </select>
+            <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.14em] text-rose-muted">
+              Tokenized with {selectedTokenizer}
+            </p>
+          </div>
+          <div className="bg-rose-base p-4">
+            <p className="data-label">Raw prompt baseline</p>
+            <output className="mt-2 block font-mono text-2xl font-black text-rose-love tabular-nums">
+              {rawPromptTokens === null ? 'Counting…' : `${rawPromptTokens.toLocaleString()} tokens`}
+            </output>
+            <p className="mt-2 text-xs leading-5 text-rose-muted">Each card reports the extra wrapper tokens above this unformatted prompt.</p>
+          </div>
+        </div>
         <p className="mt-3 text-sm leading-6 text-rose-muted">
-          Every card wraps the same payload structure, tokenized with o200k_base, so the counts are directly comparable.
+          Every card wraps the same payload structure, so the counts stay directly comparable. Pick the tokenizer that best approximates your target model.
         </p>
       </section>
 
@@ -160,6 +238,12 @@ export default function FormatComparisonPageClient() {
           const isSmallest = tokens !== undefined && minTokens !== null && tokens === minTokens;
           const overhead = tokens !== undefined && minTokens !== null && minTokens > 0 && !isSmallest
             ? Math.round(((tokens - minTokens) / minTokens) * 100)
+            : null;
+          const wrapperTokens = tokens !== undefined && rawPromptTokens !== null
+            ? Math.max(0, tokens - rawPromptTokens)
+            : null;
+          const inputCost = tokens !== undefined && scenario?.inputPerMillion !== null && scenario?.inputPerMillion !== undefined
+            ? formatInputCost(tokens, scenario.inputPerMillion)
             : null;
 
           return (
@@ -184,8 +268,10 @@ export default function FormatComparisonPageClient() {
                     : tokenizer.status === 'error' ? 'tokens unavailable' : 'counting…'}
                 </span>
                 <span className="text-rose-muted tabular-nums">{bytes.toLocaleString()} bytes</span>
+                {wrapperTokens !== null && <span className="text-rose-muted tabular-nums">+{wrapperTokens.toLocaleString()} wrapper tokens</span>}
                 {isSmallest && <span className="text-rose-love">Fewest tokens</span>}
                 {overhead !== null && <span className="text-rose-muted tabular-nums">+{overhead}% vs best</span>}
+                {inputCost && <span className="text-rose-love tabular-nums">{inputCost} input</span>}
               </div>
               <pre className="min-h-[180px] flex-1 overflow-x-auto whitespace-pre-wrap break-words p-4 font-mono text-[13px] leading-7 text-rose-subtle sm:p-5">
                 {card.content}
