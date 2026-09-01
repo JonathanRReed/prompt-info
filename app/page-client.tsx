@@ -70,9 +70,10 @@ export default function HomePageClient() {
   const { setScenario } = usePromptScenario();
   const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
   const [tokenizer, setTokenizer] = useState<TokenizerKey>('o200k_base');
-  const [rawTokens, setRawTokens] = useState<number[]>([]);
+  const [tokenCount, setTokenCount] = useState(0);
   const [decodedTokens, setDecodedTokens] = useState<Array<{ id: number; text: string }>>([]);
   const [tokenizing, setTokenizing] = useState(true);
+  const [tokenizationError, setTokenizationError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<PricingCatalogResponse | null>(null);
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [pricingLoading, setPricingLoading] = useState(true);
@@ -126,26 +127,74 @@ export default function HomePageClient() {
 
   useEffect(() => {
     let cancelled = false;
+    let worker: Worker | null = null;
+    let fallbackStarted = false;
     setTokenizing(true);
+    setTokenizationError(null);
+    setTokenCount(0);
+    setDecodedTokens([]);
     const timeout = window.setTimeout(() => {
       (async () => {
         if (!prompt) {
           if (!cancelled) {
-            setRawTokens([]);
-            setDecodedTokens([]);
             setTokenizing(false);
           }
           return;
         }
 
-        try {
-          const encoder = await TOKENIZER_IMPORTERS[tokenizer]();
+        const applyResult = (count: number, decoded: Array<{ id: number; text: string }>) => {
           if (cancelled) return;
-          const encoded = encoder.encode(prompt);
-          setRawTokens(encoded);
-          setDecodedTokens(encoded.slice(0, 400).map(id => ({ id, text: encoder.decode([id]) })));
-        } finally {
-          if (!cancelled) setTokenizing(false);
+          setTokenCount(count);
+          setDecodedTokens(decoded);
+          setTokenizationError(null);
+          setTokenizing(false);
+        };
+
+        const tokenizeOnMainThread = async () => {
+          if (fallbackStarted || cancelled) return;
+          fallbackStarted = true;
+          worker?.terminate();
+          worker = null;
+          try {
+            const encoder = await TOKENIZER_IMPORTERS[tokenizer]();
+            if (cancelled) return;
+            const encoded = encoder.encode(prompt);
+            applyResult(
+              encoded.length,
+              encoded.slice(0, 400).map(id => ({ id, text: encoder.decode([id]) })),
+            );
+          } catch {
+            if (!cancelled) {
+              setTokenizationError('Token count unavailable');
+              setTokenizing(false);
+            }
+          }
+        };
+
+        if (typeof Worker === 'undefined') {
+          await tokenizeOnMainThread();
+          return;
+        }
+
+        try {
+          worker = new Worker(new URL('../workers/tokenizer.worker.ts', import.meta.url), { type: 'module' });
+          const requestId = Date.now();
+          worker.onmessage = event => {
+            if (cancelled || event.data.requestId !== requestId) return;
+            if (event.data.error) {
+              void tokenizeOnMainThread();
+              return;
+            }
+            applyResult(event.data.count, event.data.decoded);
+            worker?.terminate();
+            worker = null;
+          };
+          worker.onerror = () => {
+            void tokenizeOnMainThread();
+          };
+          worker.postMessage({ requestId, tokenizer, prompt });
+        } catch {
+          await tokenizeOnMainThread();
         }
       })();
     }, 120);
@@ -153,6 +202,8 @@ export default function HomePageClient() {
     return () => {
       cancelled = true;
       window.clearTimeout(timeout);
+      worker?.terminate();
+      worker = null;
     };
   }, [prompt, tokenizer]);
 
@@ -160,12 +211,12 @@ export default function HomePageClient() {
   const availableModels = useMemo(() => Object.keys(pricing ?? {}), [pricing]);
   const baseScenario = useMemo<CostComparisonScenario>(() => ({
     mode: sessionMode,
-    promptTokens: rawTokens.length,
+    promptTokens: tokenCount,
     referenceOutputTokens: outputTokens,
     turns,
     outputTokenLimit: MAX_OUTPUT_TOKENS,
     contextWindowTokens: 1_000_000,
-  }), [outputTokens, rawTokens.length, sessionMode, turns]);
+  }), [outputTokens, sessionMode, tokenCount, turns]);
 
   const selectedPricingModels = useMemo(() => selectedModels.map(model => {
     const entry = pricing?.[model];
@@ -196,9 +247,9 @@ export default function HomePageClient() {
       })
     : [], [baseScenario, primaryEntry, primaryMultiplier]);
   const chartMetric = workloadCadence === 'once' ? 'sessionCost' : 'monthlyCost';
-  const billedTokenNote = primaryMultiplier === 1 || rawTokens.length === 0
+  const billedTokenNote = primaryMultiplier === 1 || tokenCount === 0
     ? null
-    : `, about ${Math.round(rawTokens.length * primaryMultiplier).toLocaleString()} billed for ${primaryRow?.model ?? 'this provider'}`;
+    : `, about ${Math.round(tokenCount * primaryMultiplier).toLocaleString()} billed for ${primaryRow?.model ?? 'this provider'}`;
 
   useEffect(() => {
     if (!primaryRow || !primaryEntry) return;
@@ -206,7 +257,7 @@ export default function HomePageClient() {
       prompt,
       model: primaryRow.model,
       tokenizer,
-      inputTokensPerRun: Math.round(rawTokens.length * primaryMultiplier),
+      inputTokensPerRun: Math.round(tokenCount * primaryMultiplier),
       outputTokensPerRun: outputTokens,
       turns,
       sessionMode,
@@ -216,7 +267,7 @@ export default function HomePageClient() {
       workloadRuns,
       workloadCadence,
     });
-  }, [outputTokens, primaryEntry, primaryMultiplier, primaryRow, prompt, rawTokens.length, sessionMode, setScenario, tokenizer, turns, workloadCadence, workloadRuns]);
+  }, [outputTokens, primaryEntry, primaryMultiplier, primaryRow, prompt, sessionMode, setScenario, tokenCount, tokenizer, turns, workloadCadence, workloadRuns]);
 
   function replaceModel(index: number, model: string) {
     setSelectedModels(current => current.map((value, position) => position === index ? model : value));
@@ -238,7 +289,7 @@ export default function HomePageClient() {
     return [
       'Prompt Info cost receipt',
       `Model: ${primaryRow?.model ?? 'Unavailable'}`,
-      `Prompt tokens: ${rawTokens.length.toLocaleString()}`,
+      `Prompt tokens: ${tokenCount.toLocaleString()}`,
       `Output tokens per turn: ${outputTokens.toLocaleString()}`,
       `Turns: ${turns.toLocaleString()} (${sessionMode})`,
       `Runs: ${workloadRuns.toLocaleString()} per ${workloadCadence}`,
@@ -267,7 +318,7 @@ export default function HomePageClient() {
     downloadCostReceiptImage({
       row: primaryRow,
       assumptions: [
-        `${rawTokens.length.toLocaleString()} prompt tokens, ${outputTokens.toLocaleString()} output tokens`,
+        `${tokenCount.toLocaleString()} prompt tokens, ${outputTokens.toLocaleString()} output tokens`,
         `${turns.toLocaleString()} turns, ${sessionMode} session`,
         `${workloadRuns.toLocaleString()} runs per ${workloadCadence}`,
       ],
@@ -293,8 +344,10 @@ export default function HomePageClient() {
             prompt={prompt}
             samplePrompt={SAMPLE_PROMPT}
             onPromptChange={setPrompt}
-            promptTokens={rawTokens.length}
-            billedTokenNote={tokenizing ? ', counting' : billedTokenNote}
+            promptTokens={tokenCount}
+            tokenizing={tokenizing}
+            tokenizationError={tokenizationError}
+            billedTokenNote={billedTokenNote}
             tokenizers={TOKENIZERS}
             tokenizer={tokenizer}
             onTokenizerChange={value => setTokenizer(value as TokenizerKey)}

@@ -27,12 +27,13 @@ export function buildLinePoints(
   width: number,
   height: number,
   padding: number,
+  domain?: { minY: number; maxY: number },
 ) {
   if (values.length === 0) return [];
   const safeWidth = Math.max(padding * 2, width);
   const safeHeight = Math.max(padding * 2, height);
-  const minY = Math.min(...values.map(value => value.y));
-  const maxY = Math.max(...values.map(value => value.y));
+  const minY = domain?.minY ?? Math.min(...values.map(value => value.y));
+  const maxY = domain?.maxY ?? Math.max(...values.map(value => value.y));
   const yRange = maxY - minY;
 
   return values.map((value, index) => ({
@@ -40,8 +41,10 @@ export function buildLinePoints(
       ? padding
       : padding + (index / (values.length - 1)) * (safeWidth - padding * 2),
     y: yRange === 0
-      ? safeHeight / 2
+      ? domain ? safeHeight - padding : safeHeight / 2
       : safeHeight - padding - ((value.y - minY) / yRange) * (safeHeight - padding * 2),
+    sourceX: value.x,
+    sourceY: value.y,
   }));
 }
 

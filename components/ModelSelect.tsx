@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { fetchPricing, type PricingMap } from '../lib/fetchPricing';
+import { chooseDefaultModels } from '../lib/modelSelection';
 
 type ModelSelectProps = {
   onChange: (model: string) => void;
@@ -65,9 +66,15 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
   const optionList = externalModels ?? models;
   const isLoading = externalLoading ?? (shouldFetch && loading);
   const selectedModel = value && optionList.includes(value) ? value : '';
-  const filteredModels = useMemo(() => filterModels(optionList, query), [optionList, query]);
+  const filteredModels = useMemo(() => {
+    if (query.trim()) return filterModels(optionList, query);
+    const curated = pricing
+      ? chooseDefaultModels(optionList, pricing, 12)
+      : optionList.slice(0, 12);
+    return curated.length > 0 ? curated : optionList.slice(0, 12);
+  }, [optionList, pricing, query]);
   const activeModel = filteredModels[activeIndex] ?? filteredModels[0] ?? '';
-  const selectedEntry = pricing?.[selectedModel || optionList[0]];
+  const selectedEntry = pricing?.[selectedModel || filteredModels[0] || optionList[0]];
 
   useEffect(() => {
     if (!shouldFetch) return;
@@ -105,9 +112,9 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
   useEffect(() => {
     if (isLoading || optionList.length === 0) return;
     if (!value || !optionList.includes(value)) {
-      onChange(optionList[0]);
+      onChange(filteredModels[0] ?? optionList[0]);
     }
-  }, [isLoading, onChange, optionList, value]);
+  }, [filteredModels, isLoading, onChange, optionList, value]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -206,7 +213,7 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-rose-muted">
         <span>Selected: <span className="text-rose-text">{selectedModel || optionList[0]}</span></span>
-        <span>{optionList.length.toLocaleString()} models</span>
+        <span>{query.trim() ? `${filteredModels.length.toLocaleString()} matches` : `Provider-diverse browse set · ${filteredModels.length.toLocaleString()} of ${optionList.length.toLocaleString()}`}</span>
       </div>
       {selectedEntry && (
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-rose-muted">

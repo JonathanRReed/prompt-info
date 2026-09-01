@@ -51,7 +51,7 @@ export function ModelComparison({
           return (
             <article
               key={`${model}-${index}`}
-              className={isRecommended ? 'comparison-row is-recommended' : 'comparison-row'}
+              className="comparison-row"
               data-testid="comparison-model-row"
             >
               <div className="comparison-model-control">
@@ -78,7 +78,7 @@ export function ModelComparison({
                 <span><small>Monthly</small><strong>{formatUsd(row?.monthlyCost)}</strong></span>
                 <span><small>Annual</small><strong>{formatUsd(row?.annualCost)}</strong></span>
               </div>
-              {isRecommended ? <p className="comparison-recommendation">{recommendation.criterion}</p> : null}
+              {isRecommended ? <p className="comparison-observation">{recommendation.criterion}</p> : null}
               {!row?.isUsable ? <p className="comparison-unavailable">{row?.unavailableReason ?? 'Waiting for pricing data.'}</p> : null}
             </article>
           );

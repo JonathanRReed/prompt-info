@@ -11,6 +11,8 @@ export function ScenarioInputs({
   samplePrompt,
   onPromptChange,
   promptTokens,
+  tokenizing,
+  tokenizationError,
   billedTokenNote,
   tokenizers,
   tokenizer,
@@ -30,6 +32,8 @@ export function ScenarioInputs({
   samplePrompt: string;
   onPromptChange: (value: string) => void;
   promptTokens: number;
+  tokenizing: boolean;
+  tokenizationError: string | null;
   billedTokenNote: string | null;
   tokenizers: readonly TokenizerChoice[];
   tokenizer: string;
@@ -61,8 +65,11 @@ export function ScenarioInputs({
       <div className="prompt-field-heading">
         <label htmlFor="prompt-input">Prompt</label>
         <output data-testid="prompt-token-count" aria-live="polite">
-          {promptTokens.toLocaleString()} {promptTokens === 1 ? 'token' : 'tokens'}
-          {billedTokenNote ? <span>{billedTokenNote}</span> : null}
+          {tokenizing
+            ? 'Counting prompt…'
+            : tokenizationError
+              ? tokenizationError
+              : <>{promptTokens.toLocaleString()} {promptTokens === 1 ? 'token' : 'tokens'}{billedTokenNote ? <span>{billedTokenNote}</span> : null}</>}
         </output>
       </div>
       <PromptInput id="prompt-input" value={prompt} onChange={onPromptChange} />

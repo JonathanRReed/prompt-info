@@ -52,7 +52,7 @@ export function CostByModelChart({
               <div className="cost-bar-track" aria-hidden="true">
                 <span
                   className={index === 0 ? 'cost-bar-fill is-lowest' : 'cost-bar-fill'}
-                  style={{ width: `${bar.widthPercent}%` }}
+                  style={{ transform: `scaleX(${bar.widthPercent / 100})` }}
                 />
               </div>
             </div>

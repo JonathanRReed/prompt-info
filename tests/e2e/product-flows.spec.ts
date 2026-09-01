@@ -79,9 +79,25 @@ test('model browser shows rates and context before selection', async ({ page }) 
   await page.goto('/');
 
   await page.getByRole('button', { name: 'Open model results' }).first().click();
-  const firstOption = page.getByRole('listbox').getByRole('option').first();
+  const options = page.getByRole('listbox').getByRole('option');
+  await expect(options).toHaveCount(12);
+  const firstOption = options.first();
   await expect(firstOption).toContainText(/\$.*in.*\$.*out/i);
   await expect(firstOption).toContainText(/context/i);
+});
+
+test('session chart follows the latest turn until the user inspects a point', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByLabel(/Turns per run/).fill('12');
+  const selectedDetail = page.locator('.session-selected-detail');
+  await expect(selectedDetail).toContainText('Selected turn');
+  await expect(selectedDetail.locator('strong').first()).toHaveText('12');
+
+  const activePoint = page.locator('.session-point-group[tabindex="0"]');
+  await expect(activePoint).toHaveAttribute('aria-label', /^Turn 12,/);
+  await activePoint.press('ArrowLeft');
+  await expect(selectedDetail.locator('strong').first()).toHaveText('11');
 });
 
 test('cost workbench scales one AI session into a recurring workload', async ({ page }) => {

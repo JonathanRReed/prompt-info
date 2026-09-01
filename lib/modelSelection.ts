@@ -37,7 +37,9 @@ export function chooseDefaultModel(models: string[]) {
 }
 
 export function chooseDefaultModels(models: string[], pricing: PricingMap, requestedCount = 2) {
-  const count = Math.min(3, Math.max(1, Math.floor(requestedCount)));
+  // Keep the default browse cohort useful without turning the menu into a
+  // random dump of the provider catalog. Callers can still search every row.
+  const count = Math.min(12, Math.max(1, Math.floor(requestedCount)));
   const usable = models.filter(model => hasUsablePricing(model, pricing));
   const selected: string[] = [];
 

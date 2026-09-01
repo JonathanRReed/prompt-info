@@ -42,4 +42,17 @@ describe('chooseDefaultModels', () => {
       'OpenAI: GPT-5.6 Sol',
     ], pricing, 2)).toEqual(['OpenAI: GPT-5.6 Sol']);
   });
+
+  test('can build a broader provider-diverse browse cohort', () => {
+    const broadPricing: PricingMap = Object.fromEntries([
+      'OpenAI: GPT-5.6 Sol',
+      'Anthropic: Claude Sonnet 5',
+      'Google: Gemini 3.7 Flash',
+      'Moonshot: Kimi K2.5',
+      'xAI: Grok 4.6',
+      'DeepSeek: DeepSeek V4',
+    ].map(model => [model, { pricing: { input: 0.001, output: 0.002 }, co2eFactor: 0.0002 }]));
+
+    expect(chooseDefaultModels(Object.keys(broadPricing), broadPricing, 6)).toHaveLength(6);
+  });
 });

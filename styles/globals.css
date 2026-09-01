@@ -1107,10 +1107,6 @@ input[type='range'] {
   background: var(--color-rose-highlightMed);
 }
 
-.comparison-row.is-recommended {
-  box-shadow: inset 4px 0 0 var(--color-rose-love);
-}
-
 .comparison-model-control,
 .comparison-rate-grid {
   min-width: 0;
@@ -1162,7 +1158,7 @@ input[type='range'] {
   margin-top: 0.5rem;
 }
 
-.comparison-recommendation,
+.comparison-observation,
 .comparison-unavailable {
   grid-column: 1 / -1;
   margin: 0;
@@ -1259,10 +1255,12 @@ input[type='range'] {
 
 .cost-bar-fill {
   display: block;
+  width: 100%;
   height: 100%;
   min-width: 1px;
+  transform-origin: left center;
   background: var(--color-rose-subtle);
-  transition: width 180ms ease;
+  transition: transform 180ms ease;
 }
 
 .cost-bar-fill.is-lowest {
@@ -1322,6 +1320,26 @@ input[type='range'] {
   overflow: visible;
 }
 
+.session-chart-frame {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-color: var(--color-rose-highlightHigh) var(--color-rose-surface);
+}
+
+.chart-help {
+  margin-top: 0.75rem;
+  color: var(--color-rose-muted);
+  font-family: var(--font-space-mono), monospace;
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.chart-grid-line {
+  stroke: var(--color-rose-highlightMed);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+}
+
 .chart-axis {
   stroke: var(--color-rose-highlightHigh);
   stroke-width: 1;
@@ -1341,10 +1359,71 @@ input[type='range'] {
   vector-effect: non-scaling-stroke;
 }
 
+.session-point-hit-area {
+  fill: transparent;
+  stroke: transparent;
+  cursor: pointer;
+}
+
+.session-point-group {
+  outline: none;
+  cursor: pointer;
+}
+
+.session-point-group:focus-visible .session-point-hit-area,
+.session-point-group:hover .session-point-hit-area {
+  fill: color-mix(in srgb, var(--color-rose-love) 16%, transparent);
+  stroke: var(--color-rose-love);
+  stroke-width: 1;
+}
+
+.session-point-group.is-selected .session-point {
+  fill: var(--color-rose-love);
+  stroke: var(--color-rose-text);
+}
+
 .session-axis-label {
   fill: var(--color-rose-muted);
   font-family: var(--font-space-mono), monospace;
   font-size: 14px;
+}
+
+.session-y-label {
+  fill: var(--color-rose-muted);
+  font-family: var(--font-space-mono), monospace;
+  font-size: 11px;
+}
+
+.session-selected-detail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 0.75rem;
+  border: 1px solid var(--color-rose-highlightMed);
+  background: var(--color-rose-highlightMed);
+}
+
+.session-selected-detail span {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.65rem;
+  background: var(--color-rose-surface);
+}
+
+.session-selected-detail small {
+  color: var(--color-rose-muted);
+  font-family: var(--font-space-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-selected-detail strong {
+  overflow-wrap: anywhere;
+  color: var(--color-rose-text);
+  font-family: var(--font-space-mono), monospace;
+  font-size: 0.7rem;
 }
 
 .chart-empty {
@@ -1523,10 +1602,6 @@ input[type='range'] {
     grid-column: span 12;
   }
 
-  .cost-workbench-receipt {
-    grid-row: 1;
-  }
-
   .cost-receipt {
     position: static;
     min-height: auto;
@@ -1626,6 +1701,15 @@ input[type='range'] {
 
   .receipt-primary-total output {
     font-size: clamp(2rem, 14vw, 4rem);
+  }
+
+  .session-selected-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .session-line-chart {
+    width: 34rem;
+    min-width: 34rem;
   }
 }
 

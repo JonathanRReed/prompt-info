@@ -39,10 +39,17 @@ describe('chart geometry', () => {
   });
 
   test('builds finite line coordinates for one point and a flat series', () => {
-    expect(buildLinePoints([{ x: 1, y: 4 }], 100, 40, 4)).toEqual([{ x: 4, y: 20 }]);
+    expect(buildLinePoints([{ x: 1, y: 4 }], 100, 40, 4)).toEqual([{ x: 4, y: 20, sourceX: 1, sourceY: 4 }]);
     expect(buildLinePoints([{ x: 1, y: 4 }, { x: 2, y: 4 }], 100, 40, 4)).toEqual([
-      { x: 4, y: 20 },
-      { x: 96, y: 20 },
+      { x: 4, y: 20, sourceX: 1, sourceY: 4 },
+      { x: 96, y: 20, sourceX: 2, sourceY: 4 },
+    ]);
+  });
+
+  test('supports an explicit zero-based y domain for cumulative charts', () => {
+    expect(buildLinePoints([{ x: 1, y: 5 }, { x: 2, y: 10 }], 100, 40, 4, { minY: 0, maxY: 10 })).toEqual([
+      { x: 4, y: 20, sourceX: 1, sourceY: 5 },
+      { x: 96, y: 4, sourceX: 2, sourceY: 10 },
     ]);
   });
 

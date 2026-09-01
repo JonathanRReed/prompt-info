@@ -7,8 +7,8 @@
   "license": "SEE LICENSE IN LICENSE",
   "packageManager": "bun@1.4.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "wrangler pages dev out --port 4173 --compatibility-date=2026-08-04",
     "preview:cloudflare": "wrangler pages dev out --port 4173 --compatibility-date=2026-08-04",
     "lint": "eslint .",

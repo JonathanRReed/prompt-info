@@ -93,3 +93,16 @@ for (const viewport of [
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }
+
+test('mobile keeps the prompt before the planning receipt', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/');
+
+  const promptTop = await page.getByRole('textbox', { name: 'Prompt' }).evaluate(element => (
+    element.getBoundingClientRect().top
+  ));
+  const receiptTop = await page.locator('.cost-workbench-receipt').evaluate(element => (
+    element.getBoundingClientRect().top
+  ));
+  expect(promptTop).toBeLessThan(receiptTop);
+});
