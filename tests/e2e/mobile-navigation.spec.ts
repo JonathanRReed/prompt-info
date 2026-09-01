@@ -11,7 +11,7 @@ test('mobile menu exposes every primary route without horizontal overflow', asyn
   await page.getByRole('button', { name: 'Open navigation menu' }).click();
   const dialog = page.getByRole('dialog', { name: 'Primary navigation' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('link', { name: 'Token Planner' })).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Cost Workbench' })).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Format Comparison' })).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'About' })).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Contact' })).toBeVisible();

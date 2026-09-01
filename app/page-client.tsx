@@ -1,88 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import PromptInput from '../components/PromptInput';
-import ModelSelect from '../components/ModelSelect';
+import { useEffect, useMemo, useState } from 'react';
+import { CostByModelChart } from '../components/charts/CostByModelChart';
+import { SessionAccumulationChart } from '../components/charts/SessionAccumulationChart';
+import { TokenCompositionChart } from '../components/charts/TokenCompositionChart';
+import { CostReceipt } from '../components/workbench/CostReceipt';
+import { CostWorkbench } from '../components/workbench/CostWorkbench';
+import { ModelComparison } from '../components/workbench/ModelComparison';
+import { ScenarioInputs, type TokenizerChoice } from '../components/workbench/ScenarioInputs';
+import { SourceStatus } from '../components/workbench/SourceStatus';
 import { usePromptScenario } from '../components/ScenarioProvider';
-import { fetchPricing, PricingMap } from '../lib/fetchPricing';
 import {
-  getCompanyCachedInputBillablePct,
-  getCompanyCacheWriteMultiplier,
-  getModelTokenizerMultiplier,
-  HARD_MAX_OUTPUT_TOKENS,
-  resolveModelTokenProfile,
-} from '../lib/modelTokenLimits';
-import {
-  DEFAULT_SESSION_CACHE_WRITE_MULTIPLIER,
-  DEFAULT_SESSION_COMPACTION_RETENTION_PCT,
-  DEFAULT_SESSION_COMPACTION_SUMMARY_FLOOR_TOKENS,
-  DEFAULT_SESSION_COMPACTION_THRESHOLD_PCT,
-  DEFAULT_SESSION_CACHED_INPUT_BILLED_PCT,
-  DEFAULT_SESSION_OUTPUT_SHARE_PCT,
-  DEFAULT_SESSION_TURN_OVERHEAD_TOKENS,
-  simulateSessionRunCost,
-  type SessionOutputSizing,
-  type SessionRunMode,
-} from '../lib/sessionMath';
-import { projectWorkload, type WorkloadCadence } from '../lib/workloadMath';
-import { chooseDefaultModel } from '../lib/modelSelection';
+  buildCostComparison,
+  buildSessionAccumulation,
+  buildTokenComposition,
+  type CostComparisonScenario,
+} from '../lib/costComparison';
+import { fetchPricing, type PricingCatalogResponse, type PricingMap } from '../lib/fetchPricing';
+import { chooseDefaultModels } from '../lib/modelSelection';
+import { getModelTokenizerMultiplier, resolveModelTokenProfile } from '../lib/modelTokenLimits';
+import type { SessionRunMode } from '../lib/sessionMath';
+import type { WorkloadCadence } from '../lib/workloadMath';
 
-const DEFAULT_OUTPUT_TOKENS = 4096;
-const AUTO_OUTPUT_FALLBACK = 768;
-const FALLBACK_CONTEXT_WINDOW = 32768;
-const TOKEN_STEP = 64;
-const DEFAULT_AGENT_TURNS = 8;
-const MAX_AGENT_TURNS = 200;
-const RECEIPT_ANIMATION_MS = 2800;
-
-const WORKLOAD_CADENCES: Array<{ value: WorkloadCadence; label: string }> = [
-  { value: 'once', label: 'One-time batch' },
-  { value: 'day', label: 'Per day' },
-  { value: 'week', label: 'Per week' },
-  { value: 'month', label: 'Per month' },
-];
+const SAMPLE_PROMPT = 'Summarize a ten-page research brief, identify the three highest-impact findings, and return a concise decision memo with citations.';
+const MAX_OUTPUT_TOKENS = 300_000;
 
 const TOKENIZERS = [
-  { key: 'o200k_base', label: 'o200k_base', description: 'Newest OpenAI GPT-4o, o-series, and GPT-5 style models' },
-  { key: 'cl100k_base', label: 'cl100k_base', description: 'GPT-4, GPT-3.5, embeddings, and broad OpenAI-compatible estimates' },
-  { key: 'p50k_base', label: 'p50k_base', description: 'Codex and older code-focused models' },
-  { key: 'p50k_edit', label: 'p50k_edit', description: 'Legacy edit models' },
-  { key: 'r50k_base', label: 'r50k_base', description: 'Legacy GPT-3 base models' },
-] as const;
-
-type OutputPreset = {
-  label: string;
-  tokens: number;
-  description: string;
-};
-
-type ReceiptRow = [string, string];
-
-const OUTPUT_PRESETS: OutputPreset[] = [
-  { label: 'Tiny', tokens: 256, description: 'label or title' },
-  { label: 'Brief', tokens: 768, description: 'short answer' },
-  { label: 'Standard', tokens: 2048, description: 'normal response' },
-  { label: 'Long', tokens: 4096, description: 'detailed answer' },
-  { label: 'Deep', tokens: 8192, description: 'large report' },
-  { label: '16K', tokens: 16384, description: 'long document' },
-  { label: '32K', tokens: 32768, description: 'deep run' },
-  { label: '64K', tokens: 65536, description: 'extended run' },
-  { label: '128K', tokens: 128000, description: 'max-scale run' },
-];
-
-const AGENT_TURN_PRESETS = [
-  { label: 'Quick', turns: 3, description: 'short tool loop' },
-  { label: 'IDE', turns: 8, description: 'coding session' },
-  { label: 'Research', turns: 16, description: 'multi-source run' },
-  { label: 'Deep', turns: 32, description: 'long investigation' },
-  { label: 'Marathon', turns: 64, description: 'large agent job' },
-];
+  { key: 'o200k_base', label: 'o200k_base', description: 'Current OpenAI and broadly compatible planning count' },
+  { key: 'cl100k_base', label: 'cl100k_base', description: 'GPT-4, GPT-3.5, and embedding-era count' },
+  { key: 'p50k_base', label: 'p50k_base', description: 'Older code-focused model count' },
+  { key: 'p50k_edit', label: 'p50k_edit', description: 'Legacy edit-model count' },
+  { key: 'r50k_base', label: 'r50k_base', description: 'Legacy GPT-3 base-model count' },
+] as const satisfies readonly TokenizerChoice[];
 
 type TokenizerKey = typeof TOKENIZERS[number]['key'];
 type TokenizerModule = {
-  encode: (lineToEncode: string) => number[];
-  decode: (inputTokensToDecode: Iterable<number>) => string;
+  encode: (text: string) => number[];
+  decode: (tokens: Iterable<number>) => string;
 };
 
 const TOKENIZER_IMPORTERS: Record<TokenizerKey, () => Promise<TokenizerModule>> = {
@@ -93,1698 +48,339 @@ const TOKENIZER_IMPORTERS: Record<TokenizerKey, () => Promise<TokenizerModule>> 
   r50k_base: () => import('gpt-tokenizer/encoding/r50k_base'),
 };
 
-function formatCost(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return 'N/A';
-  if (value === 0) return '$0.00';
-  if (value < 0.01) return `$${value.toFixed(6)}`;
-  if (value < 1) return `$${value.toFixed(4)}`;
-  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatTokenCount(value: number | undefined) {
-  return value && Number.isFinite(value) ? value.toLocaleString() : 'unknown';
-}
-
-function formatRatePerMillion(value: number | null | undefined) {
-  if (value === null || value === undefined || !Number.isFinite(value)) return 'N/A';
-  const perMillion = value * 1000;
-  const label = perMillion >= 1
-    ? perMillion.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : Number(perMillion.toPrecision(2)).toString();
-  return `$${label} / M`;
-}
-
-function formatConfidence(confidence: string | undefined) {
-  if (confidence === 'high') return 'high confidence';
-  if (confidence === 'medium') return 'medium confidence';
-  return 'planning estimate';
-}
-
-function formatPercent(value: number | null | undefined) {
-  if (value === null || value === undefined || !Number.isFinite(value)) return 'N/A';
-  return `${Math.round(value)}%`;
-}
-
-function formatCompany(company: string | undefined) {
-  return company || 'Unknown';
-}
-
-function compactModelName(model: string) {
-  if (!model) return 'Select a model';
-  return model.length > 34 ? `${model.slice(0, 31)}...` : model;
-}
-
-function clampOutputTokens(value: number, limit = HARD_MAX_OUTPUT_TOKENS) {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(Math.floor(value), Math.min(limit, HARD_MAX_OUTPUT_TOKENS)));
-}
-
-function clampAgentTurns(value: number) {
-  if (!Number.isFinite(value)) return 1;
-  return Math.max(1, Math.min(Math.floor(value), MAX_AGENT_TURNS));
-}
-
-function clampScenarioValue(value: number, min: number, max: number, fallback: number) {
+function clampInteger(value: number, min: number, max: number, fallback: number) {
   if (!Number.isFinite(value)) return fallback;
-  return Math.min(max, Math.max(min, value));
+  return Math.min(max, Math.max(min, Math.floor(value)));
 }
 
-function roundToTokenStep(value: number) {
-  return Math.ceil(value / TOKEN_STEP) * TOKEN_STEP;
-}
-
-function estimateOutputTokens(promptTokens: number, modelLimit: number) {
-  if (modelLimit <= 0) return 0;
-  const safeLimit = Math.max(TOKEN_STEP, Math.min(modelLimit, HARD_MAX_OUTPUT_TOKENS));
-  const softCap = Math.min(safeLimit, DEFAULT_OUTPUT_TOKENS);
-
-  if (promptTokens <= 0) {
-    return Math.min(AUTO_OUTPUT_FALLBACK, softCap);
-  }
-
-  const estimated =
-    promptTokens < 80
-      ? AUTO_OUTPUT_FALLBACK
-      : promptTokens < 700
-        ? promptTokens * 1.5
-        : promptTokens * 1.2;
-
-  return clampOutputTokens(Math.max(TOKEN_STEP, roundToTokenStep(estimated)), softCap);
-}
-
-function getRecommendedTokenizer(model: string): TokenizerKey | null {
-  const normalized = model.toLowerCase();
-
-  if (!normalized) return null;
-  if (/(gpt-5|gpt-4o|chatgpt-4o|o1|o3|o4|realtime|audio)/.test(normalized)) return 'o200k_base';
-  if (normalized.includes('edit')) return 'p50k_edit';
-  if (/(codex|code-|code_)/.test(normalized)) return 'p50k_base';
-  if (/(gpt-4|gpt-3\.5|embedding|davinci-002|babbage-002)/.test(normalized)) return 'cl100k_base';
-  if (/(ada|babbage|curie|davinci)/.test(normalized)) return 'r50k_base';
-
-  return null;
-}
-
-function deriveModelCacheReadPercent(entry: PricingMap[string] | undefined, fallbackCompany: string) {
-  const entryInputRate = entry?.pricing?.input;
-  const entryCacheReadRate = entry?.pricing?.inputCacheRead;
-
-  if (
-    typeof entryInputRate === 'number' &&
-    typeof entryCacheReadRate === 'number' &&
-    Number.isFinite(entryInputRate) &&
-    Number.isFinite(entryCacheReadRate) &&
-    entryInputRate > 0
-  ) {
-    // Round to whole percent for the step=1 inputs, but never round a real
-    // published cache rate down to "free": floor at 1% when the rate is > 0.
-    const rounded = Math.round((entryCacheReadRate / entryInputRate) * 100);
-    return Math.min(100, Math.max(entryCacheReadRate > 0 ? 1 : 0, rounded));
-  }
-
-  return getCompanyCachedInputBillablePct(fallbackCompany as Parameters<typeof getCompanyCachedInputBillablePct>[0]);
-}
-
-function deriveModelCacheWriteMultiplier(entry: PricingMap[string] | undefined, fallbackCompany: string) {
-  const entryInputRate = entry?.pricing?.input;
-  const entryCacheWriteRate = entry?.pricing?.inputCacheWrite;
-
-  if (
-    typeof entryInputRate === 'number' &&
-    typeof entryCacheWriteRate === 'number' &&
-    Number.isFinite(entryInputRate) &&
-    Number.isFinite(entryCacheWriteRate) &&
-    entryInputRate > 0 &&
-    entryCacheWriteRate > 0
-  ) {
-    return Math.round((entryCacheWriteRate / entryInputRate) * 100) / 100;
-  }
-
-  return getCompanyCacheWriteMultiplier(fallbackCompany as Parameters<typeof getCompanyCacheWriteMultiplier>[0]);
-}
-
-function ReceiptCard({
-  rows,
-  totalTokens,
-  totalTokensLabel = 'Billable tokens',
-  totalLabel = 'Total cost',
-  totalCostLabel,
-  note,
-  action,
-  showRegister = false,
-  animateSequence = false,
-  className = '',
-}: {
-  rows: ReceiptRow[];
-  totalTokens: number;
-  totalTokensLabel?: string;
-  totalLabel?: string;
-  totalCostLabel: string;
-  note: string;
-  action?: ReactNode;
-  showRegister?: boolean;
-  animateSequence?: boolean;
-  className?: string;
-}) {
-  const sequenceStyle = {
-    '--receipt-count': rows.length,
-  } as CSSProperties;
-
-  return (
-    <div
-      className={`receipt-card ${animateSequence ? 'receipt-card-sequenced' : ''} ${className}`}
-      style={animateSequence ? sequenceStyle : undefined}
-    >
-      <div className="receipt-perf" aria-hidden="true" />
-      <div className="flex items-start justify-between gap-6 border-b border-rose-highlightMed pb-5">
-        <div>
-          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-rose-muted">Live estimate</p>
-          <p className="mt-2 text-2xl font-black uppercase leading-none tracking-[-0.04em] text-rose-text">Cost receipt</p>
-        </div>
-        <output className="register-price font-mono text-sm font-bold text-rose-love tabular-nums">
-          {totalCostLabel}
-        </output>
-      </div>
-
-      {showRegister && (
-        <div className="register-strip mt-5" aria-hidden="true">
-          <span>Ringing up {totalLabel.toLowerCase()}</span>
-          <span>{totalCostLabel}</span>
-        </div>
-      )}
-
-      <div className="mt-6 grid gap-3">
-        {rows.map(([label, value], index) => (
-          <div
-            key={label}
-            className="receipt-row"
-            style={animateSequence ? ({ '--receipt-index': index } as CSSProperties) : undefined}
-          >
-            <span>{label}</span>
-            <output>{value}</output>
-          </div>
-        ))}
-      </div>
-
-      <div className="receipt-total mt-8">
-        <span>{totalTokensLabel}</span>
-        <data value={totalTokens}>{totalTokens.toLocaleString()}</data>
-      </div>
-      <div className="receipt-cost-total mt-3">
-        <span>{totalLabel}</span>
-        <output>{totalCostLabel}</output>
-      </div>
-      <p className="receipt-note mt-5 text-sm leading-6 text-rose-muted">
-        {note}
-      </p>
-      {action && <div className="receipt-action-wrap mt-5">{action}</div>}
-    </div>
-  );
+function bundledCatalog(data: PricingMap): PricingCatalogResponse {
+  return {
+    schemaVersion: 1,
+    data,
+    source: 'bundled-static',
+    sourceUrl: 'https://prompt-info.helloworldfirm.com/data/llm-data.json',
+    retrievedAt: new Date().toISOString(),
+    freshness: 'static',
+    isFallback: true,
+    fallbackReason: 'The pricing API was unavailable. Using the bundled dated catalog.',
+  };
 }
 
 export default function HomePageClient() {
   const { setScenario } = usePromptScenario();
-  const [prompt, setPrompt] = useState('');
-  const [model, setModel] = useState('');
-  const [tokens, setTokens] = useState<number[]>([]);
-  const [decodedTokens, setDecodedTokens] = useState<{ str: string; id: number }[]>([]);
-  const [pricing, setPricing] = useState<PricingMap | null>(null);
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [modelsLoading, setModelsLoading] = useState<boolean>(true);
-  const [outputMode, setOutputMode] = useState<'auto' | 'custom'>('auto');
-  const [customOutTokens, setCustomOutTokens] = useState(DEFAULT_OUTPUT_TOKENS);
-  const [visualizerMode, setVisualizerMode] = useState<'snapshot' | 'tokens'>('snapshot');
+  const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
   const [tokenizer, setTokenizer] = useState<TokenizerKey>('o200k_base');
-  const [tokenizerTouched, setTokenizerTouched] = useState(false);
-  const [agentMode, setAgentMode] = useState(false);
-  const [agentTurns, setAgentTurns] = useState(DEFAULT_AGENT_TURNS);
-  const [summaryView, setSummaryView] = useState<'receipt' | 'detail'>('receipt');
-  const [animatedSessionCost, setAnimatedSessionCost] = useState(0);
-  const [finalReceiptAnimationState, setFinalReceiptAnimationState] = useState<'idle' | 'running' | 'done'>('idle');
+  const [rawTokens, setRawTokens] = useState<number[]>([]);
+  const [decodedTokens, setDecodedTokens] = useState<Array<{ id: number; text: string }>>([]);
+  const [tokenizing, setTokenizing] = useState(true);
+  const [catalog, setCatalog] = useState<PricingCatalogResponse | null>(null);
+  const [pricingError, setPricingError] = useState<string | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(true);
+  const [pricingRequest, setPricingRequest] = useState(0);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [outputTokens, setOutputTokens] = useState(2_048);
+  const [turns, setTurns] = useState(1);
   const [sessionMode, setSessionMode] = useState<SessionRunMode>('baseline');
-  const [sessionOutputSizing, setSessionOutputSizing] = useState<SessionOutputSizing>('planned');
-  const [sessionTargetOutputSharePct, setSessionTargetOutputSharePct] = useState(DEFAULT_SESSION_OUTPUT_SHARE_PCT);
-  const [sessionCachedInputBillablePct, setSessionCachedInputBillablePct] = useState(DEFAULT_SESSION_CACHED_INPUT_BILLED_PCT);
-  const [sessionCacheWriteMultiplier, setSessionCacheWriteMultiplier] = useState(DEFAULT_SESSION_CACHE_WRITE_MULTIPLIER);
-  const [cacheRatesTouched, setCacheRatesTouched] = useState(false);
-  const [sessionCompactionThresholdPct, setSessionCompactionThresholdPct] = useState(DEFAULT_SESSION_COMPACTION_THRESHOLD_PCT);
-  const [sessionCompactionRetentionPct, setSessionCompactionRetentionPct] = useState(DEFAULT_SESSION_COMPACTION_RETENTION_PCT);
-  const [sessionTurnOverheadTokens, setSessionTurnOverheadTokens] = useState(DEFAULT_SESSION_TURN_OVERHEAD_TOKENS);
-  const [sessionCompactionSummaryFloorTokens, setSessionCompactionSummaryFloorTokens] = useState(DEFAULT_SESSION_COMPACTION_SUMMARY_FLOOR_TOKENS);
-  const [workloadRuns, setWorkloadRuns] = useState(1);
-  const [workloadCadence, setWorkloadCadence] = useState<WorkloadCadence>('once');
-  const animatedSessionCostRef = useRef(0);
-  const finalReceiptRef = useRef<HTMLDivElement | null>(null);
-  const finalReceiptAnimationTimerRef = useRef<number | null>(null);
-  const [finalReceiptInView, setFinalReceiptInView] = useState(false);
-  const entry = pricing?.[model];
-
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      const staticPricingPromise = fetch('/data/llm-data.json')
-        .then(async response => {
-          if (!response.ok) throw new Error(`Static pricing request failed with ${response.status}`);
-          return (await response.json()) as PricingMap;
-        })
-        .catch(error => {
-          console.warn('Failed to load bundled pricing data', error);
-          return {} as PricingMap;
-        });
-
-      const livePricingPromise = fetchPricing().catch(error => {
-        console.error('Failed to refresh live pricing data', error);
-        return {} as PricingMap;
-      });
-
-      const staticPricing = await staticPricingPromise;
-      if (mounted && Object.keys(staticPricing).length > 0) {
-        setPricing(staticPricing);
-      }
-
-      try {
-        const livePricing = await livePricingPromise;
-        if (!mounted) return;
-
-        if (Object.keys(livePricing).length > 0) {
-          setPricing(livePricing);
-        } else if (Object.keys(staticPricing).length === 0) {
-          setPricing({});
-        }
-      } catch (error) {
-        console.error('Failed to load pricing data', error);
-        if (mounted && Object.keys(staticPricing).length === 0) setPricing({});
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    if (pricing === null) {
-      setModelsLoading(true);
-      return () => {
-        mounted = false;
-      };
-    }
-
-    (async () => {
-      setModelsLoading(true);
-      try {
-        const keys = Object.keys(pricing);
-        if (keys.length > 0) {
-          if (mounted) setAvailableModels(keys);
-          return;
-        }
-
-        try {
-          const res = await fetch('/data/llm-data.json');
-          const json = await res.json();
-          const staticKeys = Object.keys(json ?? {});
-          if (mounted) {
-            setPricing(json as PricingMap);
-            setAvailableModels(staticKeys);
-          }
-        } catch (err) {
-          console.warn('Fallback to static model list failed:', err);
-          if (mounted) setAvailableModels([]);
-        }
-      } finally {
-        if (mounted) setModelsLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [pricing]);
-
-  useEffect(() => {
-    if (modelsLoading || availableModels.length === 0) return;
-    if (!model || !availableModels.includes(model)) {
-      setModel(chooseDefaultModel(availableModels));
-    }
-  }, [availableModels, model, modelsLoading]);
-
-  const modelTokenProfile = useMemo(() => resolveModelTokenProfile(model, entry), [entry, model]);
-  const modelCompany = modelTokenProfile.company ?? 'Other';
-  const defaultSessionCachedInputBillablePct = useMemo(
-    () => deriveModelCacheReadPercent(entry, modelCompany),
-    [entry, modelCompany]
-  );
-  const defaultSessionCacheWriteMultiplier = useMemo(
-    () => deriveModelCacheWriteMultiplier(entry, modelCompany),
-    [entry, modelCompany]
-  );
-  // The counter uses OpenAI BPE encodings; other vendors' tokenizers usually
-  // produce more tokens for the same text, so costs are planned against a
-  // calibrated count instead of the raw BPE count.
-  const tokenizerMultiplier = getModelTokenizerMultiplier(model, modelCompany);
-  const billedPromptTokens = useMemo(
-    () => Math.round(tokens.length * tokenizerMultiplier),
-    [tokens.length, tokenizerMultiplier]
-  );
-  const modelOutputLimit = modelTokenProfile.maxOutputTokens;
-  const modelContextWindow = modelTokenProfile.contextWindowTokens;
-  const effectiveOutputLimit = useMemo(() => {
-    if (!modelContextWindow) return modelOutputLimit;
-    return clampOutputTokens(Math.max(0, modelContextWindow - billedPromptTokens), modelOutputLimit);
-  }, [billedPromptTokens, modelContextWindow, modelOutputLimit]);
-
-  const autoOutTokens = useMemo(
-    () => estimateOutputTokens(billedPromptTokens, effectiveOutputLimit),
-    [billedPromptTokens, effectiveOutputLimit]
-  );
-
-  const plannedOutput = outputMode === 'auto'
-    ? autoOutTokens
-    : clampOutputTokens(customOutTokens, effectiveOutputLimit);
-
-  const outputPresets = useMemo(() => {
-    const presets = [...OUTPUT_PRESETS];
-    const shouldAddCap =
-      modelOutputLimit > 0 &&
-      modelOutputLimit <= HARD_MAX_OUTPUT_TOKENS &&
-      !presets.some(preset => preset.tokens === modelOutputLimit) &&
-      modelOutputLimit > OUTPUT_PRESETS[OUTPUT_PRESETS.length - 1].tokens;
-
-    if (shouldAddCap) {
-      presets.push({ label: 'Cap', tokens: modelOutputLimit, description: 'model ceiling' });
-    }
-
-    return presets.sort((a, b) => a.tokens - b.tokens);
-  }, [modelOutputLimit]);
-
-  const recommendedTokenizer = useMemo(() => getRecommendedTokenizer(model), [model]);
-
-  useEffect(() => {
-    setCustomOutTokens(prev => clampOutputTokens(prev, effectiveOutputLimit));
-  }, [effectiveOutputLimit]);
-
-  useEffect(() => {
-    if (!tokenizerTouched && recommendedTokenizer) {
-      setTokenizer(recommendedTokenizer);
-    }
-  }, [recommendedTokenizer, tokenizerTouched]);
-
-  useEffect(() => {
-    if (!cacheRatesTouched) setSessionCachedInputBillablePct(defaultSessionCachedInputBillablePct);
-  }, [cacheRatesTouched, defaultSessionCachedInputBillablePct]);
-
-  useEffect(() => {
-    if (!cacheRatesTouched) setSessionCacheWriteMultiplier(defaultSessionCacheWriteMultiplier);
-  }, [cacheRatesTouched, defaultSessionCacheWriteMultiplier]);
-
-  const inPricePer1k = entry?.pricing ? Number(entry.pricing.input) : null;
-  const outPricePer1k = entry?.pricing ? Number(entry.pricing.output) : null;
-
-  const effectiveAgentTurns = agentMode ? clampAgentTurns(agentTurns) : 1;
-
-  const baselineEstimate = useMemo(() => {
-    if (!entry || !tokens.length) return null;
-    return simulateSessionRunCost({
-      mode: 'baseline',
-      promptTokens: billedPromptTokens,
-      referenceOutputTokens: plannedOutput,
-      turns: effectiveAgentTurns,
-      inputRatePer1k: inPricePer1k,
-      outputRatePer1k: outPricePer1k,
-      outputTokenLimit: effectiveOutputLimit,
-      contextWindowTokens: modelContextWindow,
-    });
-  }, [entry, tokens.length, billedPromptTokens, plannedOutput, effectiveAgentTurns, inPricePer1k, outPricePer1k, effectiveOutputLimit, modelContextWindow]);
-
-  const scenarioEstimate = useMemo(() => {
-    if (!entry || !tokens.length || !agentMode || sessionMode !== 'scenario') return null;
-    return simulateSessionRunCost({
-      mode: 'scenario',
-      promptTokens: billedPromptTokens,
-      referenceOutputTokens: plannedOutput,
-      turns: effectiveAgentTurns,
-      inputRatePer1k: inPricePer1k,
-      outputRatePer1k: outPricePer1k,
-      outputTokenLimit: effectiveOutputLimit,
-      contextWindowTokens: modelContextWindow,
-      outputSizing: sessionOutputSizing,
-      targetOutputCostSharePct: sessionTargetOutputSharePct,
-      cachedInputBillablePct: sessionCachedInputBillablePct,
-      cacheWriteMultiplier: sessionCacheWriteMultiplier,
-      compactionThresholdPct: sessionCompactionThresholdPct,
-      compactionRetentionPct: sessionCompactionRetentionPct,
-      turnOverheadTokens: sessionTurnOverheadTokens,
-      compactionSummaryFloorTokens: sessionCompactionSummaryFloorTokens,
-    });
-  }, [entry, tokens.length, billedPromptTokens, plannedOutput, effectiveAgentTurns, inPricePer1k, outPricePer1k, effectiveOutputLimit, modelContextWindow, agentMode, sessionMode, sessionOutputSizing, sessionTargetOutputSharePct, sessionCachedInputBillablePct, sessionCacheWriteMultiplier, sessionCompactionThresholdPct, sessionCompactionRetentionPct, sessionTurnOverheadTokens, sessionCompactionSummaryFloorTokens]);
-
-  const activeEstimate = scenarioEstimate ?? baselineEstimate;
-  // In costShare sizing the simulation ignores plannedOutput, so per-turn
-  // output shown to the user must come from the modeled average instead.
-  const isCostShareScenario = activeEstimate?.mode === 'scenario' && activeEstimate.outputSizing === 'costShare';
-  const displayedOutputPerTurn = isCostShareScenario && activeEstimate
-    ? Math.round(activeEstimate.turnOutputTokens / Math.max(1, activeEstimate.turns))
-    : plannedOutput;
-
-  const tokenizerOption = TOKENIZERS.find(t => t.key === tokenizer) ?? TOKENIZERS[0];
+  const [workloadRuns, setWorkloadRuns] = useState(100);
+  const [workloadCadence, setWorkloadCadence] = useState<WorkloadCadence>('month');
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
 
   useEffect(() => {
     let cancelled = false;
-
-    if (!prompt) {
-      setTokens([]);
-      setDecodedTokens([]);
-      return () => {
-        cancelled = true;
-      };
-    }
+    setPricingLoading(true);
+    setPricingError(null);
 
     (async () => {
       try {
-        const tokenizerModule = await TOKENIZER_IMPORTERS[tokenizer]();
+        const response = await fetchPricing();
         if (cancelled) return;
-        const tks = tokenizerModule.encode(prompt);
-        setTokens(tks);
-        setDecodedTokens(tks.map(t => ({ str: tokenizerModule.decode([t]), id: t })));
-      } catch (e) {
-        const fallback = await TOKENIZER_IMPORTERS.cl100k_base();
-        if (cancelled) return;
-        const tks = fallback.encode(prompt);
-        setTokens(tks);
-        setDecodedTokens(tks.map(t => ({ str: fallback.decode([t]), id: t })));
+        setCatalog(response);
+        const models = Object.keys(response.data);
+        setSelectedModels(current => {
+          const valid = current.filter(model => models.includes(model)).slice(0, 3);
+          return valid.length >= 2 ? valid : chooseDefaultModels(models, response.data, 2);
+        });
+      } catch (error) {
+        try {
+          const response = await fetch('/data/llm-data.json', { headers: { Accept: 'application/json' } });
+          if (!response.ok) throw new Error(`Bundled catalog returned ${response.status}`);
+          const data = await response.json() as PricingMap;
+          if (cancelled) return;
+          const fallback = bundledCatalog(data);
+          setCatalog(fallback);
+          setSelectedModels(chooseDefaultModels(Object.keys(data), data, 2));
+        } catch {
+          if (cancelled) return;
+          setCatalog(null);
+          setPricingError(error instanceof Error ? error.message : 'Pricing catalog is unavailable.');
+        }
+      } finally {
+        if (!cancelled) setPricingLoading(false);
       }
     })();
 
     return () => {
       cancelled = true;
     };
+  }, [pricingRequest]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTokenizing(true);
+    const timeout = window.setTimeout(() => {
+      (async () => {
+        if (!prompt) {
+          if (!cancelled) {
+            setRawTokens([]);
+            setDecodedTokens([]);
+            setTokenizing(false);
+          }
+          return;
+        }
+
+        try {
+          const encoder = await TOKENIZER_IMPORTERS[tokenizer]();
+          if (cancelled) return;
+          const encoded = encoder.encode(prompt);
+          setRawTokens(encoded);
+          setDecodedTokens(encoded.slice(0, 400).map(id => ({ id, text: encoder.decode([id]) })));
+        } finally {
+          if (!cancelled) setTokenizing(false);
+        }
+      })();
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
   }, [prompt, tokenizer]);
 
-  const hasTokens = tokens.length > 0;
-  const modelOptions = availableModels;
+  const pricing = catalog?.data ?? null;
+  const availableModels = useMemo(() => Object.keys(pricing ?? {}), [pricing]);
+  const baseScenario = useMemo<CostComparisonScenario>(() => ({
+    mode: sessionMode,
+    promptTokens: rawTokens.length,
+    referenceOutputTokens: outputTokens,
+    turns,
+    outputTokenLimit: MAX_OUTPUT_TOKENS,
+    contextWindowTokens: 1_000_000,
+  }), [outputTokens, rawTokens.length, sessionMode, turns]);
 
-  const totalPromptTokens = activeEstimate
-    ? Math.round(activeEstimate.turnInputTokens)
-    : billedPromptTokens * effectiveAgentTurns;
-  const totalOutputTokens = activeEstimate
-    ? Math.round(activeEstimate.turnOutputTokens)
-    : plannedOutput * effectiveAgentTurns;
-  const totalSessionTokens = activeEstimate
-    ? Math.round(activeEstimate.totalTokens)
-    : (billedPromptTokens + plannedOutput) * effectiveAgentTurns;
-  const totalCompactionTokens = activeEstimate
-    ? Math.round(activeEstimate.compactionInputTokens + activeEstimate.compactionOutputTokens)
-    : 0;
-
-  const contextReferenceWindow = modelContextWindow ?? FALLBACK_CONTEXT_WINDOW;
-  const combinedTokens = billedPromptTokens + displayedOutputPerTurn;
-  const contextCoverage = useMemo(
-    () => (hasTokens || plannedOutput > 0 ? Math.min(100, (combinedTokens / contextReferenceWindow) * 100) : 0),
-    [combinedTokens, contextReferenceWindow, hasTokens, plannedOutput]
-  );
-  const contextRemaining = modelContextWindow
-    ? Math.max(0, modelContextWindow - combinedTokens)
-    : null;
-  const outputCapLabel = modelOutputLimit.toLocaleString();
-  const availableOutputLabel = effectiveOutputLimit.toLocaleString();
-  const contextWindowLabel = formatTokenCount(modelContextWindow);
-  const contextRemainingLabel = contextRemaining === null ? 'unknown' : contextRemaining.toLocaleString();
-  const contextMeterLabel = modelContextWindow ? 'model context plan' : 'fallback planning window';
-  const tokenLimitSource = `${modelTokenProfile.source}, ${formatConfidence(modelTokenProfile.confidence)}`;
-
-  const sessionInputCost = activeEstimate?.inputCost ?? null;
-  const sessionOutputCost = activeEstimate?.outputCost ?? null;
-  const sessionTurnCost = activeEstimate?.turnCost ?? null;
-  const sessionCompactionCost = activeEstimate?.compactionCost ?? null;
-  const sessionCost = activeEstimate?.totalCost ?? null;
-  const workloadProjection = sessionCost === null
-    ? null
-    : projectWorkload({ costPerRun: sessionCost, runs: workloadRuns, cadence: workloadCadence });
-  const headlineCost = workloadProjection?.costPerPeriod ?? sessionCost;
-  const cadenceNoun = workloadCadence === 'once' ? 'batch' : workloadCadence;
-  const headlineCostTitle = workloadCadence === 'once' && workloadRuns === 1
-    ? 'Total cost'
-    : workloadCadence === 'once'
-      ? 'Batch cost'
-      : workloadCadence === 'day'
-        ? 'Daily cost'
-        : workloadCadence === 'week'
-          ? 'Weekly cost'
-          : 'Monthly cost';
-  const animatedSessionCostLabel = headlineCost === null ? 'N/A' : formatCost(animatedSessionCost);
-  const finalSessionCostLabel = formatCost(sessionCost);
-  const finalHeadlineCostLabel = formatCost(headlineCost);
-  const isScaledWorkload = workloadRuns > 1 || workloadCadence !== 'once';
-  const receiptAnimationSignature = useMemo(
-    () => [
+  const selectedPricingModels = useMemo(() => selectedModels.map(model => {
+    const entry = pricing?.[model];
+    const company = resolveModelTokenProfile(model, entry).company;
+    return {
       model,
-      tokenizer,
-      outputMode,
-      plannedOutput,
-      agentMode,
-      effectiveAgentTurns,
-      totalSessionTokens,
-      finalHeadlineCostLabel,
-      sessionMode,
-      sessionOutputSizing,
-      sessionTargetOutputSharePct,
-      sessionCachedInputBillablePct,
-      sessionCacheWriteMultiplier,
-      sessionCompactionThresholdPct,
-      sessionCompactionRetentionPct,
-      workloadRuns,
-      workloadCadence,
-    ].join('|'),
-    [agentMode, effectiveAgentTurns, finalHeadlineCostLabel, model, outputMode, plannedOutput, tokenizer, totalSessionTokens, sessionMode, sessionOutputSizing, sessionTargetOutputSharePct, sessionCachedInputBillablePct, sessionCacheWriteMultiplier, sessionCompactionThresholdPct, sessionCompactionRetentionPct, workloadCadence, workloadRuns]
-  );
-  // Debounced so continuous typing or slider drags settle before the receipt
-  // animation resets and replays; also avoids remounting the card per keystroke.
-  const [debouncedReceiptSignature, setDebouncedReceiptSignature] = useState(receiptAnimationSignature);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedReceiptSignature(receiptAnimationSignature), 400);
-    return () => window.clearTimeout(timer);
-  }, [receiptAnimationSignature]);
-
-  useEffect(() => {
-    const target = typeof headlineCost === 'number' ? headlineCost : 0;
-    const start = animatedSessionCostRef.current;
-    let frame = 0;
-    let latest = start;
-
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion) {
-      animatedSessionCostRef.current = target;
-      setAnimatedSessionCost(target);
-      return;
-    }
-
-    const startedAt = performance.now();
-    const duration = 680;
-
-    const tick = (time: number) => {
-      const progress = Math.min(1, (time - startedAt) / duration);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      latest = start + (target - start) * eased;
-      animatedSessionCostRef.current = latest;
-      setAnimatedSessionCost(latest);
-
-      if (progress < 1) {
-        frame = requestAnimationFrame(tick);
-      } else {
-        animatedSessionCostRef.current = target;
-      }
+      entry,
+      promptTokenMultiplier: getModelTokenizerMultiplier(model, company),
     };
+  }), [pricing, selectedModels]);
 
-    frame = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(frame);
-      animatedSessionCostRef.current = latest;
-    };
-  }, [headlineCost]);
-
-  useEffect(() => {
-    if (summaryView !== 'receipt') return;
-    const receiptNode = finalReceiptRef.current;
-    if (!receiptNode) return;
-
-    if (!('IntersectionObserver' in window)) {
-      setFinalReceiptInView(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setFinalReceiptInView(entry.isIntersecting);
-      },
-      {
-        root: null,
-        rootMargin: '0px 0px -12% 0px',
-        threshold: 0.28,
-      }
-    );
-
-    observer.observe(receiptNode);
-    return () => observer.disconnect();
-  }, [summaryView]);
+  const comparison = useMemo(() => buildCostComparison({
+    models: selectedPricingModels,
+    scenario: baseScenario,
+    workload: { runs: workloadRuns, cadence: workloadCadence },
+  }), [baseScenario, selectedPricingModels, workloadCadence, workloadRuns]);
+  const primaryRow = comparison.rows[0] ?? null;
+  const primaryEntry = primaryRow?.entry ?? null;
+  const primaryMultiplier = selectedPricingModels[0]?.promptTokenMultiplier ?? 1;
+  const tokenComposition = primaryRow?.estimate ? buildTokenComposition(primaryRow.estimate) : [];
+  const accumulation = useMemo(() => primaryEntry
+    ? buildSessionAccumulation({
+        entry: primaryEntry,
+        scenario: {
+          ...baseScenario,
+          promptTokens: Math.round(baseScenario.promptTokens * primaryMultiplier),
+        },
+      })
+    : [], [baseScenario, primaryEntry, primaryMultiplier]);
+  const chartMetric = workloadCadence === 'once' ? 'sessionCost' : 'monthlyCost';
+  const billedTokenNote = primaryMultiplier === 1 || rawTokens.length === 0
+    ? null
+    : `, about ${Math.round(rawTokens.length * primaryMultiplier).toLocaleString()} billed for ${primaryRow?.model ?? 'this provider'}`;
 
   useEffect(() => {
-    if (finalReceiptAnimationTimerRef.current) {
-      clearTimeout(finalReceiptAnimationTimerRef.current);
-      finalReceiptAnimationTimerRef.current = null;
-    }
-    setFinalReceiptAnimationState('idle');
-  }, [debouncedReceiptSignature]);
-
-  useEffect(() => {
-    if (summaryView !== 'receipt' || !finalReceiptInView || finalReceiptAnimationState !== 'idle') return;
-
-    setFinalReceiptAnimationState('running');
-    finalReceiptAnimationTimerRef.current = window.setTimeout(() => {
-      setFinalReceiptAnimationState('done');
-      finalReceiptAnimationTimerRef.current = null;
-    }, RECEIPT_ANIMATION_MS);
-  }, [finalReceiptAnimationState, finalReceiptInView, debouncedReceiptSignature, summaryView]);
-
-  useEffect(() => () => {
-    if (finalReceiptAnimationTimerRef.current) {
-      clearTimeout(finalReceiptAnimationTimerRef.current);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!prompt.trim()) {
-      setScenario(null);
-      return;
-    }
-
+    if (!primaryRow || !primaryEntry) return;
     setScenario({
       prompt,
-      model,
+      model: primaryRow.model,
       tokenizer,
-      inputTokensPerRun: totalPromptTokens,
-      outputTokensPerRun: totalOutputTokens,
-      turns: effectiveAgentTurns,
+      inputTokensPerRun: Math.round(rawTokens.length * primaryMultiplier),
+      outputTokensPerRun: outputTokens,
+      turns,
       sessionMode,
-      inputPerMillion: inPricePer1k === null ? null : inPricePer1k * 1000,
-      outputPerMillion: outPricePer1k === null ? null : outPricePer1k * 1000,
-      costPerRun: sessionCost,
+      inputPerMillion: primaryEntry.pricing.input * 1_000,
+      outputPerMillion: primaryEntry.pricing.output * 1_000,
+      costPerRun: primaryRow.sessionCost,
       workloadRuns,
       workloadCadence,
     });
-  }, [effectiveAgentTurns, inPricePer1k, model, outPricePer1k, prompt, sessionCost, sessionMode, setScenario, tokenizer, totalOutputTokens, totalPromptTokens, workloadCadence, workloadRuns]);
+  }, [outputTokens, primaryEntry, primaryMultiplier, primaryRow, prompt, rawTokens.length, sessionMode, setScenario, tokenizer, turns, workloadCadence, workloadRuns]);
 
-  const isCalibrated = tokenizerMultiplier !== 1;
-  const sessionModeLabel = sessionMode === 'scenario'
-    ? sessionOutputSizing === 'costShare'
-      ? `Scenario, ${formatPercent(activeEstimate?.targetOutputCostSharePct ?? sessionTargetOutputSharePct)} out share`
-      : 'Scenario, history + cache'
-    : 'Baseline';
-  const receiptNote = agentMode
-    ? sessionMode === 'scenario'
-      ? 'Scenario mode re-sends conversation history each turn, bills cached context at the cache read rate, and simulates compaction calls.'
-      : 'Baseline mode bills each turn as an independent one-shot request. Switch to Scenario for full-history session math.'
-    : sessionCost === null
-      ? 'Empty values show until you paste a prompt and choose a priced model.'
-      : 'One-shot mode prices one prompt and one planned response with the selected model rates.';
-  const receiptRows: ReceiptRow[] = [
-    ['Model', compactModelName(model)],
-    ['Model provider', formatCompany(modelCompany)],
-    ['Mode', agentMode ? `Agent x ${effectiveAgentTurns}` : 'One-shot'],
-    ['Tokenizer', tokenizer.replace('_', '/')],
-    ['Prompt / turn', isCalibrated ? `~${billedPromptTokens.toLocaleString()}` : billedPromptTokens.toLocaleString()],
-  ];
-  if (isCalibrated) {
-    receiptRows.push(['Calibration', `${tokens.length.toLocaleString()} BPE x ${tokenizerMultiplier}`]);
+  function replaceModel(index: number, model: string) {
+    setSelectedModels(current => current.map((value, position) => position === index ? model : value));
   }
-  receiptRows.push(
-    ['Output / turn', isCostShareScenario
-      ? `${displayedOutputPerTurn.toLocaleString()} avg (share-sized)`
-      : outputMode === 'auto' ? `${plannedOutput.toLocaleString()} est.` : plannedOutput.toLocaleString()],
-    ['Input price', inPricePer1k === null ? 'N/A' : `${formatRatePerMillion(inPricePer1k)}`],
-    ['Output price', outPricePer1k === null ? 'N/A' : `${formatRatePerMillion(outPricePer1k)}`],
-    ['Total turns', effectiveAgentTurns.toLocaleString()],
-    ['Output cap', outputCapLabel],
-    ['Available out', availableOutputLabel],
-    ['Context', contextWindowLabel],
-    ['Context left', contextRemainingLabel],
-    ['Input cost', formatCost(sessionInputCost)],
-    ['Output cost', formatCost(sessionOutputCost)],
-  );
-  if (activeEstimate) {
-    if (sessionMode === 'scenario') {
-      receiptRows.push(['Session mode', sessionModeLabel]);
-      receiptRows.push(['Cache read billed', formatPercent(activeEstimate.cachedInputBillablePct)]);
-      if (activeEstimate.cacheWriteMultiplier && activeEstimate.cacheWriteMultiplier !== 1) {
-        receiptRows.push(['Cache write premium', `x ${activeEstimate.cacheWriteMultiplier}`]);
-      }
-    }
-    receiptRows.push(
-      ['Billable input tokens', Math.round(activeEstimate.turnInputTokens ?? 0).toLocaleString()],
-      ['Output tokens', Math.round(activeEstimate.turnOutputTokens ?? 0).toLocaleString()],
-    );
-    if (activeEstimate.compactionCount) {
-      receiptRows.push(['Compactions', activeEstimate.compactionCount.toLocaleString()]);
-    }
-    if (activeEstimate.compactionCost) {
-      receiptRows.push(['- of which compaction', formatCost(sessionCompactionCost)]);
-    }
-    receiptRows.push(['Achieved output share', formatPercent(activeEstimate.achievedOutputCostSharePct)]);
+
+  function addModel() {
+    if (!pricing || selectedModels.length >= 3) return;
+    const preferred = chooseDefaultModels(availableModels, pricing, 3).find(model => !selectedModels.includes(model));
+    const next = preferred ?? availableModels.find(model => !selectedModels.includes(model));
+    if (next) setSelectedModels(current => [...current, next].slice(0, 3));
   }
-  if (workloadProjection && (workloadRuns > 1 || workloadCadence !== 'once')) {
-    receiptRows.push(
-      ['Cost / run', finalSessionCostLabel],
-      [`Runs / ${cadenceNoun}`, workloadRuns.toLocaleString()],
-      [headlineCostTitle, finalHeadlineCostLabel],
-    );
-    if (workloadProjection.monthlyCost !== null) {
-      receiptRows.push(['Monthly average', formatCost(workloadProjection.monthlyCost)]);
-    }
-    if (workloadProjection.annualCost !== null) {
-      receiptRows.push(['Annual estimate', formatCost(workloadProjection.annualCost)]);
+
+  function removeModel(index: number) {
+    setSelectedModels(current => current.filter((_, position) => position !== index));
+  }
+
+  function receiptText() {
+    const source = catalog ? `${catalog.source}, retrieved ${catalog.retrievedAt}` : 'pricing unavailable';
+    return [
+      'Prompt Info cost receipt',
+      `Model: ${primaryRow?.model ?? 'Unavailable'}`,
+      `Prompt tokens: ${rawTokens.length.toLocaleString()}`,
+      `Output tokens per turn: ${outputTokens.toLocaleString()}`,
+      `Turns: ${turns.toLocaleString()} (${sessionMode})`,
+      `Runs: ${workloadRuns.toLocaleString()} per ${workloadCadence}`,
+      `One request: ${primaryRow?.requestCost ?? 'Unavailable'}`,
+      `Session: ${primaryRow?.sessionCost ?? 'Unavailable'}`,
+      `Monthly: ${primaryRow?.monthlyCost ?? 'Unavailable'}`,
+      `Annual: ${primaryRow?.annualCost ?? 'Unavailable'}`,
+      `Source: ${source}`,
+      'Prompt text remained in the browser.',
+    ].join('\n');
+  }
+
+  async function copyReceipt() {
+    try {
+      await navigator.clipboard.writeText(receiptText());
+      setCopyState('copied');
+      window.setTimeout(() => setCopyState('idle'), 1_500);
+    } catch {
+      setCopyState('error');
     }
   }
 
-  const summaryRows: ReceiptRow[] = [
-    ['Model provider', formatCompany(modelCompany)],
-    ['Prompt tokens (BPE)', tokens.length.toLocaleString()],
-  ];
-  if (isCalibrated) {
-    summaryRows.push([`Billed est. (x ${tokenizerMultiplier})`, `~${billedPromptTokens.toLocaleString()}`]);
-  }
-  summaryRows.push(
-    ['Planned output', isCostShareScenario ? `${displayedOutputPerTurn.toLocaleString()} avg (share-sized)` : plannedOutput.toLocaleString()],
-    ['Input price', inPricePer1k === null ? 'N/A' : `${formatRatePerMillion(inPricePer1k)}`],
-    ['Output price', outPricePer1k === null ? 'N/A' : `${formatRatePerMillion(outPricePer1k)}`],
-    ['Agent mode', agentMode ? 'On' : 'Off'],
-    ['Session mode', sessionModeLabel],
-    ['AI turns', effectiveAgentTurns.toLocaleString()],
-    ['Billable prompt tokens', totalPromptTokens.toLocaleString()],
-    ['Output tokens', totalOutputTokens.toLocaleString()],
-    ['Output cap', outputCapLabel],
-    ['Available output', availableOutputLabel],
-    ['Context window', contextWindowLabel],
-    ['Context left', contextRemainingLabel],
-    ['Combined tokens', combinedTokens.toLocaleString()],
-    ['Billable session tokens', totalSessionTokens.toLocaleString()],
-    ['Input cost', formatCost(sessionInputCost)],
-    ['Output cost', formatCost(sessionOutputCost)],
-    ['Turn cost', formatCost(sessionTurnCost)],
-    ['Cost / run', finalSessionCostLabel],
-  );
-  if (activeEstimate) {
-    summaryRows.push(
-      ['Billable input incl. compaction', Math.round(activeEstimate.totalInputTokens ?? 0).toLocaleString()],
-      ['Output incl. compaction', Math.round(activeEstimate.totalOutputTokens ?? 0).toLocaleString()],
-    );
-    if (activeEstimate.mode === 'scenario') {
-      summaryRows.push(
-        ['History re-sent (raw)', Math.round(activeEstimate.reusedContextTokens ?? 0).toLocaleString()],
-        ['Processed input (raw)', Math.round(activeEstimate.processedInputTokens ?? 0).toLocaleString()],
-        ['Cache read billed', formatPercent(activeEstimate.cachedInputBillablePct)],
-        ['Cache write premium', activeEstimate.cacheWriteMultiplier ? `x ${activeEstimate.cacheWriteMultiplier}` : 'N/A'],
-      );
-    }
-    summaryRows.push(['Achieved output share', formatPercent(activeEstimate.achievedOutputCostSharePct)]);
-    if (activeEstimate.compactionCost) {
-      summaryRows.push(['- of which compaction', formatCost(sessionCompactionCost)]);
-    }
-  }
-  if (workloadProjection) {
-    summaryRows.push(
-      [`Runs / ${cadenceNoun}`, workloadRuns.toLocaleString()],
-      [headlineCostTitle, finalHeadlineCostLabel],
-    );
-    if (workloadProjection.monthlyCost !== null) {
-      summaryRows.push(['Monthly average', formatCost(workloadProjection.monthlyCost)]);
-    }
-    if (workloadProjection.annualCost !== null) {
-      summaryRows.push(['Annual estimate', formatCost(workloadProjection.annualCost)]);
-    }
+  async function exportReceipt() {
+    if (!primaryRow) return;
+    const { downloadCostReceiptImage } = await import('../lib/receiptExport');
+    downloadCostReceiptImage({
+      row: primaryRow,
+      assumptions: [
+        `${rawTokens.length.toLocaleString()} prompt tokens, ${outputTokens.toLocaleString()} output tokens`,
+        `${turns.toLocaleString()} turns, ${sessionMode} session`,
+        `${workloadRuns.toLocaleString()} runs per ${workloadCadence}`,
+      ],
+      source: catalog ? `${catalog.source}, ${catalog.retrievedAt}` : 'Pricing source unavailable',
+    });
   }
 
-
-
-  const downloadReceiptImage = () => {
-    const scale = 2;
-    const width = 1500;
-    const cardX = 120;
-    const cardY = 86;
-    const cardWidth = 1180;
-    const shadowOffset = 34;
-    const rowHeight = 66;
-    const headerHeight = 265;
-    const totalHeight = 330;
-    const footerHeight = 150;
-    const cardHeight = headerHeight + receiptRows.length * rowHeight + totalHeight + footerHeight;
-    const height = cardY + cardHeight + shadowOffset + 92;
-    const contentLeft = cardX + 76;
-    const contentRight = cardX + cardWidth - 76;
-    const backgroundColor = '#050505';
-    const cardColor = '#111111';
-    const accentColor = '#e61919';
-    const canvas = document.createElement('canvas');
-    canvas.width = width * scale;
-    canvas.height = height * scale;
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
-    const drawPerforation = (edgeY: number) => {
-      context.fillStyle = backgroundColor;
-      for (let x = cardX + 18; x < cardX + cardWidth - 8; x += 22) {
-        context.beginPath();
-        context.arc(x, edgeY, 8, 0, Math.PI * 2);
-        context.fill();
-      }
-    };
-
-    const drawRightText = (text: string, x: number, y: number, maxWidth: number, font: string) => {
-      const parts = font.match(/^(\d+)px\s+(.+)$/);
-      if (!parts) {
-        context.font = font;
-        context.fillText(text, x, y);
-        return;
-      }
-
-      const fontFamily = parts[2];
-      let size = Number(parts[1]);
-      context.font = `${size}px ${fontFamily}`;
-      while (size > 22 && context.measureText(text).width > maxWidth) {
-        size -= 2;
-        context.font = `${size}px ${fontFamily}`;
-      }
-      context.fillText(text, x, y);
-    };
-
-    context.scale(scale, scale);
-    context.fillStyle = backgroundColor;
-    context.fillRect(0, 0, width, height);
-
-    context.fillStyle = 'rgba(230, 25, 25, 0.14)';
-    context.beginPath();
-    context.moveTo(0, height * 0.7);
-    context.lineTo(width * 0.22, height * 0.45);
-    context.lineTo(width, height * 0.1);
-    context.lineTo(width, height);
-    context.lineTo(0, height);
-    context.closePath();
-    context.fill();
-
-    context.fillStyle = accentColor;
-    context.fillRect(cardX + shadowOffset, cardY + shadowOffset, cardWidth, cardHeight);
-    context.fillStyle = cardColor;
-    context.fillRect(cardX, cardY, cardWidth, cardHeight);
-    context.strokeStyle = '#343434';
-    context.lineWidth = 2;
-    context.strokeRect(cardX, cardY, cardWidth, cardHeight);
-    drawPerforation(cardY);
-    drawPerforation(cardY + cardHeight);
-
-    context.font = '700 24px Space Mono, monospace';
-    context.fillStyle = '#8b8b8b';
-    context.fillText('L I V E   E S T I M A T E', contentLeft, cardY + 82);
-    context.font = '900 64px Outfit, sans-serif';
-    context.fillStyle = '#f0f0f0';
-    context.fillText('COST RECEIPT', contentLeft, cardY + 158);
-    context.font = '700 28px Space Mono, monospace';
-    context.fillStyle = accentColor;
-    context.textAlign = 'right';
-    drawRightText(finalHeadlineCostLabel, contentRight, cardY + 82, 360, '28px Space Mono, monospace');
-    context.textAlign = 'left';
-
-    context.strokeStyle = '#555555';
-    context.setLineDash([14, 14]);
-    context.beginPath();
-    context.moveTo(contentLeft, cardY + 210);
-    context.lineTo(contentRight, cardY + 210);
-    context.stroke();
-    context.setLineDash([]);
-
-    let y = cardY + headerHeight;
-    context.font = '700 26px Space Mono, monospace';
-    for (const [label, value] of receiptRows) {
-      context.fillStyle = '#8b8b8b';
-      context.textAlign = 'left';
-      context.fillText(label.toUpperCase(), contentLeft, y);
-      context.fillStyle = '#e8e8e8';
-      context.textAlign = 'right';
-      drawRightText(value, contentRight, y, 590, '700 26px Space Mono, monospace');
-      context.strokeStyle = '#303030';
-      context.beginPath();
-      context.moveTo(contentLeft, y + 24);
-      context.lineTo(contentRight, y + 24);
-      context.stroke();
-      y += rowHeight;
-    }
-
-    y += 62;
-    context.fillStyle = '#8b8b8b';
-    context.textAlign = 'left';
-    context.font = '700 26px Space Mono, monospace';
-    context.fillText(isScaledWorkload ? 'BILLABLE TOKENS / RUN' : 'BILLABLE TOKENS', contentLeft, y);
-    context.fillStyle = accentColor;
-    context.textAlign = 'right';
-    drawRightText(totalSessionTokens.toLocaleString(), contentRight, y + 34, 760, '92px Space Mono, monospace');
-
-    y += 124;
-    context.fillStyle = '#8b8b8b';
-    context.textAlign = 'left';
-    context.font = '700 26px Space Mono, monospace';
-    context.fillText(headlineCostTitle.toUpperCase(), contentLeft, y);
-    context.fillStyle = accentColor;
-    context.textAlign = 'right';
-    drawRightText(finalHeadlineCostLabel, contentRight, y + 10, 520, '48px Space Mono, monospace');
-
-    context.textAlign = 'left';
-    context.font = '500 24px Outfit, sans-serif';
-    context.fillStyle = '#8b8b8b';
-    context.fillText('Made at https://prompt-info.helloworldfirm.com/', contentLeft, cardY + cardHeight - 68);
-
-    const link = document.createElement('a');
-    link.download = 'prompt-info-final-bill.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  };
   return (
     <>
-      <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-12 sm:px-6 md:px-12 md:py-16">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] lg:items-end">
-          <div>
-            <p className="data-label text-rose-love">Workbench</p>
-            <h2 className="mt-4 max-w-4xl text-[clamp(2.7rem,6vw,5.8rem)] font-black uppercase leading-[0.88] tracking-[-0.07em] text-rose-text">
-              Price the request in the same order you build it.
-            </h2>
-          </div>
-          <p className="max-w-2xl text-sm leading-7 text-rose-subtle sm:text-base">
-            Start with text, then select the model and tokenizer. Output uses a conservative auto estimate until you switch to a preset or custom number.
-          </p>
+      <div className="workbench-source-wrap">
+        <SourceStatus
+          catalog={catalog}
+          modelCount={availableModels.length}
+          loading={pricingLoading}
+          error={pricingError}
+          onRetry={() => setPricingRequest(value => value + 1)}
+        />
+      </div>
+
+      <CostWorkbench
+        scenario={(
+          <ScenarioInputs
+            prompt={prompt}
+            samplePrompt={SAMPLE_PROMPT}
+            onPromptChange={setPrompt}
+            promptTokens={rawTokens.length}
+            billedTokenNote={tokenizing ? ', counting' : billedTokenNote}
+            tokenizers={TOKENIZERS}
+            tokenizer={tokenizer}
+            onTokenizerChange={value => setTokenizer(value as TokenizerKey)}
+            outputTokens={outputTokens}
+            onOutputTokensChange={value => setOutputTokens(clampInteger(value, 64, MAX_OUTPUT_TOKENS, 2_048))}
+            turns={turns}
+            onTurnsChange={value => setTurns(clampInteger(value, 1, 200, 1))}
+            sessionMode={sessionMode}
+            onSessionModeChange={setSessionMode}
+            workloadRuns={workloadRuns}
+            onWorkloadRunsChange={value => setWorkloadRuns(clampInteger(value, 1, 1_000_000, 1))}
+            workloadCadence={workloadCadence}
+            onWorkloadCadenceChange={setWorkloadCadence}
+          />
+        )}
+        receipt={(
+          <CostReceipt
+            row={primaryRow}
+            recommendation={comparison.recommendation}
+            catalog={catalog}
+            onCopy={copyReceipt}
+            onExport={exportReceipt}
+            copyState={copyState}
+          />
+        )}
+      />
+
+      <div className="workbench-section-shell">
+        <ModelComparison
+          selectedModels={selectedModels}
+          availableModels={availableModels}
+          pricing={pricing}
+          rows={comparison.rows}
+          recommendation={comparison.recommendation}
+          loading={pricingLoading}
+          onChange={replaceModel}
+          onAdd={addModel}
+          onRemove={removeModel}
+        />
+      </div>
+
+      <section className="workbench-chart-grid" aria-label="Cost visualizations">
+        <CostByModelChart rows={comparison.rows} metric={chartMetric} />
+        <TokenCompositionChart segments={tokenComposition} />
+        <SessionAccumulationChart series={accumulation} model={primaryRow?.model ?? 'selected model'} />
+      </section>
+
+      <section className="evidence-panel" aria-labelledby="evidence-heading">
+        <div className="evidence-copy">
+          <p className="data-label">Token evidence</p>
+          <h2 id="evidence-heading">Inspect what the counter sees.</h2>
+          <p>The first 400 token fragments are shown. Long prompts are still counted in full, but the visualizer stays bounded so the page remains responsive.</p>
+          <details>
+            <summary>Calculation and source assumptions</summary>
+            <ul>
+              <li>Prompt counting uses the selected OpenAI BPE tokenizer. Non-OpenAI providers use a disclosed planning multiplier.</li>
+              <li>Growing conversation mode includes re-sent history, provider cache rates when published, and context compaction.</li>
+              <li>Monthly and annual totals include model usage only. They exclude human labor, storage, search, tool APIs, and taxes.</li>
+              <li>{catalog?.isFallback ? catalog.fallbackReason : 'Current rates came from the live OpenRouter model catalog.'}</li>
+            </ul>
+          </details>
+        </div>
+        <div className="token-inspector">
+          {decodedTokens.length > 0 ? (
+            <div className="token-chip-list">
+              {decodedTokens.map((token, index) => (
+                <span className="token-chip" key={`${token.id}-${index}`} title={`Token ${index + 1}, ID ${token.id}`}>
+                  <span>{token.text || '[space]'}</span>
+                  <small>#{token.id}</small>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p>Paste a prompt to inspect token fragments.</p>
+          )}
         </div>
       </section>
 
-      <section id="planner" className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px py-px lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-        <article className="bg-rose-base p-4 sm:p-6 md:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="stage-tag">Step 01</span>
-              <label className="data-label" htmlFor="prompt-input">
-                Prompt
-              </label>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-rose-subtle">
-                Paste the exact text you plan to send. The receipt updates as you type.
-              </p>
-            </div>
-            <output className="font-mono text-sm font-bold text-rose-text tabular-nums">
-              {tokens.length.toLocaleString()} {tokens.length === 1 ? 'token' : 'tokens'}
-              {isCalibrated && hasTokens && (
-                <span className="ml-2 text-rose-muted">~{billedPromptTokens.toLocaleString()} billed est.</span>
-              )}
-            </output>
-          </div>
-          <div className="mt-5">
-            <PromptInput id="prompt-input" value={prompt} onChange={setPrompt} />
-          </div>
-          <div className="mt-5 h-2 border border-rose-highlightMed bg-rose-overlay">
-            <div
-              className="h-full bg-rose-love transition-[width] duration-300 motion-reduce:transition-none"
-              style={{ width: `${contextCoverage}%` }}
-            />
-          </div>
-          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted tabular-nums">
-            {Math.round(contextCoverage)}% of the {contextReferenceWindow.toLocaleString()} token {contextMeterLabel}
-          </p>
-        </article>
-
-        <aside className="grid gap-px bg-rose-highlightMed">
-          <div className="bg-rose-base p-4 sm:p-6 md:p-8">
-            <span className="stage-tag">Step 02</span>
-            <label className="data-label" htmlFor="model-select">
-              Model
-            </label>
-            <div className="mt-4">
-              <ModelSelect
-                id="model-select"
-                value={model}
-                onChange={nextModel => {
-                  setModel(nextModel);
-                  setCacheRatesTouched(false);
-                }}
-                models={modelOptions}
-                loading={modelsLoading}
-                pricing={pricing}
-              />
-            </div>
-          </div>
-
-          <div className="bg-rose-base p-4 sm:p-6 md:p-8">
-            <span className="stage-tag">Step 03</span>
-            <label className="data-label" htmlFor="tokenizer-select">
-              Tokenizer
-            </label>
-            <select
-              id="tokenizer-select"
-              value={tokenizer}
-              onChange={e => {
-                setTokenizerTouched(true);
-                setTokenizer(e.target.value as TokenizerKey);
-              }}
-              className="glass-select mt-4 w-full appearance-none border px-4 py-3 text-sm font-semibold transition duration-200 focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
-            >
-              {TOKENIZERS.map(opt => (
-                <option key={opt.key} value={opt.key} className="bg-rose-base text-rose-text">
-                  {opt.label} - {opt.description}
-                </option>
-              ))}
-            </select>
-            <div className="mt-4 grid gap-3">
-              <p className="text-sm leading-6 text-rose-muted">
-                {tokenizerOption.description}. These are the OpenAI BPE encodings, so OpenAI counts are exact.
-                {isCalibrated
-                  ? ` ${formatCompany(modelCompany)} bills with its own tokenizer, which produces more tokens than BPE, so cost math uses a calibrated ~x${tokenizerMultiplier} planning estimate.`
-                  : ' Other vendors bill with their own tokenizers, so their counts are calibrated planning estimates.'}
-              </p>
-              {recommendedTokenizer && recommendedTokenizer !== tokenizer && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTokenizer(recommendedTokenizer);
-                    setTokenizerTouched(false);
-                  }}
-                  className="justify-self-start border border-rose-highlightMed bg-rose-base px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:border-rose-love hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
-                >
-                  Use recommended {recommendedTokenizer.replace('_', '/')}
-                </button>
-              )}
-            </div>
-
-            {agentMode && (
-              <div className="mt-5 grid gap-px bg-rose-highlightMed sm:grid-cols-2">
-                {[
-                  { label: 'Baseline', mode: 'baseline' as const },
-                  { label: 'Scenario', mode: 'scenario' as const },
-                ].map(option => (
-                  <button
-                    key={option.label}
-                    type="button"
-                    onClick={() => setSessionMode(option.mode)}
-                    aria-pressed={sessionMode === option.mode}
-                    className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
-                      sessionMode === option.mode
-                        ? 'bg-rose-love text-white'
-                        : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {agentMode && sessionMode === 'scenario' && (
-              <div className="mt-5 grid gap-4">
-                <div className="grid gap-px bg-rose-highlightMed sm:grid-cols-2">
-                  {[
-                    { label: 'Planned output', sizing: 'planned' as const },
-                    { label: 'Cost share target', sizing: 'costShare' as const },
-                  ].map(option => (
-                    <button
-                      key={option.sizing}
-                      type="button"
-                      onClick={() => setSessionOutputSizing(option.sizing)}
-                      aria-pressed={sessionOutputSizing === option.sizing}
-                      className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
-                        sessionOutputSizing === option.sizing
-                          ? 'bg-rose-love text-white'
-                          : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-sm leading-6 text-rose-muted">
-                  {sessionOutputSizing === 'planned'
-                    ? 'Each turn produces your planned output length. History re-sends bill at the cache read rate.'
-                    : 'Output length per turn is sized so output reaches the target share of each turn’s cost.'}
-                </p>
-
-                {sessionOutputSizing === 'costShare' && (
-                  <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(98px,1fr))]">
-                    {[
-                      { label: '50/50', target: 50 },
-                      { label: '80/20', target: 80 },
-                      { label: '90/10', target: 90 },
-                    ].map(preset => (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => setSessionTargetOutputSharePct(preset.target)}
-                        aria-pressed={sessionTargetOutputSharePct === preset.target}
-                        className={`min-h-16 border px-3 py-2 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none ${
-                          sessionTargetOutputSharePct === preset.target
-                            ? 'border-rose-love bg-rose-love text-white'
-                            : 'border-rose-highlightMed bg-rose-base text-rose-subtle hover:border-rose-love hover:text-rose-text'
-                        }`}
-                      >
-                        <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em]">{preset.label}</span>
-                        <span className="mt-1 block font-mono text-xs font-bold tabular-nums">{preset.target}% out</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {sessionOutputSizing === 'costShare' && (
-                    <div>
-                      <label className="data-label" htmlFor="target-output-share">
-                        Output cost share
-                      </label>
-                      <div className="mt-2 grid grid-cols-[1fr_60px] gap-2 items-center">
-                        <input
-                          id="target-output-share"
-                          type="range"
-                          min={50}
-                          max={95}
-                          step={1}
-                          value={sessionTargetOutputSharePct}
-                          onChange={e => setSessionTargetOutputSharePct(Number(e.target.value))}
-                          className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
-                        />
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={50}
-                          max={95}
-                          step={1}
-                          aria-label="Output cost share percent"
-                          value={sessionTargetOutputSharePct}
-                          onChange={e => setSessionTargetOutputSharePct(Number(e.target.value))}
-                          onBlur={e => setSessionTargetOutputSharePct(clampScenarioValue(Number(e.target.value), 50, 95, DEFAULT_SESSION_OUTPUT_SHARE_PCT))}
-                          className="glass-select w-full border px-2 py-1 text-right font-mono text-sm font-bold text-rose-text tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="data-label" htmlFor="cached-billed">
-                      Cache read billed % (
-                      {formatCompany(modelCompany)} default:
-                      {' '}
-                      {formatPercent(defaultSessionCachedInputBillablePct)}
-                      )
-                    </label>
-                    <div className="mt-2 grid grid-cols-[1fr_60px] gap-2 items-center">
-                      <input
-                        id="cached-billed"
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={sessionCachedInputBillablePct}
-                        onChange={e => {
-                          setCacheRatesTouched(true);
-                          setSessionCachedInputBillablePct(Number(e.target.value));
-                        }}
-                        className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
-                      />
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        max={100}
-                        step={1}
-                        aria-label="Cache read billed percent"
-                        value={sessionCachedInputBillablePct}
-                        onChange={e => {
-                          setCacheRatesTouched(true);
-                          setSessionCachedInputBillablePct(Number(e.target.value));
-                        }}
-                        onBlur={e => setSessionCachedInputBillablePct(clampScenarioValue(Number(e.target.value), 0, 100, defaultSessionCachedInputBillablePct))}
-                        className="glass-select w-full border px-2 py-1 text-right font-mono text-sm font-bold text-rose-text tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="data-label" htmlFor="cache-write-premium">
-                      Cache write premium x (
-                      {formatCompany(modelCompany)} default:
-                      {' '}
-                      {defaultSessionCacheWriteMultiplier}
-                      )
-                    </label>
-                    <div className="mt-2 grid grid-cols-[1fr_60px] gap-2 items-center">
-                      <input
-                        id="cache-write-premium"
-                        type="range"
-                        min={1}
-                        max={2}
-                        step={0.05}
-                        value={sessionCacheWriteMultiplier}
-                        onChange={e => {
-                          setCacheRatesTouched(true);
-                          setSessionCacheWriteMultiplier(Number(e.target.value));
-                        }}
-                        className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
-                      />
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min={1}
-                        max={2}
-                        step={0.05}
-                        aria-label="Cache write premium multiplier"
-                        value={sessionCacheWriteMultiplier}
-                        onChange={e => {
-                          setCacheRatesTouched(true);
-                          setSessionCacheWriteMultiplier(Number(e.target.value));
-                        }}
-                        onBlur={e => setSessionCacheWriteMultiplier(clampScenarioValue(Number(e.target.value), 1, 2, defaultSessionCacheWriteMultiplier))}
-                        className="glass-select w-full border px-2 py-1 text-right font-mono text-sm font-bold text-rose-text tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="data-label" htmlFor="compaction-threshold">
-                      Compaction threshold %
-                    </label>
-                    <div className="mt-2 grid grid-cols-[1fr_60px] gap-2 items-center">
-                      <input
-                        id="compaction-threshold"
-                        type="range"
-                        min={50}
-                        max={95}
-                        step={1}
-                        value={sessionCompactionThresholdPct}
-                        onChange={e => setSessionCompactionThresholdPct(Number(e.target.value))}
-                        className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
-                      />
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={50}
-                        max={95}
-                        step={1}
-                        aria-label="Compaction threshold percent"
-                        value={sessionCompactionThresholdPct}
-                        onChange={e => setSessionCompactionThresholdPct(Number(e.target.value))}
-                        onBlur={e => setSessionCompactionThresholdPct(clampScenarioValue(Number(e.target.value), 50, 95, DEFAULT_SESSION_COMPACTION_THRESHOLD_PCT))}
-                        className="glass-select w-full border px-2 py-1 text-right font-mono text-sm font-bold text-rose-text tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="data-label" htmlFor="compaction-retention">
-                      Compaction retention %
-                    </label>
-                    <div className="mt-2 grid grid-cols-[1fr_60px] gap-2 items-center">
-                      <input
-                        id="compaction-retention"
-                        type="range"
-                        min={5}
-                        max={80}
-                        step={1}
-                        value={sessionCompactionRetentionPct}
-                        onChange={e => setSessionCompactionRetentionPct(Number(e.target.value))}
-                        className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
-                      />
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={5}
-                        max={80}
-                        step={1}
-                        aria-label="Compaction retention percent"
-                        value={sessionCompactionRetentionPct}
-                        onChange={e => setSessionCompactionRetentionPct(Number(e.target.value))}
-                        onBlur={e => setSessionCompactionRetentionPct(clampScenarioValue(Number(e.target.value), 5, 80, DEFAULT_SESSION_COMPACTION_RETENTION_PCT))}
-                        className="glass-select w-full border px-2 py-1 text-right font-mono text-sm font-bold text-rose-text tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-5 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(98px,1fr))]">
-              <button
-                type="button"
-                onClick={() => {
-                  setAgentMode(false);
-                  setAgentTurns(1);
-                }}
-                aria-pressed={!agentMode}
-                className={`min-h-16 border px-3 py-2 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none ${
-                  !agentMode
-                    ? 'border-rose-love bg-rose-love text-white'
-                    : 'border-rose-highlightMed bg-rose-base text-rose-subtle hover:border-rose-love hover:text-rose-text'
-                }`}
-              >
-                <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em]">One-shot</span>
-                <span className="mt-1 block font-mono text-xs font-bold tabular-nums">1 turn</span>
-                <span className="mt-1 block text-xs normal-case text-current opacity-75">single request</span>
-              </button>
-              {AGENT_TURN_PRESETS.map(preset => {
-                const isActive = agentMode && effectiveAgentTurns === preset.turns;
-                return (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => {
-                      setAgentMode(true);
-                      setAgentTurns(preset.turns);
-                    }}
-                    aria-pressed={isActive}
-                    className={`min-h-16 border px-3 py-2 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none ${
-                      isActive
-                        ? 'border-rose-love bg-rose-love text-white'
-                        : 'border-rose-highlightMed bg-rose-base text-rose-subtle hover:border-rose-love hover:text-rose-text'
-                    }`}
-                  >
-                    <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em]">{preset.label}</span>
-                    <span className="mt-1 block font-mono text-xs font-bold tabular-nums">{preset.turns.toLocaleString()} turns</span>
-                    <span className="mt-1 block text-xs normal-case text-current opacity-75">{preset.description}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_150px] sm:items-center">
-              <input
-                id="agent-turns"
-                type="range"
-                min={1}
-                max={MAX_AGENT_TURNS}
-                step={1}
-                value={effectiveAgentTurns}
-                onChange={e => {
-                  const nextTurns = clampAgentTurns(Number(e.target.value));
-                  setAgentTurns(nextTurns);
-                  setAgentMode(nextTurns > 1);
-                }}
-                className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
-                aria-label="Agent turn count"
-                aria-describedby="agent-mode-help"
-              />
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={MAX_AGENT_TURNS}
-                step={1}
-                value={effectiveAgentTurns}
-                onChange={e => {
-                  const nextTurns = clampAgentTurns(Number(e.target.value));
-                  setAgentTurns(nextTurns);
-                  setAgentMode(nextTurns > 1);
-                }}
-                className="glass-select w-full border px-4 py-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                aria-label="Agent turn count"
-              />
-            </div>
-
-            <div className="mt-5 grid gap-px bg-rose-highlightMed sm:grid-cols-4">
-              {[
-                ['Billable input', totalPromptTokens.toLocaleString()],
-                ['Output total', totalOutputTokens.toLocaleString()],
-                ['Compaction total', totalCompactionTokens.toLocaleString()],
-                ['Session cost', formatCost(sessionCost)],
-              ].map(([label, value]) => (
-                <div key={label} className="bg-rose-base p-3">
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-muted">{label}</p>
-                  <output className="mt-2 block font-mono text-sm font-bold text-rose-text tabular-nums">{value}</output>
-                </div>
-              ))}
-            </div>
-            <p id="agent-mode-help" className="mt-3 text-sm leading-6 text-rose-muted">
-              Baseline bills every turn as an independent one-shot. Scenario re-sends the growing conversation history each turn with prompt-cache discounts and compaction, which is how real agent sessions are billed.
-            </p>
-          </div>
-
-          <div className="bg-rose-base p-4 sm:p-6 md:p-8">
-            <span className="stage-tag">Step 04</span>
-            <label className="data-label" htmlFor="custom-output-tokens">
-              Output plan
-            </label>
-            <div className="mt-4 grid gap-px bg-rose-highlightMed sm:grid-cols-2">
-              {[
-                { label: 'Auto estimate', mode: 'auto' as const },
-                { label: 'Custom', mode: 'custom' as const },
-              ].map(option => (
-                <button
-                  key={option.mode}
-                  type="button"
-                  onClick={() => setOutputMode(option.mode)}
-                  aria-pressed={outputMode === option.mode}
-                  className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
-                    outputMode === option.mode
-                      ? 'bg-rose-love text-white'
-                      : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
-            {outputMode === 'custom' && (
-              <>
-                <div className="mt-4 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(82px,1fr))]">
-                  {outputPresets.map(preset => {
-                    const presetValue = clampOutputTokens(preset.tokens, effectiveOutputLimit);
-                    const isActive = customOutTokens === presetValue;
-                    const isReachable = preset.tokens <= effectiveOutputLimit;
-                    return (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        disabled={!isReachable}
-                        onClick={() => setCustomOutTokens(presetValue)}
-                        aria-pressed={isActive}
-                        className={`min-h-16 border px-3 py-2 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none ${
-                          isActive
-                            ? 'border-rose-love bg-rose-love text-white'
-                            : 'border-rose-highlightMed bg-rose-base text-rose-subtle hover:border-rose-love hover:text-rose-text'
-                        }`}
-                      >
-                        <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em]">{preset.label}</span>
-                        <span className="mt-1 block text-xs normal-case text-current opacity-75">{preset.description}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_150px] sm:items-center">
-                  <input
-                    type="range"
-                    min={TOKEN_STEP}
-                    max={Math.max(TOKEN_STEP, effectiveOutputLimit)}
-                    step={TOKEN_STEP}
-                    aria-label="Planned output tokens"
-                    value={customOutTokens}
-                    onChange={e => setCustomOutTokens(clampOutputTokens(Number(e.target.value), effectiveOutputLimit))}
-                    className="h-2 w-full cursor-pointer appearance-none bg-rose-overlay accent-rose-love"
-                  />
-                  <input
-                    id="custom-output-tokens"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={effectiveOutputLimit}
-                    step={TOKEN_STEP}
-                    aria-label="Planned output token count"
-                    value={customOutTokens}
-                    onChange={e => setCustomOutTokens(clampOutputTokens(Number(e.target.value), effectiveOutputLimit))}
-                    className="glass-select w-full border px-4 py-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                </div>
-              </>
-            )}
-
-            <p className="mt-3 text-sm leading-6 text-rose-muted">
-              {outputMode === 'auto'
-                ? `Auto sizes the reply from your prompt length: currently ${plannedOutput.toLocaleString()} tokens per turn.`
-                : `Planned output is capped at the ${availableOutputLabel} tokens this model can still produce alongside your prompt.`}
-            </p>
-
-            <div className="mt-7 border-t border-rose-highlightMed pt-6">
-              <p className="data-label">Workload scale</p>
-              <p className="mt-3 text-sm leading-6 text-rose-muted">
-                Price this complete AI run once, then scale the same run across a recurring workload. Human labor is not included.
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="data-label" htmlFor="workload-runs">
-                    Runs per period
-                  </label>
-                  <input
-                    id="workload-runs"
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={1_000_000}
-                    step={1}
-                    value={workloadRuns}
-                    onChange={event => {
-                      const value = Number(event.target.value);
-                      setWorkloadRuns(Number.isFinite(value) ? Math.min(1_000_000, Math.max(1, Math.floor(value))) : 1);
-                    }}
-                    className="glass-select mt-2 w-full border px-4 py-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                </div>
-                <div>
-                  <label className="data-label" htmlFor="workload-cadence">
-                    Workload cadence
-                  </label>
-                  <select
-                    id="workload-cadence"
-                    value={workloadCadence}
-                    onChange={event => setWorkloadCadence(event.target.value as WorkloadCadence)}
-                    className="glass-select mt-2 w-full appearance-none border px-4 py-3 text-sm font-semibold text-rose-text focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love"
-                  >
-                    {WORKLOAD_CADENCES.map(option => (
-                      <option key={option.value} value={option.value} className="bg-rose-base text-rose-text">
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {workloadProjection && (
-                <div className="mt-4 grid gap-px bg-rose-highlightMed sm:grid-cols-3">
-                  <div className="bg-rose-base p-3">
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-muted">Cost / run</p>
-                    <output className="mt-2 block font-mono text-sm font-bold text-rose-text tabular-nums">{finalSessionCostLabel}</output>
-                  </div>
-                  <div className="bg-rose-base p-3">
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-muted">{headlineCostTitle}</p>
-                    <output className="mt-2 block font-mono text-sm font-bold text-rose-love tabular-nums">{finalHeadlineCostLabel}</output>
-                  </div>
-                  <div className="bg-rose-base p-3">
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-muted">Annual estimate</p>
-                    <output className="mt-2 block font-mono text-sm font-bold text-rose-text tabular-nums">
-                      {workloadProjection.annualCost === null ? 'One time' : formatCost(workloadProjection.annualCost)}
-                    </output>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
-      </section>
-
-      <section id="evidence" className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
-        <aside className="receipt-panel bg-rose-base p-4 sm:p-6 md:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="stage-tag">Step 05</span>
-              <p className="data-label mt-4">Final bill</p>
-            </div>
-            <div className="grid grid-cols-2 gap-px bg-rose-highlightMed p-px">
-              {(['receipt', 'detail'] as const).map(view => (
-                <button
-                  key={view}
-                  type="button"
-                  onClick={() => setSummaryView(view)}
-                  aria-pressed={summaryView === view}
-                  className={`min-h-10 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
-                    summaryView === view
-                      ? 'bg-rose-love text-white'
-                      : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
-                  }`}
-                >
-                  {view === 'receipt' ? 'Receipt' : 'Details'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {summaryView === 'receipt' ? (
-            <div ref={finalReceiptRef} className="receipt-stage mt-7">
-              <ReceiptCard
-                rows={receiptRows}
-                totalTokens={totalSessionTokens}
-                totalTokensLabel={isScaledWorkload ? 'Billable tokens / run' : 'Billable tokens'}
-                totalLabel={headlineCostTitle}
-                totalCostLabel={animatedSessionCostLabel}
-                note={receiptNote}
-                className="receipt-card-final"
-                showRegister={finalReceiptAnimationState === 'running'}
-                animateSequence={finalReceiptAnimationState === 'running'}
-                action={(
-                  <button
-                    type="button"
-                    onClick={downloadReceiptImage}
-                    className="receipt-action"
-                  >
-                    Save bill image
-                  </button>
-                )}
-              />
-            </div>
-          ) : (
-            <div className="mt-6 grid gap-px bg-rose-highlightMed">
-              {summaryRows.map(([label, value]) => (
-                <div key={label} className="grid grid-cols-[minmax(0,1fr)_minmax(100px,0.7fr)] bg-rose-base">
-                  <span className="border-r border-rose-highlightMed p-3 text-sm text-rose-subtle">{label}</span>
-                  <output className="p-3 text-right font-mono text-sm font-bold text-rose-text tabular-nums">{value}</output>
-                </div>
-              ))}
-            </div>
-          )}
-          <p className="mt-5 text-sm leading-7 text-rose-muted">
-            The estimate uses the selected model price, planned output length, and agent turn count. It is for prompt planning. A provider invoice will not match it line for line.
-          </p>
-        </aside>
-
-        <article className="bg-rose-base p-4 sm:p-6 md:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="data-label">Token evidence</p>
-              <h2 className="mt-3 max-w-3xl text-[clamp(2.4rem,5vw,5.4rem)] font-black uppercase leading-[0.9] tracking-[-0.06em] text-rose-text">
-                Inspect what the counter sees.
-              </h2>
-            </div>
-            <div className="flex border border-rose-highlightMed">
-              {(['snapshot', 'tokens'] as const).map(mode => (
-                <button
-                  key={mode}
-                  onClick={() => setVisualizerMode(mode)}
-                  className={`min-h-11 px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition duration-200 focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none ${
-                    visualizerMode === mode
-                      ? 'bg-rose-love text-white'
-                      : 'bg-rose-base text-rose-subtle hover:bg-rose-overlay hover:text-rose-text'
-                  }`}
-                  aria-pressed={visualizerMode === mode}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-8 border border-rose-highlightMed bg-rose-surface p-3">
-            {visualizerMode === 'snapshot' && decodedTokens.length === 0 ? (
-              <div className="p-5 text-sm text-rose-muted">Paste a prompt to see token fragments and IDs.</div>
-            ) : visualizerMode === 'snapshot' ? (
-              <div className="max-h-[420px] overflow-y-auto p-1">
-                <div className="flex flex-wrap gap-2">
-                  {decodedTokens.map((tok, i) => (
-                    <span
-                      key={`${tok.id}-${i}`}
-                      className="token-chip group"
-                      title={`Token #${i + 1}\nID: ${tok.id}`}
-                    >
-                      <span className="text-rose-text group-hover:text-white">{tok.str || '[space]'}</span>
-                      <span className="text-rose-muted group-hover:text-rose-text">#{tok.id}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <pre className="max-h-[420px] overflow-y-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 text-rose-subtle">
-                {decodedTokens.length
-                  ? decodedTokens.map((tok, i) => `${String(i + 1).padStart(4, '0')} / ${tok.id} / ${JSON.stringify(tok.str)}`).join('\n')
-                  : '0000 / waiting for prompt'}
-              </pre>
-            )}
-          </div>
-        </article>
-      </section>
-
-      <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-16 sm:px-6 md:px-12 md:py-24">
-        <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_340px] md:items-end">
-          <div>
-            <p className="data-label">Payload shapes</p>
-            <h2 className="mt-5 max-w-5xl text-[clamp(2.8rem,7vw,6.6rem)] font-black uppercase leading-[0.86] tracking-[-0.07em] text-rose-text">
-              Compare the same prompt as TOON, JSON, YAML, XML, and CSV.
-            </h2>
-          </div>
-          <Link className="action-primary justify-center" href="/format-comparison/">
-            Open format lab
-          </Link>
+      <section className="lab-continuation" aria-labelledby="labs-heading">
+        <div>
+          <p className="data-label">Keep the same scenario</p>
+          <h2 id="labs-heading">Test the payload, then test the economics.</h2>
+        </div>
+        <div className="lab-links">
+          <Link href="/format-comparison/">Open format lab</Link>
+          <Link href="/token-efficiency/">Compare efficiency</Link>
         </div>
       </section>
     </>

@@ -1,6 +1,6 @@
 # Prompt Info
 
-**LLM Token Counter and Cost Calculator**
+**AI Workload Cost Workbench**
 
 A product of [Hello.World Consulting](https://helloworldfirm.com).
 Made by Jonathan R. Reed.
@@ -9,7 +9,7 @@ Made by Jonathan R. Reed.
 
 ## Overview
 
-Prompt Info is a browser-based LLM token counter and cost calculator. Paste draft text, choose a model, compare OpenAI tokenizer families, inspect the assumptions, and export a planning receipt for multi-turn agent sessions.
+Prompt Info is a browser-based AI workload cost workbench. Paste a real prompt, compare current models, price a request or multi-turn session, project recurring spend, inspect the assumptions, and export a planning receipt.
 
 Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Bun 1.4.
 
@@ -22,6 +22,7 @@ Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Bun 1.4.
 - **Prompt format lab**: The same payload as TOON, JSON, compact JSON, YAML, XML, and CSV, with selectable tokenizers, raw wrapper overhead, and planner-model input cost.
 - **Token efficiency**: An attributed Artificial Analysis catalog plus editable per-task comparisons showing how a cheaper per-token model that emits more tokens can cost more overall.
 - **Shared scenario**: The active prompt, tokenizer, model, token plan, and workload move between the planner, format lab, and efficiency lab in memory without storing pasted text.
+- **Private prompt boundary**: Pasted prompt text stays in browser memory. The browser contacts only same-origin catalog routes, never OpenRouter, Artificial Analysis, or Supabase directly.
 - **Receipt export**: Download an image receipt of the estimate.
 
 ## Requirements
@@ -58,6 +59,7 @@ Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Bun 1.4.
 - `ARTIFICIAL_ANALYSIS_API_KEY` enables the server-side Artificial Analysis free API catalog. The key is never sent to the browser.
 - `SUPABASE_URL` and `SUPABASE_ANON_KEY`, or their existing `NEXT_PUBLIC_` equivalents, provide the project's `aa_models` cache when the direct Artificial Analysis API is not configured.
 - A dated three-model benchmark snapshot keeps the educational comparison usable when neither live source is available. The interface identifies the active source and does not invent missing cost-per-task fields.
+- Pricing and benchmark routes validate upstream payloads, enforce request timeouts, and return source, freshness, and fallback metadata with every usable catalog.
 
 ## Quality Checks
 

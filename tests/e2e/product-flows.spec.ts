@@ -1,39 +1,102 @@
 import { expect, test } from '@playwright/test';
 
-test('token planner loads live pricing and tokenizes a prompt', async ({ page }) => {
+test('cost workbench loads sourced models and tokenizes a prompt', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page).toHaveTitle(/LLM Token Counter and Cost Calculator/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Know the bill before the model runs.' })).toBeVisible();
-  await expect(page.locator('#planner').getByText(/\d[\d,]* models/)).toBeVisible();
+  await expect(page).toHaveTitle(/AI Workload Cost Calculator/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Know what your AI workload will cost.' })).toBeVisible();
+  await expect(page.getByText(/\d[\d,]* priced models/)).toBeVisible();
+  await expect(page.getByText(/Pricing source:/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Compare selected models' })).toBeVisible();
 
   await page.getByRole('textbox', { name: 'Prompt' }).fill('hello');
-  await expect(page.locator('#planner article output').first()).toContainText(/^1 token/);
-  await expect(page.getByText('Paste a prompt to see token fragments and IDs.')).toBeHidden();
-  await expect(page.getByText(/One-shot mode prices one prompt and one planned response/)).toBeVisible();
-  await expect(page.getByText('Empty values show until you paste a prompt and choose a priced model.')).toBeHidden();
+  await expect(page.getByTestId('prompt-token-count')).toContainText(/^1 token/);
+  await expect(page.getByText('Paste a prompt to inspect token fragments.')).toBeHidden();
+  await expect(page.getByText(/Stateless mode prices each turn independently/)).toBeVisible();
+  await expect(page.getByTestId('primary-session-cost')).not.toHaveText('Unavailable');
+});
+
+test('the primary workbench and result fit inside the first desktop viewport', async ({ page }) => {
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+
+    const plannerBox = await page.locator('#planner').boundingBox();
+    const resultBox = await page.getByTestId('primary-session-cost').boundingBox();
+    expect(plannerBox?.y).toBeLessThan(480);
+    expect(resultBox?.y).toBeLessThan(viewport.height);
+  }
+});
+
+test('model comparison supports two or three credible priced models', async ({ page }) => {
+  await page.goto('/');
+
+  const rows = page.getByTestId('comparison-model-row');
+  await expect(rows).toHaveCount(2);
+  await page.getByRole('button', { name: 'Add comparison model' }).click();
+  await expect(rows).toHaveCount(3);
+  await expect(page.getByText(/Lowest .* cost among selected models/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Cost by model' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Billable work' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Cost by turn' })).toBeVisible();
+  await page.getByRole('button', { name: /^Remove / }).first().click();
+  await expect(rows).toHaveCount(2);
+});
+
+test('cost receipt exports as a PNG without uploading the prompt', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    const originalClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function captureReceiptExport() {
+      if (this.download === 'prompt-info-cost-receipt.png') {
+        (window as unknown as { __receiptExport?: { download: string; href: string } }).__receiptExport = {
+          download: this.download,
+          href: this.href,
+        };
+        return;
+      }
+      originalClick.call(this);
+    };
+  });
+  await page.getByRole('textbox', { name: 'Prompt' }).fill('PRIVATE_EXPORT_PROMPT');
+  await expect(page.getByTestId('primary-session-cost')).not.toHaveText('Unavailable');
+  await expect(page.getByRole('button', { name: 'Save receipt image' })).toBeEnabled();
+
+  await page.getByRole('button', { name: 'Save receipt image' }).click();
+  await expect.poll(() => page.evaluate(() => (
+    window as unknown as { __receiptExport?: { download: string; href: string } }
+  ).__receiptExport)).toMatchObject({
+    download: 'prompt-info-cost-receipt.png',
+    href: expect.stringMatching(/^data:image\/png;base64,/),
+  });
+  const exportedHref = await page.evaluate(() => (
+    window as unknown as { __receiptExport: { href: string } }
+  ).__receiptExport.href);
+  expect(exportedHref.includes('PRIVATE_EXPORT_PROMPT')).toBe(false);
 });
 
 test('model browser shows rates and context before selection', async ({ page }) => {
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Open model results' }).click();
-  const firstOption = page.getByRole('option').first();
+  await page.getByRole('button', { name: 'Open model results' }).first().click();
+  const firstOption = page.getByRole('listbox').getByRole('option').first();
   await expect(firstOption).toContainText(/\$.*in.*\$.*out/i);
   await expect(firstOption).toContainText(/context/i);
 });
 
-test('token planner scales one AI session into a recurring workload', async ({ page }) => {
+test('cost workbench scales one AI session into a recurring workload', async ({ page }) => {
   await page.goto('/');
 
   await page.getByRole('textbox', { name: 'Prompt' }).fill('Summarize this support ticket and draft a reply.');
-  await page.getByRole('button', { name: /Quick/ }).click();
-  await page.getByLabel('Runs per period').fill('40');
-  await page.getByLabel('Workload cadence').selectOption('week');
+  await page.getByLabel(/Turns per run/).fill('3');
+  await page.getByLabel(/Session behavior/).selectOption('scenario');
+  await page.getByLabel(/Runs per period/).fill('40');
+  await page.getByLabel(/Workload cadence/).selectOption('week');
 
-  await expect(page.getByText('Runs / week')).toBeVisible();
-  await expect(page.getByText('Monthly average')).toBeVisible();
-  await expect(page.locator('#planner').getByText('Annual estimate')).toBeVisible();
+  await expect(page.locator('.receipt-total-grid').getByText('Monthly', { exact: true })).toBeVisible();
+  await expect(page.locator('.receipt-total-grid').getByText('Annual', { exact: true })).toBeVisible();
+  await expect(page.locator('.receipt-total-grid dd').nth(1)).not.toHaveText('Unavailable');
+  await expect(page.getByTestId('primary-session-cost')).not.toHaveText('Unavailable');
 });
 
 test('format lab reuses the in-memory prompt scenario from the planner', async ({ page }) => {
@@ -119,7 +182,10 @@ test('pricing function returns a populated, cacheable model map', async ({ reque
   expect(response.status()).toBe(200);
   expect(response.headers()['cache-control']).toContain('max-age=900');
   const body = await response.json();
-  expect(Object.keys(body).length).toBeGreaterThan(100);
+  expect(body.schemaVersion).toBe(1);
+  expect(body.source).toBeTruthy();
+  expect(body.freshness).toBeTruthy();
+  expect(Object.keys(body.data).length).toBeGreaterThan(20);
 });
 
 test('benchmark function returns an attributed Artificial Analysis catalog', async ({ request }) => {
@@ -140,5 +206,5 @@ test('unknown routes return a noindex 404 with recovery navigation', async ({ pa
   await expect(robotsMeta).toHaveCount(1);
   await expect(robotsMeta).toHaveAttribute('content', /noindex/);
   await expect(page.getByRole('heading', { level: 1, name: 'That page is not here.' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Token planner/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Cost Workbench/ }).last()).toBeVisible();
 });

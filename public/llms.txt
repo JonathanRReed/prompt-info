@@ -1,12 +1,12 @@
 # Prompt Info
 
-> Prompt Info is a browser-based LLM token counter and cost planner built by Jonathan R. Reed through Hello.World Consulting. It shows prompt size, tokenizer behavior, model pricing assumptions, output budgets, cache reads and writes, and multi-turn agent-session cost before a request ever reaches a provider.
+> Prompt Info is a browser-based AI workload cost workbench built by Jonathan R. Reed through Hello.World Consulting. It compares current model pricing for a real prompt, request, multi-turn session, and recurring workload before a request reaches a provider.
 
 The estimates are planning values, so a provider invoice will not match them line for line.
 
 ## Key Pages
 
-- [Token Planner](https://prompt-info.helloworldfirm.com/): Count tokens and estimate LLM request and session costs.
+- [Cost Workbench](https://prompt-info.helloworldfirm.com/): Compare request, session, monthly, and annual AI workload costs across current models.
 - [Format Comparison](https://prompt-info.helloworldfirm.com/format-comparison/): Compare the token footprint of JSON, YAML, XML, CSV, and TOON.
 - [Token Efficiency](https://prompt-info.helloworldfirm.com/token-efficiency/): Compare cost per completed task; a cheaper per-token model that emits more tokens can cost more overall.
 - [About and references](https://prompt-info.helloworldfirm.com/about/): Product scope, methodology, and technical references.
@@ -30,7 +30,7 @@ and user-initiated fetchers remain allowed.
 
 ## Data Boundaries
 
-- Prompt text is handled in the browser for token counting and format comparison.
+- Prompt text stays in browser memory for cost planning and format comparison.
 - Pricing data uses a same-origin pricing API when available and a bundled model catalog as fallback.
 - Do not paste API keys, customer records, unreleased launch material, or confidential transcripts into a public browser utility.
 

@@ -12,7 +12,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: '/', label: 'Token Planner', shortLabel: 'Planner', description: 'Count tokens and estimate costs' },
+  { href: '/', label: 'Cost Workbench', shortLabel: 'Workbench', description: 'Compare request, session, and recurring AI costs' },
   { href: '/format-comparison/', label: 'Format Comparison', shortLabel: 'Formats', description: 'Compare TOON, JSON, YAML, XML, CSV' },
   { href: '/token-efficiency/', label: 'Token Efficiency', shortLabel: 'Efficiency', description: 'Compare cost per task, not per token' },
   { href: '/about/', label: 'About', shortLabel: 'About', description: 'What this utility does' },

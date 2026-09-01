@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { fetchPricing, PricingMap } from '../lib/fetchPricing';
+import { fetchPricing, type PricingMap } from '../lib/fetchPricing';
 
 type ModelSelectProps = {
   onChange: (model: string) => void;
@@ -76,9 +76,9 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
 
     (async () => {
       try {
-        const data: PricingMap = await fetchPricing();
+        const catalog = await fetchPricing();
         if (!mounted) return;
-        const keys = Object.keys(data ?? {});
+        const keys = Object.keys(catalog.data);
         if (keys.length === 0) {
           try {
             const res = await fetch('/data/llm-data.json');

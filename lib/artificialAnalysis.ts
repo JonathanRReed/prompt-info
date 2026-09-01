@@ -1,3 +1,9 @@
+import {
+  CATALOG_SCHEMA_VERSION,
+  fetchJsonWithTimeout,
+  type CatalogFreshness,
+} from './catalogContract';
+
 export type ArtificialAnalysisModel = {
   id: string;
   name: string;
@@ -20,9 +26,14 @@ export type ArtificialAnalysisModel = {
 };
 
 export type ArtificialAnalysisCatalog = {
+  schemaVersion: typeof CATALOG_SCHEMA_VERSION;
   source: 'artificial-analysis-free-api' | 'artificial-analysis-supabase-cache' | 'dated-fallback';
+  sourceUrl: string;
   intelligenceIndexVersion: number | null;
   retrievedAt: string;
+  freshness: CatalogFreshness;
+  isFallback: boolean;
+  fallbackReason: string | null;
   data: ArtificialAnalysisModel[];
 };
 
@@ -44,9 +55,14 @@ export async function loadArtificialAnalysisCatalog(_: {
   supabaseUrl?: string;
   supabaseAnonKey?: string;
   fetcher?: Fetcher;
+  now?: () => Date;
+  timeoutMs?: number;
 }): Promise<ArtificialAnalysisCatalog> {
-  const { apiKey, supabaseUrl, supabaseAnonKey, fetcher = fetch } = _;
-  const retrievedAt = new Date().toISOString();
+  const { apiKey, supabaseUrl, supabaseAnonKey, fetcher = fetch, now = () => new Date(), timeoutMs = 6_000 } = _;
+  const retrievedAt = now().toISOString();
+  let directFailure = apiKey
+    ? 'Artificial Analysis returned no usable models.'
+    : 'Artificial Analysis API is not configured.';
 
   if (apiKey) {
     const rows: unknown[] = [];
@@ -55,15 +71,20 @@ export async function loadArtificialAnalysisCatalog(_: {
     for (let page = 1; page <= 10; page += 1) {
       const endpoint = new URL('https://artificialanalysis.ai/api/v2/language/models/free');
       endpoint.searchParams.set('page', String(page));
-      const response = await fetcher(endpoint, {
+      const result = await fetchJsonWithTimeout(fetcher, endpoint, {
         headers: {
           Accept: 'application/json',
           'x-api-key': apiKey,
         },
-      }).catch(() => null);
+      }, timeoutMs);
 
-      if (!response?.ok) break;
-      const payload = await response.json() as unknown;
+      if (!result.ok) {
+        directFailure = result.reason === 'timeout'
+          ? 'Artificial Analysis request timed out.'
+          : 'Artificial Analysis request was unavailable.';
+        break;
+      }
+      const payload = result.body;
       if (!isRecord(payload)) break;
       if (intelligenceIndexVersion === null) {
         intelligenceIndexVersion = numberOrNull(payload.intelligence_index_version);
@@ -77,9 +98,14 @@ export async function loadArtificialAnalysisCatalog(_: {
     const data = parseArtificialAnalysisPayload(rows);
     if (data.length > 0) {
       return {
+        schemaVersion: CATALOG_SCHEMA_VERSION,
         source: 'artificial-analysis-free-api',
+        sourceUrl: ARTIFICIAL_ANALYSIS_ATTRIBUTION.apiDocs,
         intelligenceIndexVersion,
         retrievedAt,
+        freshness: 'live',
+        isFallback: false,
+        fallbackReason: null,
         data,
       };
     }
@@ -90,21 +116,26 @@ export async function loadArtificialAnalysisCatalog(_: {
     endpoint.searchParams.set('select', '*');
     endpoint.searchParams.set('order', 'aa_intelligence_index.desc.nullslast');
     endpoint.searchParams.set('limit', '1000');
-    const response = await fetcher(endpoint, {
+    const result = await fetchJsonWithTimeout(fetcher, endpoint, {
       headers: {
         Accept: 'application/json',
         apikey: supabaseAnonKey,
         Authorization: `Bearer ${supabaseAnonKey}`,
       },
-    }).catch(() => null);
+    }, timeoutMs);
 
-    if (response?.ok) {
-      const data = parseArtificialAnalysisPayload(await response.json());
+    if (result.ok) {
+      const data = parseArtificialAnalysisPayload(result.body);
       if (data.length > 0) {
         return {
+          schemaVersion: CATALOG_SCHEMA_VERSION,
           source: 'artificial-analysis-supabase-cache',
+          sourceUrl: endpoint.toString(),
           intelligenceIndexVersion: null,
           retrievedAt,
+          freshness: 'cached',
+          isFallback: true,
+          fallbackReason: `${directFailure} Using the project benchmark cache.`,
           data,
         };
       }
@@ -112,9 +143,14 @@ export async function loadArtificialAnalysisCatalog(_: {
   }
 
   return {
+    schemaVersion: CATALOG_SCHEMA_VERSION,
     source: 'dated-fallback',
+    sourceUrl: ARTIFICIAL_ANALYSIS_ATTRIBUTION.apiDocs,
     intelligenceIndexVersion: null,
     retrievedAt,
+    freshness: 'static',
+    isFallback: true,
+    fallbackReason: `${directFailure} Project benchmark cache was unavailable.`,
     data: [],
   };
 }

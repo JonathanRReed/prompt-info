@@ -261,7 +261,11 @@ export default function TokenEfficiencyPageClient() {
           <p className="mt-2 text-xs leading-5 text-rose-muted">
             Source: {catalogError ? 'unavailable, editable presets retained' : sourceLabel(catalog?.source)}.
             {catalog?.intelligenceIndexVersion ? ` Intelligence Index v${catalog.intelligenceIndexVersion}.` : ''}
+            {catalog?.retrievedAt ? ` Retrieved ${new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
           </p>
+          {catalog?.isFallback && catalog.fallbackReason ? (
+            <p className="mt-2 text-xs leading-5 text-rose-subtle">{catalog.fallbackReason}</p>
+          ) : null}
         </div>
         <a
           href="https://artificialanalysis.ai/"

@@ -157,6 +157,9 @@ describe('loadArtificialAnalysisCatalog', () => {
     });
 
     expect(catalog.source).toBe('artificial-analysis-free-api');
+    expect(catalog.freshness).toBe('live');
+    expect(catalog.isFallback).toBe(false);
+    expect(catalog.sourceUrl).toBe('https://artificialanalysis.ai/data-api/docs');
     expect(catalog.intelligenceIndexVersion).toBe(4.1);
     expect(catalog.data[0]).toMatchObject({
       id: 'direct-1',
@@ -179,6 +182,8 @@ describe('loadArtificialAnalysisCatalog', () => {
     });
 
     expect(catalog.source).toBe('artificial-analysis-supabase-cache');
+    expect(catalog.freshness).toBe('cached');
+    expect(catalog.isFallback).toBe(true);
     expect(catalog.data[0]).toMatchObject({ id: 'cached-1', benchmarkCostPerTask: null });
   });
 
@@ -209,6 +214,10 @@ describe('loadArtificialAnalysisCatalog', () => {
     });
 
     expect(catalog.source).toBe('dated-fallback');
+    expect(catalog.schemaVersion).toBe(1);
+    expect(catalog.freshness).toBe('static');
+    expect(catalog.isFallback).toBe(true);
+    expect(catalog.fallbackReason).toContain('unavailable');
     expect(catalog.attribution.url).toBe('https://artificialanalysis.ai/');
     expect(catalog.data.length).toBeGreaterThanOrEqual(3);
     expect(catalog.data.every(model => model.benchmarkCostPerTask === null)).toBe(true);

@@ -2,15 +2,16 @@ import type { Metadata } from 'next';
 import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 
 const highlights = [
-  { title: 'Token planning', body: 'Paste a prompt, pick a model, change tokenizers, and estimate cost before sending.' },
+  { title: 'Workload planning', body: 'Compare request, session, monthly, and annual model cost for the prompt and run pattern you actually expect.' },
   { title: 'Format comparison', body: 'Render the same prompt as TOON, JSON, YAML, XML, and CSV for practical payload review.' },
   { title: 'Token efficiency', body: 'Compare cost per completed task with Artificial Analysis evidence kept separate from your workload assumptions.' },
-  { title: 'Pricing data', body: 'Model rate cards load from the pricing API. Artificial Analysis scores, speed, and cost-per-task data use their own attributed catalog.' },
+  { title: 'Sourced catalogs', body: 'Every pricing and benchmark response reports its source, retrieval time, freshness, and fallback state.' },
 ];
 
 const links = [
   { label: 'Artificial Analysis', href: 'https://artificialanalysis.ai/' },
   { label: 'Artificial Analysis Data API', href: 'https://artificialanalysis.ai/data-api/docs' },
+  { label: 'OpenRouter model pricing', href: 'https://openrouter.ai/docs/overview/models' },
   { label: 'TOON spec', href: 'https://github.com/toon-format/toon' },
   { label: 'YAML 1.2.2', href: 'https://yaml.org/spec/1.2.2/' },
   { label: 'RFC 8259 JSON', href: 'https://www.rfc-editor.org/info/rfc8259' },
@@ -26,7 +27,7 @@ const pageJsonLd = {
   name: 'About Prompt Info',
   url: 'https://prompt-info.helloworldfirm.com/about/',
   datePublished: '2026-04-21',
-  dateModified: '2026-08-29',
+  dateModified: '2026-09-01',
   author: {
     '@type': 'Person',
     name: 'Jonathan R. Reed',
@@ -72,20 +73,20 @@ export default function AboutPage() {
             Prompt inspection for model operators.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Prompt Info is a small technical workspace for measuring token count, projected cost, and payload format before model execution.
+            Prompt Info is a free technical workspace for comparing the real operating cost of prompts, agent sessions, and recurring AI workloads before execution.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            The scope is deliberately narrow. Everything runs in the browser, the assumptions are printed next to the numbers, and there is nothing to sign up for.
+            Prompt text stays in browser memory. Same-origin server routes collect public pricing and benchmark catalogs, while every estimate prints its assumptions beside the result. There is nothing to sign up for.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
             <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
-            <time dateTime="2026-08-29">Updated August 29, 2026</time>.
+            <time dateTime="2026-09-01">Updated September 1, 2026</time>.
           </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">
           {[
             ['Status', 'Public web utility'],
-            ['Data', 'Pricing API plus Artificial Analysis'],
+            ['Data', 'OpenRouter plus Artificial Analysis'],
             ['Owner', 'Jonathan R. Reed'],
           ].map(([label, value]) => (
             <dl key={label} className="bg-rose-base p-5">
@@ -112,10 +113,12 @@ export default function AboutPage() {
             <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k. OpenAI counts are exact.</li>
             <li>Non-OpenAI vendors bill with their own tokenizers, which typically produce more tokens than OpenAI BPE for the same text. Cost math applies a per-provider calibration multiplier so estimates do not undercount.</li>
             <li>Agent scenario estimates re-send conversation history each turn, bill cached context at the provider&apos;s cache read rate, apply cache write premiums where charged, and simulate compaction summarization calls.</li>
+            <li>Pricing first uses the live OpenRouter text-model catalog, then the project database cache, then a dated bundled catalog. The active source and fallback reason remain visible.</li>
             <li>Artificial Analysis supplies the attributed benchmark catalog for intelligence, coding, agentic, speed, and cost-per-task evidence when the active source provides each field.</li>
             <li>Recurring workload projections include model usage only. They do not add human labor or review costs.</li>
             <li>Cost estimates are planning values. Provider billing may differ by model version and feature use.</li>
-            <li>Nothing you paste is stored and there are no accounts.</li>
+            <li>Pasted prompt text is held only in React memory. It is not stored, logged, sent to the catalog routes, or written to local storage. There are no accounts.</li>
+            <li>The browser contacts only same-origin Prompt Info routes for pricing and benchmark data. Upstream credentials remain server-side.</li>
             <li>Format output is for inspection and planning. Downstream APIs will not all accept the same structure.</li>
           </ul>
         </article>

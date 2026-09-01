@@ -1,4 +1,5 @@
 import { buildArtificialAnalysisCatalogResponse } from '../../lib/artificialAnalysis';
+import { catalogJsonResponse } from '../../lib/catalogContract';
 
 type Env = {
   ARTIFICIAL_ANALYSIS_API_KEY?: string;
@@ -19,9 +20,5 @@ export const onRequestGet = async ({ env }: PagesContext) => {
     supabaseAnonKey: env.SUPABASE_ANON_KEY ?? env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   });
 
-  return Response.json(body, {
-    headers: {
-      'Cache-Control': 'public, max-age=900, s-maxage=21600, stale-while-revalidate=86400',
-    },
-  });
+  return catalogJsonResponse(body);
 };

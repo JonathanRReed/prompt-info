@@ -1,15 +1,14 @@
 import type { Metadata } from 'next';
 import { OG_BASE, TWITTER_BASE } from '../lib/seo';
-import Link from 'next/link';
 import HomePageClient from './page-client';
 
 const pageJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  name: 'LLM Token Counter and Cost Calculator',
+  name: 'AI Workload Cost Calculator',
   url: 'https://prompt-info.helloworldfirm.com/',
   datePublished: '2026-04-21',
-  dateModified: '2026-08-29',
+  dateModified: '2026-09-01',
   author: {
     '@type': 'Person',
     name: 'Jonathan R. Reed',
@@ -32,24 +31,24 @@ const pageJsonLd = {
 };
 
 export const metadata: Metadata = {
-  title: 'LLM Token Counter and Cost Calculator',
+  title: 'AI Workload Cost Calculator',
   description:
-    'Count prompt tokens, estimate LLM request costs, compare tokenizers, and plan output budgets before sending model requests.',
+    'Compare current model costs for a real prompt, agent session, or recurring AI workload. Free, private, and source-transparent.',
   alternates: {
     canonical: 'https://prompt-info.helloworldfirm.com/',
   },
   openGraph: {
     ...OG_BASE,
     url: 'https://prompt-info.helloworldfirm.com/',
-    title: 'LLM Token Counter and Cost Calculator',
+    title: 'AI Workload Cost Calculator',
     description:
-      'Count prompt tokens, estimate LLM request costs, compare tokenizers, and plan output budgets before sending model requests.',
+      'Compare current model costs for a real prompt, agent session, or recurring AI workload.',
   },
   twitter: {
     ...TWITTER_BASE,
-    title: 'LLM Token Counter and Cost Calculator',
+    title: 'AI Workload Cost Calculator',
     description:
-      'Count prompt tokens, estimate LLM request costs, compare tokenizers, and plan output budgets.',
+      'Compare request, session, monthly, and annual AI workload costs.',
   },
 };
 
@@ -57,57 +56,23 @@ export default function Page() {
   return (
     <main className="w-full max-w-full overflow-x-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
-      <section className="prompt-hero mx-auto flex min-h-[68dvh] w-full max-w-[1500px] border-b border-rose-highlightMed">
-        <div className="flex w-full flex-col justify-end px-4 pb-12 pt-16 sm:px-6 md:px-12 md:pb-16">
-          <p className="data-label text-rose-love">Prompt Info</p>
-          <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3.2rem,8vw,7.2rem)]">
-            Know the bill before the model runs.
-          </h1>
-          <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Prompt Info is a browser-based LLM token counter and cost calculator. Paste a draft prompt, pick a model, and see the planning assumptions before you send the request. Agent sessions account for history re-sends, prompt caching, and compaction.
-          </p>
-          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
-            <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
-            <time dateTime="2026-08-29">Updated August 29, 2026</time>.
-          </p>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <a className="action-primary" href="#planner">
-              Analyze prompt
-            </a>
-            <Link className="action-secondary" href="/format-comparison/">
-              Convert format
-            </Link>
-            <Link className="action-secondary" href="/token-efficiency/">
-              Compare efficiency
-            </Link>
+      <section className="prompt-hero prompt-hero-compact mx-auto flex w-full max-w-[1500px] border-x border-b border-rose-highlightMed">
+        <div className="grid w-full gap-5 px-4 py-8 sm:px-6 md:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)] md:items-end md:px-10 md:py-10">
+          <div>
+            <p className="data-label text-rose-love">Prompt Info / Free AI cost intelligence</p>
+            <h1 className="macro-heading mt-4 max-w-6xl text-[clamp(2.6rem,5.6vw,5.8rem)]">
+              Know what your AI workload will cost.
+            </h1>
           </div>
-          <p className="mt-6 max-w-3xl font-mono text-[11px] uppercase leading-6 tracking-[0.14em] text-rose-muted">
-            Efficiency evidence and benchmark catalog by{' '}
-            <a
-              href="https://artificialanalysis.ai/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-bold text-rose-text underline decoration-rose-love underline-offset-4 hover:text-rose-love"
-            >
-              Artificial Analysis
-            </a>
-            . Model rate cards refresh separately through the pricing API.
-          </p>
+          <div>
+            <p className="hero-deck max-w-xl text-sm leading-7 text-rose-subtle sm:text-base">
+              Paste a prompt, compare credible models, and see request, session, monthly, and annual cost before anything runs.
+            </p>
+            <p className="hero-proof mt-4 font-mono text-[11px] font-bold uppercase leading-5 tracking-[0.14em] text-rose-muted">
+              No account. No payment. Prompt text stays in your browser.
+            </p>
+          </div>
         </div>
-      </section>
-
-      <section className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ['Token counter', 'Count GPT-style BPE tokens with o200k, cl100k, p50k, p50k edit, and r50k tokenizers.'],
-          ['Cost calculator', 'Estimate input, output, and multi-turn agent costs before sending expensive model calls.'],
-          ['Prompt format lab', 'Compare the same prompt as TOON, JSON, YAML, XML, CSV, and compact JSON for payload planning.'],
-          ['Token efficiency', 'Compare cost per completed task: a cheaper per-token model that talks twice as much can bill more.'],
-        ].map(([title, body]) => (
-          <article key={title} className="bg-rose-base p-5 sm:p-7 md:min-h-64">
-            <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{title}</h2>
-            <p className="mt-6 text-sm leading-7 text-rose-subtle">{body}</p>
-          </article>
-        ))}
       </section>
 
       <HomePageClient />

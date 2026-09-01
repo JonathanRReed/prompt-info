@@ -136,7 +136,7 @@ export default function TokenEfficiencyPage() {
             <li>Per-task token counts are planning estimates anchored to Artificial Analysis&apos; published totals for one benchmark suite. Your prompts, tool calls, and stop conditions will produce different counts.</li>
             <li>Reasoning tokens bill as output on every one of these models, which is why verbose thinking shows up directly on the invoice.</li>
             <li>Promotional rates skew comparisons. Two of the three presets are running time-limited pricing; the notes on each row say what expires and when.</li>
-            <li>Efficiency compounds in agent sessions: every extra output token is re-sent as input on each later turn. The <Link href="/" className="underline decoration-rose-love underline-offset-4 hover:text-rose-text">token planner</Link> models that loop with caching and compaction.</li>
+            <li>Efficiency compounds in agent sessions: every extra output token is re-sent as input on each later turn. The <Link href="/" className="underline decoration-rose-love underline-offset-4 hover:text-rose-text">cost workbench</Link> models that loop with caching and compaction.</li>
           </ul>
         </article>
         <article className="bg-rose-base p-5 sm:p-8 md:p-10">

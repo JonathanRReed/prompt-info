@@ -27,10 +27,10 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://prompt-info.helloworldfirm.com'),
   title: {
-    default: 'Prompt Info - LLM Token Counter & Cost Calculator',
+    default: 'Prompt Info - AI Workload Cost Calculator',
     template: '%s | Prompt Info'
   },
-  description: 'Count prompt tokens and estimate request costs across hundreds of live-priced LLM models, right in the browser.',
+  description: 'Compare request, session, monthly, and annual AI workload costs across current models without sending your prompt anywhere.',
   keywords: [
     'LLM token counter',
     'GPT tokenizer',
@@ -51,13 +51,13 @@ export const metadata: Metadata = {
   openGraph: {
     ...OG_BASE,
     url: 'https://prompt-info.helloworldfirm.com/',
-    title: 'Prompt Info - LLM Token Counter & Cost Calculator',
-    description: 'Count prompt tokens and estimate request costs across hundreds of live-priced LLM models.',
+    title: 'Prompt Info - AI Workload Cost Calculator',
+    description: 'Compare request, session, monthly, and annual AI workload costs across current models.',
   },
   twitter: {
     ...TWITTER_BASE,
-    title: 'Prompt Info - LLM Token Counter & Cost Calculator',
-    description: 'Count prompt tokens and estimate request costs before the model runs.',
+    title: 'Prompt Info - AI Workload Cost Calculator',
+    description: 'Compare model costs for a real prompt, agent session, or recurring workload.',
   },
   alternates: {
     canonical: 'https://prompt-info.helloworldfirm.com/',
@@ -86,7 +86,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'Prompt Info',
-    description: 'Count prompt tokens and estimate request costs across hundreds of live-priced LLM models, right in the browser.',
+    description: 'Compare request, session, monthly, and annual AI workload costs without sending your prompt anywhere.',
     url: 'https://prompt-info.helloworldfirm.com/',
     author: {
       '@type': 'Person',

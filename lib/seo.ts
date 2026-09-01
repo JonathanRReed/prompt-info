@@ -20,7 +20,7 @@ export const SHARE_IMAGE = {
   url: '/prompt_info_assets/prompt-info-social-card-1200x630.png',
   width: 1200,
   height: 630,
-  alt: 'Prompt Info - LLM token counter and cost calculator',
+  alt: 'Prompt Info - AI workload cost calculator',
 } as const;
 
 export const OG_BASE = {
