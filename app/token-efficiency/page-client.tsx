@@ -128,6 +128,14 @@ export default function TokenEfficiencyPageClient() {
     () => (catalog?.data ?? []).filter(model => model.inputPerMillion !== null || model.outputPerMillion !== null),
     [catalog]
   );
+  const benchmarkCostCoverage = useMemo(
+    () => (catalog?.data ?? []).filter(model => model.benchmarkCostPerTask !== null).length,
+    [catalog],
+  );
+  const speedCoverage = useMemo(
+    () => (catalog?.data ?? []).filter(model => model.outputTokensPerSecond !== null).length,
+    [catalog],
+  );
 
   const updateModel = (key: string, field: EditableRateField, rawValue: number) => {
     const max = field === 'outputTokensPerTask' ? MAX_TOKENS_PER_TASK : MAX_RATE_PER_MILLION;
@@ -263,6 +271,11 @@ export default function TokenEfficiencyPageClient() {
             {catalog?.intelligenceIndexVersion ? ` Intelligence Index v${catalog.intelligenceIndexVersion}.` : ''}
             {catalog?.retrievedAt ? ` Retrieved ${new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
           </p>
+          {catalog && (
+            <p className="mt-2 text-xs leading-5 text-rose-subtle">
+              Evidence coverage: {benchmarkCostCoverage.toLocaleString()} / {catalog.data.length.toLocaleString()} models with published cost-per-task data, {speedCoverage.toLocaleString()} / {catalog.data.length.toLocaleString()} with throughput data. Your modeled task cost remains separate.
+            </p>
+          )}
           {catalog?.isFallback && catalog.fallbackReason ? (
             <p className="mt-2 text-xs leading-5 text-rose-subtle">{catalog.fallbackReason}</p>
           ) : null}
@@ -343,12 +356,12 @@ export default function TokenEfficiencyPageClient() {
               <div className="flex flex-col items-end gap-1">
                 {row.isCheapestPerToken && (
                   <span className="border border-rose-highlightMed px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-rose-muted">
-                    Lowest rate card
+                    Lowest output rate
                   </span>
                 )}
                 {row.isCheapestPerTask && (
                   <span className="bg-rose-love px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-white">
-                    Cheapest per task
+                    Lowest modeled cost
                   </span>
                 )}
               </div>

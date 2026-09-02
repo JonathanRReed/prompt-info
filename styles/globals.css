@@ -96,7 +96,7 @@ input[type='range'] {
     var(--color-rose-base);
 }
 
-.grid-overlay {
+.grid-overlay { /* impeccable-disable-line codex-grid-background: intentional measurement-paper grid from the product's established visual system */
   position: fixed;
   inset: 0;
   z-index: 1;
@@ -779,6 +779,161 @@ input[type='range'] {
   border-inline: 1px solid var(--color-rose-highlightMed);
   border-bottom: 1px solid var(--color-rose-highlightMed);
   background: var(--color-rose-highlightMed);
+}
+
+.scenario-recipe-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  width: 100%;
+  max-width: 1500px;
+  margin-inline: auto;
+  border-inline: 1px solid var(--color-rose-highlightMed);
+  border-top: 1px solid var(--color-rose-highlightMed);
+  padding: 0.9rem clamp(1rem, 2.5vw, 2rem);
+  background: var(--color-rose-base);
+}
+
+.scenario-recipe-actions > div:first-child p:last-child {
+  margin-top: 0.25rem;
+  color: var(--color-rose-muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.scenario-recipe-actions > div:nth-child(2) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.scenario-recipe-actions button {
+  min-height: 2.75rem;
+  border: 1px solid var(--color-rose-highlightMed);
+  padding: 0.6rem 0.8rem;
+  color: var(--color-rose-text);
+  font-family: var(--font-space-mono), monospace;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scenario-recipe-actions button:hover,
+.scenario-recipe-actions button:focus-visible {
+  border-color: var(--color-rose-love);
+  color: var(--color-rose-love);
+  outline: none;
+}
+
+.scenario-recipe-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.scenario-recipe-status {
+  grid-column: 1 / -1;
+  min-height: 1rem;
+  color: var(--color-rose-subtle);
+  font-family: var(--font-space-mono), monospace;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+.budget-sensitivity {
+  border-bottom: 1px solid var(--color-rose-highlightMed);
+  padding: clamp(1rem, 2.5vw, 2rem);
+}
+
+.budget-heading-row {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.budget-heading-row h2 {
+  margin-top: 0.5rem;
+  max-width: 52rem;
+  color: var(--color-rose-text);
+  font-size: clamp(1.55rem, 3vw, 2.8rem);
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+}
+
+.budget-status {
+  border: 1px solid var(--color-rose-highlightMed);
+  padding: 0.55rem 0.7rem;
+  font-family: var(--font-space-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.budget-status.is-within { color: color-mix(in srgb, #49c783 80%, var(--color-rose-text)); }
+.budget-status.is-over { border-color: var(--color-rose-love); color: var(--color-rose-love); }
+
+.budget-control-grid,
+.budget-case-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 1rem;
+  background: var(--color-rose-highlightMed);
+}
+
+.budget-control-grid label,
+.budget-case-grid > div {
+  min-width: 0;
+  background: var(--color-rose-base);
+  padding: 1rem;
+}
+
+.budget-control-grid span,
+.budget-case-grid dt {
+  display: block;
+  color: var(--color-rose-muted);
+  font-family: var(--font-space-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.budget-control-grid input {
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--color-rose-highlightMed);
+  background: var(--color-rose-overlay);
+  padding: 0.55rem;
+  color: var(--color-rose-text);
+  font-family: var(--font-space-mono), monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-control-grid small,
+.budget-case-grid small,
+.budget-footnote {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--color-rose-muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.budget-case-grid dd {
+  margin-top: 0.45rem;
+  color: var(--color-rose-text);
+  font-family: var(--font-space-mono), monospace;
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
 .cost-workbench-scenario {
@@ -1597,6 +1752,20 @@ input[type='range'] {
 }
 
 @media (max-width: 899px) {
+  .scenario-recipe-actions,
+  .budget-heading-row {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-recipe-actions > div:nth-child(2) {
+    justify-content: flex-start;
+  }
+
+  .budget-heading-row {
+    display: grid;
+  }
+
   .cost-workbench-scenario,
   .cost-workbench-receipt {
     grid-column: span 12;
@@ -1626,6 +1795,10 @@ input[type='range'] {
 }
 
 @media (max-width: 640px) {
+  .budget-control-grid,
+  .budget-case-grid {
+    grid-template-columns: 1fr;
+  }
   .prompt-hero-compact .macro-heading {
     font-size: clamp(2.15rem, 10.8vw, 3.1rem);
     line-height: 0.9;

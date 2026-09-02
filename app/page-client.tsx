@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CostByModelChart } from '../components/charts/CostByModelChart';
 import { SessionAccumulationChart } from '../components/charts/SessionAccumulationChart';
 import { TokenCompositionChart } from '../components/charts/TokenCompositionChart';
@@ -10,6 +10,7 @@ import { CostWorkbench } from '../components/workbench/CostWorkbench';
 import { ModelComparison } from '../components/workbench/ModelComparison';
 import { ScenarioInputs, type TokenizerChoice } from '../components/workbench/ScenarioInputs';
 import { SourceStatus } from '../components/workbench/SourceStatus';
+import { BudgetSensitivity } from '../components/workbench/BudgetSensitivity';
 import { usePromptScenario } from '../components/ScenarioProvider';
 import {
   buildCostComparison,
@@ -22,6 +23,11 @@ import { chooseDefaultModels } from '../lib/modelSelection';
 import { getModelTokenizerMultiplier, resolveModelTokenProfile } from '../lib/modelTokenLimits';
 import type { SessionRunMode } from '../lib/sessionMath';
 import type { WorkloadCadence } from '../lib/workloadMath';
+import {
+  parseScenarioRecipe,
+  SCENARIO_RECIPE_SCHEMA,
+  type ScenarioRecipe,
+} from '../lib/scenarioRecipe';
 
 const SAMPLE_PROMPT = 'Summarize a ten-page research brief, identify the three highest-impact findings, and return a concise decision memo with citations.';
 const MAX_OUTPUT_TOKENS = 300_000;
@@ -71,6 +77,7 @@ export default function HomePageClient() {
   const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
   const [tokenizer, setTokenizer] = useState<TokenizerKey>('o200k_base');
   const [tokenCount, setTokenCount] = useState(0);
+  const [promptTokenOverride, setPromptTokenOverride] = useState<number | null>(null);
   const [decodedTokens, setDecodedTokens] = useState<Array<{ id: number; text: string }>>([]);
   const [tokenizing, setTokenizing] = useState(true);
   const [tokenizationError, setTokenizationError] = useState<string | null>(null);
@@ -85,6 +92,11 @@ export default function HomePageClient() {
   const [workloadRuns, setWorkloadRuns] = useState(100);
   const [workloadCadence, setWorkloadCadence] = useState<WorkloadCadence>('month');
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [monthlyBudget, setMonthlyBudget] = useState(100);
+  const [volumeVariancePct, setVolumeVariancePct] = useState(20);
+  const [retryRatePct, setRetryRatePct] = useState(5);
+  const [recipeState, setRecipeState] = useState<'idle' | 'exported' | 'imported' | 'error'>('idle');
+  const recipeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,14 +221,15 @@ export default function HomePageClient() {
 
   const pricing = catalog?.data ?? null;
   const availableModels = useMemo(() => Object.keys(pricing ?? {}), [pricing]);
+  const effectiveTokenCount = promptTokenOverride ?? tokenCount;
   const baseScenario = useMemo<CostComparisonScenario>(() => ({
     mode: sessionMode,
-    promptTokens: tokenCount,
+    promptTokens: effectiveTokenCount,
     referenceOutputTokens: outputTokens,
     turns,
     outputTokenLimit: MAX_OUTPUT_TOKENS,
     contextWindowTokens: 1_000_000,
-  }), [outputTokens, sessionMode, tokenCount, turns]);
+  }), [effectiveTokenCount, outputTokens, sessionMode, turns]);
 
   const selectedPricingModels = useMemo(() => selectedModels.map(model => {
     const entry = pricing?.[model];
@@ -247,9 +260,9 @@ export default function HomePageClient() {
       })
     : [], [baseScenario, primaryEntry, primaryMultiplier]);
   const chartMetric = workloadCadence === 'once' ? 'sessionCost' : 'monthlyCost';
-  const billedTokenNote = primaryMultiplier === 1 || tokenCount === 0
+  const billedTokenNote = primaryMultiplier === 1 || effectiveTokenCount === 0
     ? null
-    : `, about ${Math.round(tokenCount * primaryMultiplier).toLocaleString()} billed for ${primaryRow?.model ?? 'this provider'}`;
+    : `, about ${Math.round(effectiveTokenCount * primaryMultiplier).toLocaleString()} billed for ${primaryRow?.model ?? 'this provider'}`;
 
   useEffect(() => {
     if (!primaryRow || !primaryEntry) return;
@@ -257,7 +270,7 @@ export default function HomePageClient() {
       prompt,
       model: primaryRow.model,
       tokenizer,
-      inputTokensPerRun: Math.round(tokenCount * primaryMultiplier),
+      inputTokensPerRun: Math.round(effectiveTokenCount * primaryMultiplier),
       outputTokensPerRun: outputTokens,
       turns,
       sessionMode,
@@ -267,7 +280,7 @@ export default function HomePageClient() {
       workloadRuns,
       workloadCadence,
     });
-  }, [outputTokens, primaryEntry, primaryMultiplier, primaryRow, prompt, sessionMode, setScenario, tokenCount, tokenizer, turns, workloadCadence, workloadRuns]);
+  }, [effectiveTokenCount, outputTokens, primaryEntry, primaryMultiplier, primaryRow, prompt, sessionMode, setScenario, tokenizer, turns, workloadCadence, workloadRuns]);
 
   function replaceModel(index: number, model: string) {
     setSelectedModels(current => current.map((value, position) => position === index ? model : value));
@@ -289,10 +302,12 @@ export default function HomePageClient() {
     return [
       'Prompt Info cost receipt',
       `Model: ${primaryRow?.model ?? 'Unavailable'}`,
-      `Prompt tokens: ${tokenCount.toLocaleString()}`,
+      `Prompt tokens: ${effectiveTokenCount.toLocaleString()}`,
       `Output tokens per turn: ${outputTokens.toLocaleString()}`,
       `Turns: ${turns.toLocaleString()} (${sessionMode})`,
       `Runs: ${workloadRuns.toLocaleString()} per ${workloadCadence}`,
+      `Planning range: plus or minus ${volumeVariancePct}% volume, ${retryRatePct}% retry allowance`,
+      `Monthly budget: ${monthlyBudget > 0 ? `$${monthlyBudget.toLocaleString()}` : 'not set'}`,
       `One request: ${primaryRow?.requestCost ?? 'Unavailable'}`,
       `Session: ${primaryRow?.sessionCost ?? 'Unavailable'}`,
       `Monthly: ${primaryRow?.monthlyCost ?? 'Unavailable'}`,
@@ -318,12 +333,65 @@ export default function HomePageClient() {
     downloadCostReceiptImage({
       row: primaryRow,
       assumptions: [
-        `${tokenCount.toLocaleString()} prompt tokens, ${outputTokens.toLocaleString()} output tokens`,
+        `${effectiveTokenCount.toLocaleString()} prompt tokens, ${outputTokens.toLocaleString()} output tokens`,
         `${turns.toLocaleString()} turns, ${sessionMode} session`,
         `${workloadRuns.toLocaleString()} runs per ${workloadCadence}`,
       ],
       source: catalog ? `${catalog.source}, ${catalog.retrievedAt}` : 'Pricing source unavailable',
     });
+  }
+
+  function exportScenarioRecipe() {
+    const recipe: ScenarioRecipe = {
+      schemaVersion: SCENARIO_RECIPE_SCHEMA,
+      createdAt: new Date().toISOString(),
+      privacy: { promptIncluded: false },
+      promptTokens: effectiveTokenCount,
+      tokenizer,
+      selectedModels,
+      outputTokens,
+      turns,
+      sessionMode,
+      workloadRuns,
+      workloadCadence,
+      planning: { monthlyBudget, volumeVariancePct, retryRatePct },
+      source: { name: catalog?.source ?? null, retrievedAt: catalog?.retrievedAt ?? null },
+    };
+    const blob = new Blob([JSON.stringify(recipe, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `prompt-info-scenario-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.hidden = true;
+    document.body.appendChild(anchor);
+    setRecipeState('exported');
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  }
+
+  async function importScenarioRecipe(file: File | undefined) {
+    if (!file) return;
+    try {
+      const recipe = parseScenarioRecipe(JSON.parse(await file.text()));
+      if (!recipe || !TOKENIZERS.some(option => option.key === recipe.tokenizer)) throw new Error('Invalid scenario recipe');
+      const validModels = recipe.selectedModels.filter(model => availableModels.includes(model));
+      if (validModels.length === 0) throw new Error('Scenario models are not in the current catalog');
+      setPromptTokenOverride(recipe.promptTokens);
+      setTokenizer(recipe.tokenizer as TokenizerKey);
+      setSelectedModels(validModels.slice(0, 3));
+      setOutputTokens(recipe.outputTokens);
+      setTurns(recipe.turns);
+      setSessionMode(recipe.sessionMode);
+      setWorkloadRuns(recipe.workloadRuns);
+      setWorkloadCadence(recipe.workloadCadence);
+      setMonthlyBudget(recipe.planning.monthlyBudget);
+      setVolumeVariancePct(recipe.planning.volumeVariancePct);
+      setRetryRatePct(recipe.planning.retryRatePct);
+      setRecipeState('imported');
+    } catch {
+      setRecipeState('error');
+    }
   }
 
   return (
@@ -343,14 +411,20 @@ export default function HomePageClient() {
           <ScenarioInputs
             prompt={prompt}
             samplePrompt={SAMPLE_PROMPT}
-            onPromptChange={setPrompt}
-            promptTokens={tokenCount}
+            onPromptChange={value => {
+              setPromptTokenOverride(null);
+              setPrompt(value);
+            }}
+            promptTokens={effectiveTokenCount}
             tokenizing={tokenizing}
             tokenizationError={tokenizationError}
             billedTokenNote={billedTokenNote}
             tokenizers={TOKENIZERS}
             tokenizer={tokenizer}
-            onTokenizerChange={value => setTokenizer(value as TokenizerKey)}
+            onTokenizerChange={value => {
+              setPromptTokenOverride(null);
+              setTokenizer(value as TokenizerKey);
+            }}
             outputTokens={outputTokens}
             onOutputTokensChange={value => setOutputTokens(clampInteger(value, 64, MAX_OUTPUT_TOKENS, 2_048))}
             turns={turns}
@@ -376,6 +450,44 @@ export default function HomePageClient() {
       />
 
       <div className="workbench-section-shell">
+        <div className="scenario-recipe-actions">
+          <div>
+            <p className="data-label">Reproducible scenario</p>
+            <p>Export or import the model set and numeric assumptions. Prompt text is never included.</p>
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={exportScenarioRecipe}
+              disabled={selectedModels.length === 0 || tokenizing || effectiveTokenCount === 0}
+            >
+              Export scenario JSON
+            </button>
+            <button type="button" onClick={() => recipeInputRef.current?.click()} disabled={availableModels.length === 0}>Import scenario JSON</button>
+            <input
+              ref={recipeInputRef}
+              className="sr-only"
+              type="file"
+              accept="application/json,.json"
+              onChange={event => {
+                void importScenarioRecipe(event.target.files?.[0]);
+                event.currentTarget.value = '';
+              }}
+            />
+          </div>
+          <p className="scenario-recipe-status" role="status">
+            {recipeState === 'exported'
+              ? 'Scenario exported without prompt text.'
+              : recipeState === 'imported'
+                ? 'Scenario imported. Numeric prompt tokens are active until the prompt changes.'
+                : recipeState === 'error'
+                  ? 'That scenario file could not be applied to the current catalog.'
+                  : ''}
+          </p>
+        </div>
+      </div>
+
+      <div className="workbench-section-shell">
         <ModelComparison
           selectedModels={selectedModels}
           availableModels={availableModels}
@@ -386,6 +498,18 @@ export default function HomePageClient() {
           onChange={replaceModel}
           onAdd={addModel}
           onRemove={removeModel}
+        />
+      </div>
+
+      <div className="workbench-section-shell">
+        <BudgetSensitivity
+          monthlyCost={primaryRow?.monthlyCost ?? null}
+          budget={monthlyBudget}
+          onBudgetChange={value => setMonthlyBudget(clampInteger(value, 0, 100_000_000, 0))}
+          volumeVariancePct={volumeVariancePct}
+          onVolumeVarianceChange={value => setVolumeVariancePct(clampInteger(value, 0, 100, 20))}
+          retryRatePct={retryRatePct}
+          onRetryRateChange={value => setRetryRatePct(clampInteger(value, 0, 500, 5))}
         />
       </div>
 

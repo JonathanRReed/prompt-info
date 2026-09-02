@@ -75,6 +75,27 @@ test('cost receipt exports as a PNG without uploading the prompt', async ({ page
   expect(exportedHref.includes('PRIVATE_EXPORT_PROMPT')).toBe(false);
 });
 
+test('scenario export downloads prompt-free reproducible assumptions', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('textbox', { name: 'Prompt' }).fill('PRIVATE_SCENARIO_PROMPT');
+  await expect(page.getByTestId('prompt-token-count')).toContainText(/^[1-9]\d* tokens?/);
+  await expect(page.getByRole('button', { name: 'Export scenario JSON' })).toBeEnabled();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export scenario JSON' }).click();
+  const download = await downloadPromise;
+  await expect(page.getByText('Scenario exported without prompt text.')).toBeVisible();
+  expect(download.suggestedFilename()).toMatch(/^prompt-info-scenario-\d{4}-\d{2}-\d{2}\.json$/);
+  const stream = await download.createReadStream();
+  let exportedText = '';
+  for await (const chunk of stream) exportedText += chunk.toString();
+  expect(exportedText).not.toContain('PRIVATE_SCENARIO_PROMPT');
+  const recipe = JSON.parse(exportedText);
+  expect(recipe.privacy).toEqual({ promptIncluded: false });
+  expect(recipe.promptTokens).toBeGreaterThan(0);
+  expect(recipe.selectedModels.length).toBeGreaterThan(0);
+});
+
 test('model browser shows rates and context before selection', async ({ page }) => {
   await page.goto('/');
 
