@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { usePromptScenario } from '../../components/ScenarioProvider';
+import { catalogModelFields, plannerModelFields, rateOrNull } from '../../lib/efficiencyModelRates';
 import {
   matchArtificialAnalysisModel,
   type ArtificialAnalysisCatalogResponse,
@@ -24,8 +25,8 @@ type EditableModel = {
   key: string;
   name: string;
   provider: string;
-  inputPerMillion: number;
-  outputPerMillion: number;
+  inputPerMillion: number | null;
+  outputPerMillion: number | null;
   outputTokensPerTask: number;
   intelligenceIndex: number | null;
   benchmarkCostPerTask: number | null;
@@ -79,15 +80,7 @@ function withCatalogModel(
 ): EditableModel {
   return {
     ...current,
-    name: model.name,
-    provider: model.creator,
-    inputPerMillion: model.inputPerMillion ?? current.inputPerMillion,
-    outputPerMillion: model.outputPerMillion ?? current.outputPerMillion,
-    intelligenceIndex: model.intelligenceIndex,
-    benchmarkCostPerTask: model.benchmarkCostPerTask,
-    outputTokensPerSecond: model.outputTokensPerSecond,
-    aaModelId: model.id,
-    rateSource,
+    ...catalogModelFields(model, rateSource),
   };
 }
 
@@ -134,7 +127,7 @@ export default function TokenEfficiencyPageClient() {
   }, []);
 
   const catalogModels = useMemo(
-    () => (catalog?.data ?? []).filter(model => model.inputPerMillion !== null || model.outputPerMillion !== null),
+    () => (catalog?.data ?? []).filter(model => rateOrNull(model.inputPerMillion) !== null || rateOrNull(model.outputPerMillion) !== null),
     [catalog]
   );
   const benchmarkCostCoverage = useMemo(
@@ -151,12 +144,12 @@ export default function TokenEfficiencyPageClient() {
     .sort()
     .at(-1) ?? null, [catalog]);
 
-  const updateModel = (key: string, field: EditableRateField, rawValue: number) => {
+  const updateModel = (key: string, field: EditableRateField, rawValue: string) => {
     const max = field === 'outputTokensPerTask' ? MAX_TOKENS_PER_TASK : MAX_RATE_PER_MILLION;
-    const value = clampNumber(rawValue, max);
+    const value = clampNumber(Number(rawValue), max);
     setModels(prev => prev.map(model => (
       model.key === key
-        ? { ...model, [field]: value, rateSource: field === 'outputTokensPerTask' ? model.rateSource : 'Edited rate' }
+        ? { ...model, [field]: field !== 'outputTokensPerTask' && !rawValue.trim() ? null : value, rateSource: field === 'outputTokensPerTask' ? model.rateSource : 'Edited rate' }
         : model
     )));
   };
@@ -192,20 +185,10 @@ export default function TokenEfficiencyPageClient() {
 
         if (index !== referenceIndex) return { ...model, outputTokensPerTask: scaledOutputTokens };
 
-        const evidenceRateSource = catalog?.freshness === 'static'
-          ? 'Artificial Analysis dated snapshot'
-          : catalog?.freshness === 'cached'
-            ? 'Artificial Analysis cache'
-            : 'Artificial Analysis';
-        const evidenceModel = benchmarkMatch ? withCatalogModel(model, benchmarkMatch, evidenceRateSource) : model;
         return {
-          ...evidenceModel,
-          name: scenario.model || evidenceModel.name,
-          provider: scenario.model.includes(':') ? scenario.model.slice(0, scenario.model.indexOf(':')) : evidenceModel.provider,
-          inputPerMillion: scenario.inputPerMillion ?? evidenceModel.inputPerMillion,
-          outputPerMillion: scenario.outputPerMillion ?? evidenceModel.outputPerMillion,
+          ...model,
+          ...plannerModelFields(scenario, benchmarkMatch),
           outputTokensPerTask: clampNumber(scenario.outputTokensPerRun, MAX_TOKENS_PER_TASK),
-          rateSource: 'Planner pricing',
         };
       });
     });
@@ -227,7 +210,10 @@ export default function TokenEfficiencyPageClient() {
     const cheapestPerTask = validTaskCosts.length
       ? validTaskCosts.reduce((best, row) => (row.taskCost < best.taskCost ? row : best))
       : null;
-    const cheapestPerToken = computed.reduce((best, row) => (row.outputPerMillion < best.outputPerMillion ? row : best));
+    const outputPriced = computed.filter((row): row is typeof row & { outputPerMillion: number } => row.outputPerMillion !== null);
+    const cheapestPerToken = outputPriced.length
+      ? outputPriced.reduce((best, row) => row.outputPerMillion < best.outputPerMillion ? row : best)
+      : null;
 
     return computed.map(row => {
       const isCheapestPerTask = cheapestPerTask !== null && row.key === cheapestPerTask.key;
@@ -251,7 +237,7 @@ export default function TokenEfficiencyPageClient() {
       return {
         ...row,
         isCheapestPerTask,
-        isCheapestPerToken: row.key === cheapestPerToken.key,
+        isCheapestPerToken: row.key === cheapestPerToken?.key,
         breakEven,
       };
     });
@@ -437,12 +423,16 @@ export default function TokenEfficiencyPageClient() {
                 disabled={catalogModels.length === 0}
                 className="glass-select mt-1 min-h-11 w-full border px-3 font-mono text-xs font-bold text-rose-text focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <option value="">{catalogModels.length ? 'Choose from catalog' : 'Catalog loading'}</option>
+                <option value="">{catalogModels.length ? 'Choose from catalog' : catalog || catalogError ? 'Catalog unavailable' : 'Catalog loading'}</option>
                 {catalogModels.map(model => (
                   <option key={model.id} value={model.id}>{model.displayName}</option>
                 ))}
               </select>
             </div>
+
+            {(row.inputPerMillion === null || row.outputPerMillion === null) && (
+              <p role="status" className="mt-3 text-xs leading-5 text-rose-subtle">A price is not reported. Enter both rates to calculate task cost.</p>
+            )}
 
             <dl className="mt-4 grid grid-cols-2 gap-px bg-rose-highlightMed">
               <div className="bg-rose-base p-3">
@@ -466,8 +456,9 @@ export default function TokenEfficiencyPageClient() {
                   inputMode="decimal"
                   min={0}
                   step={0.05}
-                  value={row.inputPerMillion}
-                  onChange={e => updateModel(row.key, 'inputPerMillion', Number(e.target.value))}
+                  value={row.inputPerMillion ?? ''}
+                  placeholder="Not reported"
+                  onChange={e => updateModel(row.key, 'inputPerMillion', e.target.value)}
                   className={`mt-1 ${fieldInputClass}`}
                 />
               </div>
@@ -481,8 +472,9 @@ export default function TokenEfficiencyPageClient() {
                   inputMode="decimal"
                   min={0}
                   step={0.05}
-                  value={row.outputPerMillion}
-                  onChange={e => updateModel(row.key, 'outputPerMillion', Number(e.target.value))}
+                  value={row.outputPerMillion ?? ''}
+                  placeholder="Not reported"
+                  onChange={e => updateModel(row.key, 'outputPerMillion', e.target.value)}
                   className={`mt-1 ${fieldInputClass}`}
                 />
               </div>
@@ -497,7 +489,7 @@ export default function TokenEfficiencyPageClient() {
                   min={0}
                   step={500}
                   value={row.outputTokensPerTask}
-                  onChange={e => updateModel(row.key, 'outputTokensPerTask', Number(e.target.value))}
+                  onChange={e => updateModel(row.key, 'outputTokensPerTask', e.target.value)}
                   className={`mt-1 ${fieldInputClass}`}
                 />
               </div>

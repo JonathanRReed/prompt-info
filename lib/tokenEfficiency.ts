@@ -73,8 +73,8 @@ export const EFFICIENCY_PRESETS: EfficiencyModelPreset[] = [
 export type TaskCostInput = {
   inputTokensPerTask: number;
   outputTokensPerTask: number;
-  inputPerMillion: number;
-  outputPerMillion: number;
+  inputPerMillion: number | null;
+  outputPerMillion: number | null;
 };
 
 export function scaleOutputTokensByEfficiency({
@@ -92,8 +92,8 @@ export function scaleOutputTokensByEfficiency({
   return Math.max(0, Math.round(measured * comparisonOutputTokens / referenceOutputTokens));
 }
 
-function isUsableNumber(value: number, { allowZero = true } = {}) {
-  return Number.isFinite(value) && (allowZero ? value >= 0 : value > 0);
+function isUsableNumber(value: number | null, { allowZero = true } = {}): value is number {
+  return value !== null && Number.isFinite(value) && (allowZero ? value >= 0 : value > 0);
 }
 
 /** USD cost of one completed task, or null when any input is unusable. */
