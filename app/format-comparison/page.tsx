@@ -55,7 +55,7 @@ export default function FormatComparisonPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
       <section className="mx-auto grid min-h-[52dvh] w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_340px]">
         <div className="border-rose-highlightMed px-4 py-16 sm:px-6 md:border-r md:px-12 md:py-24">
-          <p className="data-label text-rose-love">Format laboratory</p>
+          <p className="data-label text-rose-love">Payload format comparison</p>
           <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
             One prompt. Six payload shells.
           </h1>
@@ -63,7 +63,7 @@ export default function FormatComparisonPage() {
             Wrap one prompt in TOON, JSON, compact JSON, YAML, XML, and CSV, and compare token counts side by side. Every card carries the same payload, so any difference you see is pure format overhead.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            Punctuation drives the difference. Braces, quotes, and closing tags all tokenize, which is why compact JSON and TOON usually cost the least and XML the most. Pick the cheapest format your pipeline can parse.
+            Braces, quotes, delimiters, whitespace, and closing tags all consume tokens. The smallest result depends on the payload and tokenizer, so the live comparison below reports the counts instead of assuming a winner.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
             <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}

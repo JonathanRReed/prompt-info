@@ -73,7 +73,7 @@ export default function AboutPage() {
             Prompt inspection for model operators.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            Prompt Info is a free technical workspace for comparing the real operating cost of prompts, agent sessions, and recurring AI workloads before execution.
+            Prompt Info is a free calculator for estimating model usage across prompts, multi-turn sessions, and recurring workloads before execution.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
             Prompt text stays in browser memory. Same-origin server routes collect public pricing and benchmark catalogs, while every estimate prints its assumptions beside the result. There is nothing to sign up for.

@@ -133,7 +133,7 @@ try {
             <img src="${logoDataUrl}" alt="Prompt Info" />
           </div>
           <div class="footer">
-            <span>Token count · Live pricing · Format lab</span>
+            <span>Token count · Checked pricing · Format comparison</span>
             <span>prompt-info.helloworldfirm.com</span>
           </div>
         </main>

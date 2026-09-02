@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  ARTIFICIAL_ANALYSIS_FALLBACK_AT,
   buildArtificialAnalysisCatalogResponse,
   loadArtificialAnalysisCatalog,
   matchArtificialAnalysisModel,
@@ -214,6 +215,7 @@ describe('loadArtificialAnalysisCatalog', () => {
     });
 
     expect(catalog.source).toBe('dated-fallback');
+    expect(catalog.retrievedAt).toBe(ARTIFICIAL_ANALYSIS_FALLBACK_AT);
     expect(catalog.schemaVersion).toBe(1);
     expect(catalog.freshness).toBe('static');
     expect(catalog.isFallback).toBe(true);

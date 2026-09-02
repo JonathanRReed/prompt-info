@@ -4,7 +4,7 @@ test('cost workbench loads sourced models and tokenizes a prompt', async ({ page
   await page.goto('/');
 
   await expect(page).toHaveTitle(/AI Workload Cost Calculator/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Know what your AI workload will cost.' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'See what a prompt or AI session could cost.' })).toBeVisible();
   await expect(page.getByText(/\d[\d,]* priced models/)).toBeVisible();
   await expect(page.getByText(/Pricing source:/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Compare selected models' })).toBeVisible();
@@ -35,10 +35,12 @@ test('model comparison supports two or three credible priced models', async ({ p
   await expect(rows).toHaveCount(2);
   await page.getByRole('button', { name: 'Add comparison model' }).click();
   await expect(rows).toHaveCount(3);
-  await expect(page.getByText(/Lowest .* cost among selected models/)).toBeVisible();
+  await expect(page.locator('.comparison-observation').getByText(/Lowest .* cost among selected models/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Cost by model' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Billable work' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Cost by turn' })).toBeVisible();
+  await page.getByRole('button', { name: 'Annual', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Annual', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: /^Remove / }).first().click();
   await expect(rows).toHaveCount(2);
 });
@@ -141,7 +143,7 @@ test('format lab reuses the in-memory prompt scenario from the planner', async (
 
   const prompt = 'Compare the two migration plans and return a risk table.';
   await page.getByRole('textbox', { name: 'Prompt' }).fill(prompt);
-  await page.getByRole('link', { name: 'Open format lab' }).click();
+  await page.getByRole('link', { name: 'Compare formats' }).click();
 
   await expect(page).toHaveURL(/\/format-comparison\/$/);
   await expect(page.getByLabel('Source prompt')).toHaveValue(prompt);
@@ -152,25 +154,28 @@ test('format comparison updates the shared payload', async ({ page }) => {
   await page.goto('/format-comparison/');
 
   await page.getByLabel('Source prompt').fill('Hello world');
-  await expect(page.getByText('11 chars')).toBeVisible();
+  await expect(page.getByText('11 / 200,000 chars')).toBeVisible();
   await expect(page.getByText('tokens unavailable')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Copy TOON snippet' })).toBeVisible();
 });
 
-test('format comparison can switch tokenizers and exposes raw wrapper overhead', async ({ page }) => {
+test('format comparison can switch tokenizers and exposes signed token differences', async ({ page }) => {
   await page.goto('/format-comparison/');
 
   await page.getByLabel('Tokenizer').selectOption('cl100k_base');
   await expect(page.getByText('Tokenized with cl100k_base')).toBeVisible();
   await expect(page.getByText('Raw prompt baseline')).toBeVisible();
-  await expect(page.getByText(/wrapper tokens/).first()).toBeVisible();
+  await expect(page.getByText(/net token difference/).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Token overhead at a glance' })).toBeVisible();
 });
 
 test('token efficiency lab recomputes cost per task from edited inputs', async ({ page }) => {
   await page.goto('/token-efficiency/');
 
   await expect(page).toHaveTitle(/LLM Token Efficiency Comparison/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Cheap per token is not cheap per task.' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Token price is only half the cost.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Cost per task', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Output tokens per task', exact: true })).toBeVisible();
 
   const solCard = page.locator('#efficiency-lab article').first();
   await expect(solCard.locator('output').first()).toHaveText('$0.3200');
@@ -195,7 +200,7 @@ test('token efficiency lab can reuse the active planner workload', async ({ page
   await page.getByRole('textbox', { name: 'Prompt' }).fill('Audit this pull request for regressions.');
   await page.getByLabel('Runs per period').fill('25');
   await page.getByLabel('Workload cadence').selectOption('month');
-  await page.getByRole('link', { name: 'Compare efficiency' }).click();
+  await page.getByRole('link', { name: 'Compare cost per task' }).click();
 
   await page.getByRole('button', { name: 'Use planner workload' }).click();
   await expect(page.getByLabel('Tasks in workload')).toHaveValue('25');
@@ -243,5 +248,5 @@ test('unknown routes return a noindex 404 with recovery navigation', async ({ pa
   await expect(robotsMeta).toHaveCount(1);
   await expect(robotsMeta).toHaveAttribute('content', /noindex/);
   await expect(page.getByRole('heading', { level: 1, name: 'That page is not here.' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Cost Workbench/ }).last()).toBeVisible();
+  await expect(page.getByRole('link', { name: /Cost Calculator/ }).last()).toBeVisible();
 });

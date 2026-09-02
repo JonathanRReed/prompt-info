@@ -23,6 +23,7 @@ export type PricingCatalogOptions = {
 const QUERY_LIMIT = 1_000;
 const DEFAULT_OPENROUTER_API_BASE_URL = 'https://openrouter.ai/api/v1';
 const BUNDLED_SOURCE_URL = 'https://prompt-info.helloworldfirm.com/data/llm-data.json';
+export const BUNDLED_PRICING_SNAPSHOT_AT = '2026-08-29T21:40:54.000Z';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -158,7 +159,7 @@ export async function buildPricingCatalogResponse({
     data: bundledPricing as Record<string, PricingEntry>,
     source: 'bundled-static',
     sourceUrl: BUNDLED_SOURCE_URL,
-    retrievedAt,
+    retrievedAt: BUNDLED_PRICING_SNAPSHOT_AT,
     freshness: 'static',
     isFallback: true,
     fallbackReason: `${openrouterFailure} Using the bundled dated catalog.`,

@@ -11,7 +11,7 @@ import { ModelComparison } from '../components/workbench/ModelComparison';
 import { ScenarioInputs, type TokenizerChoice } from '../components/workbench/ScenarioInputs';
 import { SourceStatus } from '../components/workbench/SourceStatus';
 import { BudgetSensitivity } from '../components/workbench/BudgetSensitivity';
-import { usePromptScenario } from '../components/ScenarioProvider';
+import { usePromptScenario, type PromptScenario } from '../components/ScenarioProvider';
 import {
   buildCostComparison,
   buildSessionAccumulation,
@@ -19,6 +19,8 @@ import {
   type CostComparisonScenario,
 } from '../lib/costComparison';
 import { fetchPricing, type PricingCatalogResponse, type PricingMap } from '../lib/fetchPricing';
+import { BUNDLED_PRICING_SNAPSHOT_AT, isPricingMap } from '../lib/pricingCatalog';
+import { clampPrompt } from '../lib/promptLimits';
 import { chooseDefaultModels } from '../lib/modelSelection';
 import { getModelTokenizerMultiplier, resolveModelTokenProfile } from '../lib/modelTokenLimits';
 import type { SessionRunMode } from '../lib/sessionMath';
@@ -65,7 +67,7 @@ function bundledCatalog(data: PricingMap): PricingCatalogResponse {
     data,
     source: 'bundled-static',
     sourceUrl: 'https://prompt-info.helloworldfirm.com/data/llm-data.json',
-    retrievedAt: new Date().toISOString(),
+    retrievedAt: BUNDLED_PRICING_SNAPSHOT_AT,
     freshness: 'static',
     isFallback: true,
     fallbackReason: 'The pricing API was unavailable. Using the bundled dated catalog.',
@@ -117,7 +119,8 @@ export default function HomePageClient() {
         try {
           const response = await fetch('/data/llm-data.json', { headers: { Accept: 'application/json' } });
           if (!response.ok) throw new Error(`Bundled catalog returned ${response.status}`);
-          const data = await response.json() as PricingMap;
+          const data: unknown = await response.json();
+          if (!isPricingMap(data)) throw new Error('Bundled catalog has an invalid shape');
           if (cancelled) return;
           const fallback = bundledCatalog(data);
           setCatalog(fallback);
@@ -246,7 +249,8 @@ export default function HomePageClient() {
     scenario: baseScenario,
     workload: { runs: workloadRuns, cadence: workloadCadence },
   }), [baseScenario, selectedPricingModels, workloadCadence, workloadRuns]);
-  const primaryRow = comparison.rows[0] ?? null;
+  const estimateReady = !tokenizing && !tokenizationError && effectiveTokenCount > 0;
+  const primaryRow = estimateReady ? comparison.rows[0] ?? null : null;
   const primaryEntry = primaryRow?.entry ?? null;
   const primaryMultiplier = selectedPricingModels[0]?.promptTokenMultiplier ?? 1;
   const tokenComposition = primaryRow?.estimate ? buildTokenComposition(primaryRow.estimate) : [];
@@ -264,23 +268,24 @@ export default function HomePageClient() {
     ? null
     : `, about ${Math.round(effectiveTokenCount * primaryMultiplier).toLocaleString()} billed for ${primaryRow?.model ?? 'this provider'}`;
 
-  useEffect(() => {
-    if (!primaryRow || !primaryEntry) return;
-    setScenario({
+  const sharedScenario = useMemo<PromptScenario>(() => ({
       prompt,
-      model: primaryRow.model,
+      model: primaryRow?.model ?? selectedModels[0] ?? '',
       tokenizer,
       inputTokensPerRun: Math.round(effectiveTokenCount * primaryMultiplier),
       outputTokensPerRun: outputTokens,
       turns,
       sessionMode,
-      inputPerMillion: primaryEntry.pricing.input * 1_000,
-      outputPerMillion: primaryEntry.pricing.output * 1_000,
-      costPerRun: primaryRow.sessionCost,
+      inputPerMillion: primaryEntry ? primaryEntry.pricing.input * 1_000 : null,
+      outputPerMillion: primaryEntry ? primaryEntry.pricing.output * 1_000 : null,
+      costPerRun: primaryRow?.sessionCost ?? null,
       workloadRuns,
       workloadCadence,
-    });
-  }, [effectiveTokenCount, outputTokens, primaryEntry, primaryMultiplier, primaryRow, prompt, sessionMode, setScenario, tokenizer, turns, workloadCadence, workloadRuns]);
+    }), [effectiveTokenCount, outputTokens, primaryEntry, primaryMultiplier, primaryRow, prompt, selectedModels, sessionMode, tokenizer, turns, workloadCadence, workloadRuns]);
+
+  useEffect(() => {
+    setScenario(sharedScenario);
+  }, [setScenario, sharedScenario]);
 
   function replaceModel(index: number, model: string) {
     setSelectedModels(current => current.map((value, position) => position === index ? model : value));
@@ -413,7 +418,7 @@ export default function HomePageClient() {
             samplePrompt={SAMPLE_PROMPT}
             onPromptChange={value => {
               setPromptTokenOverride(null);
-              setPrompt(value);
+              setPrompt(clampPrompt(value));
             }}
             promptTokens={effectiveTokenCount}
             tokenizing={tokenizing}
@@ -440,8 +445,12 @@ export default function HomePageClient() {
         receipt={(
           <CostReceipt
             row={primaryRow}
-            recommendation={comparison.recommendation}
+            recommendation={estimateReady ? comparison.recommendation : null}
             catalog={catalog}
+            estimateReady={estimateReady}
+            selectedModel={selectedModels[0] ?? null}
+            workloadCadence={workloadCadence}
+            workloadRuns={workloadRuns}
             onCopy={copyReceipt}
             onExport={exportReceipt}
             copyState={copyState}
@@ -452,7 +461,7 @@ export default function HomePageClient() {
       <div className="workbench-section-shell">
         <div className="scenario-recipe-actions">
           <div>
-            <p className="data-label">Reproducible scenario</p>
+          <p className="data-label">Save the assumptions</p>
             <p>Export or import the model set and numeric assumptions. Prompt text is never included.</p>
           </div>
           <div>
@@ -492,8 +501,8 @@ export default function HomePageClient() {
           selectedModels={selectedModels}
           availableModels={availableModels}
           pricing={pricing}
-          rows={comparison.rows}
-          recommendation={comparison.recommendation}
+          rows={estimateReady ? comparison.rows : []}
+          recommendation={estimateReady ? comparison.recommendation : null}
           loading={pricingLoading}
           onChange={replaceModel}
           onAdd={addModel}
@@ -514,15 +523,15 @@ export default function HomePageClient() {
       </div>
 
       <section className="workbench-chart-grid" aria-label="Cost visualizations">
-        <CostByModelChart rows={comparison.rows} metric={chartMetric} />
+        <CostByModelChart rows={estimateReady ? comparison.rows : []} metric={chartMetric} />
         <TokenCompositionChart segments={tokenComposition} />
         <SessionAccumulationChart series={accumulation} model={primaryRow?.model ?? 'selected model'} />
       </section>
 
       <section className="evidence-panel" aria-labelledby="evidence-heading">
         <div className="evidence-copy">
-          <p className="data-label">Token evidence</p>
-          <h2 id="evidence-heading">Inspect what the counter sees.</h2>
+          <p className="data-label">Token details</p>
+          <h2 id="evidence-heading">See how the prompt was counted.</h2>
           <p>The first 400 token fragments are shown. Long prompts are still counted in full, but the visualizer stays bounded so the page remains responsive.</p>
           <details>
             <summary>Calculation and source assumptions</summary>
@@ -552,12 +561,12 @@ export default function HomePageClient() {
 
       <section className="lab-continuation" aria-labelledby="labs-heading">
         <div>
-          <p className="data-label">Keep the same scenario</p>
-          <h2 id="labs-heading">Test the payload, then test the economics.</h2>
+          <p className="data-label">Use the same inputs</p>
+          <h2 id="labs-heading">Compare payload formats or cost per task.</h2>
         </div>
         <div className="lab-links">
-          <Link href="/format-comparison/">Open format lab</Link>
-          <Link href="/token-efficiency/">Compare efficiency</Link>
+          <Link href="/format-comparison/">Compare formats</Link>
+          <Link href="/token-efficiency/">Compare cost per task</Link>
         </div>
       </section>
     </>

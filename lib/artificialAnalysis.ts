@@ -43,6 +43,8 @@ export const ARTIFICIAL_ANALYSIS_ATTRIBUTION = {
   apiDocs: 'https://artificialanalysis.ai/data-api/docs',
 } as const;
 
+export const ARTIFICIAL_ANALYSIS_FALLBACK_AT = '2026-08-29T12:00:00.000Z';
+
 export type ArtificialAnalysisCatalogResponse = ArtificialAnalysisCatalog & {
   attribution: typeof ARTIFICIAL_ANALYSIS_ATTRIBUTION;
   limitations: string;
@@ -227,6 +229,7 @@ export async function buildArtificialAnalysisCatalogResponse(options: Parameters
   return {
     ...catalog,
     source: hasLiveCatalog ? catalog.source : 'dated-fallback' as const,
+    retrievedAt: hasLiveCatalog ? catalog.retrievedAt : ARTIFICIAL_ANALYSIS_FALLBACK_AT,
     data: hasLiveCatalog ? catalog.data : buildDatedArtificialAnalysisFallback(),
     attribution: ARTIFICIAL_ANALYSIS_ATTRIBUTION,
     limitations: hasLiveCatalog

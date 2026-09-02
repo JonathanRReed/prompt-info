@@ -37,7 +37,7 @@ export function TokenCompositionChart({ segments }: { segments: TokenComposition
               <li key={segment.key}>
                 <span className={`legend-key composition-${index + 1}`} aria-hidden="true" />
                 <span>{segment.label}</span>
-                <strong>{formatCompactNumber(segment.value)}</strong>
+                <strong>{formatCompactNumber(segment.value)} · {segment.percent.toFixed(1)}%</strong>
               </li>
             ))}
           </ul>

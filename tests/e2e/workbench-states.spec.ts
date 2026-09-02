@@ -24,7 +24,7 @@ const FALLBACK_CATALOG = {
   fallbackReason: 'OpenRouter pricing was unavailable. Using the bundled dated catalog.',
 };
 
-test('labels a usable static fallback before showing recommendations', async ({ page }) => {
+test('labels a usable static fallback before showing calculated comparisons', async ({ page }) => {
   await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({
     status: 200,
     contentType: 'application/json',

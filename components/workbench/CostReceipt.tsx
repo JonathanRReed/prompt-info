@@ -2,12 +2,17 @@
 
 import type { CostComparisonRow, CostRecommendation } from '../../lib/costComparison';
 import type { PricingCatalogResponse } from '../../lib/pricingCatalog';
+import type { WorkloadCadence } from '../../lib/workloadMath';
 import { formatUsd } from '../charts/chartFormat';
 
 export function CostReceipt({
   row,
   recommendation,
   catalog,
+  estimateReady,
+  selectedModel,
+  workloadCadence,
+  workloadRuns,
   onCopy,
   onExport,
   copyState,
@@ -15,32 +20,42 @@ export function CostReceipt({
   row: CostComparisonRow | null;
   recommendation: CostRecommendation | null;
   catalog: PricingCatalogResponse | null;
+  estimateReady: boolean;
+  selectedModel: string | null;
+  workloadCadence: WorkloadCadence;
+  workloadRuns: number;
   onCopy: () => void;
   onExport: () => void;
   copyState: 'idle' | 'copied' | 'error';
 }) {
+  const primaryLabel = workloadCadence === 'once' ? 'Session estimate' : 'Monthly estimate';
+  const primaryValue = workloadCadence === 'once' ? row?.sessionCost : row?.monthlyCost;
+  const cadenceLabel = workloadCadence === 'once' ? 'once' : `per ${workloadCadence}`;
   return (
     <aside className="cost-receipt" aria-labelledby="receipt-heading">
       <div className="receipt-topline">
-        <p>Live planning receipt</p>
+        <p>Current estimate</p>
         <span>{catalog?.freshness ?? 'loading'}</span>
       </div>
-      <h2 id="receipt-heading">{row?.model ?? 'Loading model'}</h2>
+      <h2 id="receipt-heading">{row?.model ?? selectedModel ?? 'Pricing unavailable'}</h2>
       <div className="receipt-primary-total">
-        <span>Session cost</span>
-        <output data-testid="primary-session-cost" aria-live="polite">{formatUsd(row?.sessionCost)}</output>
+        <span>{estimateReady ? primaryLabel : 'Estimate unavailable'}</span>
+        <output data-testid="primary-session-cost" aria-live="polite">{estimateReady ? formatUsd(primaryValue) : 'Unavailable'}</output>
       </div>
+      <p className="receipt-scope">{estimateReady ? `${workloadRuns.toLocaleString()} runs ${cadenceLabel}.` : 'Enter a prompt and complete token counting to calculate model usage.'}</p>
       <dl className="receipt-total-grid">
         <div><dt>One request</dt><dd>{formatUsd(row?.requestCost)}</dd></div>
         <div><dt>Monthly</dt><dd>{formatUsd(row?.monthlyCost)}</dd></div>
         <div><dt>Annual</dt><dd>{formatUsd(row?.annualCost)}</dd></div>
       </dl>
-      {recommendation ? (
+      {!estimateReady ? (
+        <p className="receipt-criterion">Cost totals are paused until the prompt has a valid token count.</p>
+      ) : recommendation ? (
         <p className="receipt-criterion">
-          <strong>{recommendation.model}</strong> is the {recommendation.criterion.toLowerCase()}.
+          Lowest estimated cost in this selection: <strong>{recommendation.model}</strong>, by {recommendation.criterion.toLowerCase()}.
         </p>
       ) : (
-        <p className="receipt-criterion">No unique lowest-cost model for the current comparison.</p>
+        <p className="receipt-criterion">The selected models are tied, unavailable, or not directly comparable on this estimate.</p>
       )}
       <div className="receipt-actions">
         <button type="button" onClick={onCopy} disabled={!row}>{copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy receipt'}</button>

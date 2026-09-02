@@ -72,7 +72,11 @@ function sourceLabel(source: ArtificialAnalysisCatalogResponse['source'] | undef
   return 'loading';
 }
 
-function withCatalogModel(current: EditableModel, model: ArtificialAnalysisModel): EditableModel {
+function withCatalogModel(
+  current: EditableModel,
+  model: ArtificialAnalysisModel,
+  rateSource = 'Artificial Analysis',
+): EditableModel {
   return {
     ...current,
     name: model.name,
@@ -83,7 +87,7 @@ function withCatalogModel(current: EditableModel, model: ArtificialAnalysisModel
     benchmarkCostPerTask: model.benchmarkCostPerTask,
     outputTokensPerSecond: model.outputTokensPerSecond,
     aaModelId: model.id,
-    rateSource: 'Artificial Analysis',
+    rateSource,
   };
 }
 
@@ -110,9 +114,14 @@ export default function TokenEfficiencyPageClient() {
       .then(response => {
         if (cancelled) return;
         setCatalog(response);
+        const rateSource = response.freshness === 'static'
+          ? 'Artificial Analysis dated snapshot'
+          : response.freshness === 'cached'
+            ? 'Artificial Analysis cache'
+            : 'Artificial Analysis';
         setModels(current => current.map(model => {
           const match = response.data.find(candidate => candidate.slug === model.key);
-          return match ? withCatalogModel(model, match) : model;
+          return match ? withCatalogModel(model, match, rateSource) : model;
         }));
       })
       .catch(() => {
@@ -136,6 +145,11 @@ export default function TokenEfficiencyPageClient() {
     () => (catalog?.data ?? []).filter(model => model.outputTokensPerSecond !== null).length,
     [catalog],
   );
+  const latestObservation = useMemo(() => (catalog?.data ?? [])
+    .map(model => model.lastSeen)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1) ?? null, [catalog]);
 
   const updateModel = (key: string, field: EditableRateField, rawValue: number) => {
     const max = field === 'outputTokensPerTask' ? MAX_TOKENS_PER_TASK : MAX_RATE_PER_MILLION;
@@ -150,7 +164,12 @@ export default function TokenEfficiencyPageClient() {
   const selectCatalogModel = (slotKey: string, modelId: string) => {
     const selected = catalogModels.find(model => model.id === modelId);
     if (!selected) return;
-    setModels(current => current.map(model => model.key === slotKey ? withCatalogModel(model, selected) : model));
+    const rateSource = catalog?.freshness === 'static'
+      ? 'Artificial Analysis dated snapshot'
+      : catalog?.freshness === 'cached'
+        ? 'Artificial Analysis cache'
+        : 'Artificial Analysis';
+    setModels(current => current.map(model => model.key === slotKey ? withCatalogModel(model, selected, rateSource) : model));
   };
 
   const usePlannerWorkload = () => {
@@ -173,7 +192,12 @@ export default function TokenEfficiencyPageClient() {
 
         if (index !== referenceIndex) return { ...model, outputTokensPerTask: scaledOutputTokens };
 
-        const evidenceModel = benchmarkMatch ? withCatalogModel(model, benchmarkMatch) : model;
+        const evidenceRateSource = catalog?.freshness === 'static'
+          ? 'Artificial Analysis dated snapshot'
+          : catalog?.freshness === 'cached'
+            ? 'Artificial Analysis cache'
+            : 'Artificial Analysis';
+        const evidenceModel = benchmarkMatch ? withCatalogModel(model, benchmarkMatch, evidenceRateSource) : model;
         return {
           ...evidenceModel,
           name: scenario.model || evidenceModel.name,
@@ -232,14 +256,16 @@ export default function TokenEfficiencyPageClient() {
       };
     });
   }, [models, inputTokensPerTask]);
+  const maxTaskCost = Math.max(...rows.map(row => row.taskCost ?? 0), 0);
+  const maxOutputTokens = Math.max(...rows.map(row => row.outputTokensPerTask), 1);
 
   return (
     <section id="efficiency-lab" className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-12 sm:px-6 md:px-12 md:py-16">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="data-label">Efficiency lab</p>
+          <p className="data-label">Editable comparison</p>
           <h2 className="mt-4 max-w-4xl text-[clamp(2.2rem,5vw,4.6rem)] font-black uppercase leading-[0.9] tracking-[-0.06em] text-rose-text">
-            Price the task, then argue about the rate card.
+            Use your own task measurements.
           </h2>
         </div>
         <button
@@ -252,7 +278,7 @@ export default function TokenEfficiencyPageClient() {
           }}
           className="self-start border border-rose-highlightMed bg-rose-base px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:border-rose-love hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none sm:self-end"
         >
-          Reset presets
+          Reset example
         </button>
       </div>
 
@@ -269,7 +295,8 @@ export default function TokenEfficiencyPageClient() {
           <p className="mt-2 text-xs leading-5 text-rose-muted">
             Source: {catalogError ? 'unavailable, editable presets retained' : sourceLabel(catalog?.source)}.
             {catalog?.intelligenceIndexVersion ? ` Intelligence Index v${catalog.intelligenceIndexVersion}.` : ''}
-            {catalog?.retrievedAt ? ` Retrieved ${new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
+            {catalog?.retrievedAt ? ` ${catalog.freshness === 'static' ? 'Snapshot dated' : 'Checked'} ${new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
+            {latestObservation ? ` Latest model observation ${latestObservation}.` : ''}
           </p>
           {catalog && (
             <p className="mt-2 text-xs leading-5 text-rose-subtle">
@@ -279,6 +306,7 @@ export default function TokenEfficiencyPageClient() {
           {catalog?.isFallback && catalog.fallbackReason ? (
             <p className="mt-2 text-xs leading-5 text-rose-subtle">{catalog.fallbackReason}</p>
           ) : null}
+          {catalog?.limitations ? <p className="mt-2 text-xs leading-5 text-rose-muted">{catalog.limitations}</p> : null}
         </div>
         <a
           href="https://artificialanalysis.ai/"
@@ -344,6 +372,37 @@ export default function TokenEfficiencyPageClient() {
         </div>
       </div>
 
+      <section className="efficiency-chart-grid" aria-label="Calculated cost and output comparison">
+        <div className="efficiency-chart">
+          <p className="data-label">Calculated from your fields</p>
+          <h3>Cost per task</h3>
+          <div className="efficiency-bar-list">
+            {rows.map(row => (
+              <div className="efficiency-bar-row" key={row.key}>
+                <div><strong>{row.name}</strong><span>{formatCost(row.taskCost)}</span></div>
+                <div className="efficiency-bar-track" aria-hidden="true">
+                  <span style={{ transform: `scaleX(${maxTaskCost > 0 ? (row.taskCost ?? 0) / maxTaskCost : 0})` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="efficiency-chart">
+          <p className="data-label">Your output assumptions</p>
+          <h3>Output tokens per task</h3>
+          <div className="efficiency-bar-list">
+            {rows.map(row => (
+              <div className="efficiency-bar-row" key={row.key}>
+                <div><strong>{row.name}</strong><span>{row.outputTokensPerTask.toLocaleString()}</span></div>
+                <div className="efficiency-bar-track" aria-hidden="true">
+                  <span style={{ transform: `scaleX(${row.outputTokensPerTask / maxOutputTokens})` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <div className="mt-8 grid gap-px bg-rose-highlightMed lg:grid-cols-3">
         {rows.map((row, index) => (
           <article key={row.key} className="flex flex-col bg-rose-base p-5 sm:p-6">
@@ -356,12 +415,12 @@ export default function TokenEfficiencyPageClient() {
               <div className="flex flex-col items-end gap-1">
                 {row.isCheapestPerToken && (
                   <span className="border border-rose-highlightMed px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-rose-muted">
-                    Lowest output rate
+                    Lowest output rate in set
                   </span>
                 )}
                 {row.isCheapestPerTask && (
                   <span className="bg-rose-love px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-white">
-                    Lowest modeled cost
+                    Lowest calculated cost in set
                   </span>
                 )}
               </div>

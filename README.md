@@ -1,6 +1,6 @@
 # Prompt Info
 
-**AI Workload Cost Workbench**
+**AI Model Usage Cost Calculator**
 
 A product of [Hello.World Consulting](https://helloworldfirm.com).
 Made by Jonathan R. Reed.
@@ -9,7 +9,7 @@ Made by Jonathan R. Reed.
 
 ## Overview
 
-Prompt Info is a browser-based AI workload cost workbench. Paste a real prompt, compare current models, price a request or multi-turn session, project recurring spend, inspect the assumptions, and export a planning receipt.
+Prompt Info is a browser-based model usage cost calculator. Paste a real prompt, compare priced models, estimate a request or multi-turn session, project recurring spend, inspect the assumptions, and export the result.
 
 Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Bun 1.4.
 
@@ -19,9 +19,9 @@ Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Bun 1.4.
 - **Cost calculator**: Live pricing from OpenRouter with a database/static fallback, input/output cost breakdowns, and per-million rate display.
 - **Agent sessions**: Baseline (stateless) and scenario modes. Scenario re-sends conversation history each turn, prices cache reads and writes per provider, and simulates compaction summarization calls.
 - **Recurring AI workloads**: Scale one priced request or agent session by runs per day, week, month, or one-time batch. Monthly and annual projections include model usage only.
-- **Prompt format lab**: The same payload as TOON, JSON, compact JSON, YAML, XML, and CSV, with selectable tokenizers, raw wrapper overhead, and planner-model input cost.
+- **Format comparison**: The same payload as TOON, JSON, compact JSON, YAML, XML, and CSV, with selectable tokenizers, raw wrapper overhead, and planner-model input cost.
 - **Token efficiency**: An attributed Artificial Analysis catalog plus editable per-task comparisons showing how a cheaper per-token model that emits more tokens can cost more overall.
-- **Shared scenario**: The active prompt, tokenizer, model, token plan, and workload move between the planner, format lab, and efficiency lab in memory without storing pasted text.
+- **Shared scenario**: The active prompt, tokenizer, model, token plan, and workload move between the calculator, format comparison, and cost-per-task comparison in memory without storing pasted text.
 - **Private prompt boundary**: Pasted prompt text stays in browser memory. The browser contacts only same-origin catalog routes, never OpenRouter, Artificial Analysis, or Supabase directly.
 - **Receipt export**: Download an image receipt of the estimate.
 

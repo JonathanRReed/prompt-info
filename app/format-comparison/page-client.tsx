@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { usePromptScenario } from '../../components/ScenarioProvider';
+import { clampPrompt, MAX_PROMPT_CHARACTERS } from '../../lib/promptLimits';
 
 const SAMPLE_PROMPT = 'Summarize the latest product launch in 3 bullet points.';
 
@@ -66,10 +67,9 @@ function xmlEscape(value: string) {
     .replace(/>/g, '&gt;');
 }
 
-// Every format encodes the exact same structure so the token comparison is
-// fair: { prompt, messages: [{id, role}...], meta: { source, format } }. The
-// small array is what separates TOON's length-marked tabular syntax from
-// plain YAML.
+// Each format starts from the same source values. JSON, YAML, and TOON preserve
+// the typed nested structure most directly. XML and CSV are structural
+// approximations because those formats require different type/container rules.
 function buildFormats(prompt: string): FormatCard[] {
   const clean = prompt.trim() || SAMPLE_PROMPT;
   const messages = [
@@ -128,8 +128,8 @@ function buildFormats(prompt: string): FormatCard[] {
     { key: 'json', label: 'JSON', description: 'Readable JSON', content: jsonPretty },
     { key: 'json-compact', label: 'JSON compact', description: 'Minified JSON', content: jsonCompact },
     { key: 'yaml', label: 'YAML', description: 'Common config format', content: yaml },
-    { key: 'xml', label: 'XML', description: 'Tagged data', content: xml },
-    { key: 'csv', label: 'CSV', description: 'Flat rows (nested keys get flattened)', content: csv },
+    { key: 'xml', label: 'XML', description: 'Tagged structural approximation', content: xml },
+    { key: 'csv', label: 'CSV', description: 'Flattened structural approximation', content: csv },
   ];
 }
 
@@ -143,7 +143,7 @@ export default function FormatComparisonPageClient() {
   const cards = useMemo(() => buildFormats(prompt), [prompt]);
 
   useEffect(() => {
-    if (scenario?.prompt) setPrompt(scenario.prompt);
+    if (scenario?.prompt) setPrompt(clampPrompt(scenario.prompt));
     if (isFormatTokenizerKey(scenario?.tokenizer)) setSelectedTokenizer(scenario.tokenizer);
   }, [scenario?.prompt, scenario?.tokenizer]);
 
@@ -174,6 +174,9 @@ export default function FormatComparisonPageClient() {
   const minTokens = tokenCounts
     ? Math.min(...cards.map(card => tokenCounts[card.key] ?? Number.POSITIVE_INFINITY))
     : null;
+  const maxTokens = tokenCounts
+    ? Math.max(...cards.map(card => tokenCounts[card.key] ?? 0), 1)
+    : null;
 
   return (
     <>
@@ -192,12 +195,13 @@ export default function FormatComparisonPageClient() {
           <label className="data-label" htmlFor="format-prompt">
             Source prompt
           </label>
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted tabular-nums">{prompt.length} chars</span>
+          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted tabular-nums">{prompt.length.toLocaleString()} / {MAX_PROMPT_CHARACTERS.toLocaleString()} chars</span>
         </div>
         <textarea
           id="format-prompt"
           value={prompt}
-          onChange={e => setPrompt(e.target.value)}
+          onChange={e => setPrompt(clampPrompt(e.target.value))}
+          maxLength={MAX_PROMPT_CHARACTERS}
           placeholder={SAMPLE_PROMPT}
           className="mt-5 min-h-[180px] w-full border border-rose-highlightMed bg-rose-surface p-4 font-mono text-sm leading-7 text-rose-text placeholder:text-rose-muted transition duration-200 focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
         />
@@ -223,12 +227,45 @@ export default function FormatComparisonPageClient() {
             <output className="mt-2 block font-mono text-2xl font-black text-rose-love tabular-nums">
               {rawPromptTokens === null ? 'Counting…' : `${rawPromptTokens.toLocaleString()} tokens`}
             </output>
-            <p className="mt-2 text-xs leading-5 text-rose-muted">Each card reports the extra wrapper tokens above this unformatted prompt.</p>
+            <p className="mt-2 text-xs leading-5 text-rose-muted">Each card reports its signed net token difference from this unformatted prompt.</p>
           </div>
         </div>
         <p className="mt-3 text-sm leading-6 text-rose-muted">
-          Every card wraps the same payload structure, so the counts stay directly comparable. Pick the tokenizer that best approximates your target model.
+          Every card starts with the same values. JSON, YAML, and TOON preserve the nested structure directly; XML and CSV are structural approximations. Pick the tokenizer that best approximates your target model.
         </p>
+      </section>
+
+      <section className="format-overview" aria-labelledby="format-overview-heading">
+        <div className="format-overview-heading">
+          <div>
+            <p className="data-label">Current prompt</p>
+            <h2 id="format-overview-heading">Token overhead at a glance</h2>
+          </div>
+          <p>Bars update as you edit the prompt or tokenizer. Exact counts remain printed beside every bar.</p>
+        </div>
+        {tokenCounts && maxTokens !== null ? (
+          <div className="format-bar-list" aria-label={`Token counts for ${cards.length} payload formats`}>
+            {cards
+              .map(card => ({ ...card, tokens: tokenCounts[card.key] ?? 0 }))
+              .sort((a, b) => a.tokens - b.tokens || a.label.localeCompare(b.label))
+              .map(card => (
+                <div className="format-bar-row" key={card.key}>
+                  <div className="format-bar-meta">
+                    <strong>{card.label}</strong>
+                    <span>{card.tokens.toLocaleString()} tokens</span>
+                  </div>
+                  <div className="format-bar-track" aria-hidden="true">
+                    <span
+                      className={card.tokens === minTokens ? 'format-bar-fill is-smallest' : 'format-bar-fill'}
+                      style={{ transform: `scaleX(${card.tokens / maxTokens})` }}
+                    />
+                  </div>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <p className="chart-empty">Token counts will appear when the selected tokenizer is ready.</p>
+        )}
       </section>
 
       <section className="mx-auto grid w-full max-w-[1500px] grid-flow-dense gap-px bg-rose-highlightMed px-px pb-px lg:grid-cols-2">
@@ -239,8 +276,8 @@ export default function FormatComparisonPageClient() {
           const overhead = tokens !== undefined && minTokens !== null && minTokens > 0 && !isSmallest
             ? Math.round(((tokens - minTokens) / minTokens) * 100)
             : null;
-          const wrapperTokens = tokens !== undefined && rawPromptTokens !== null
-            ? Math.max(0, tokens - rawPromptTokens)
+          const netTokenDifference = tokens !== undefined && rawPromptTokens !== null
+            ? tokens - rawPromptTokens
             : null;
           const inputCost = tokens !== undefined && scenario?.inputPerMillion !== null && scenario?.inputPerMillion !== undefined
             ? formatInputCost(tokens, scenario.inputPerMillion)
@@ -268,7 +305,7 @@ export default function FormatComparisonPageClient() {
                     : tokenizer.status === 'error' ? 'tokens unavailable' : 'counting…'}
                 </span>
                 <span className="text-rose-muted tabular-nums">{bytes.toLocaleString()} bytes</span>
-                {wrapperTokens !== null && <span className="text-rose-muted tabular-nums">+{wrapperTokens.toLocaleString()} wrapper tokens</span>}
+                {netTokenDifference !== null && <span className="text-rose-muted tabular-nums">{netTokenDifference > 0 ? '+' : ''}{netTokenDifference.toLocaleString()} net tokens vs raw</span>}
                 {isSmallest && <span className="text-rose-love">Fewest tokens</span>}
                 {overhead !== null && <span className="text-rose-muted tabular-nums">+{overhead}% vs best</span>}
                 {inputCost && <span className="text-rose-love tabular-nums">{inputCost} input</span>}

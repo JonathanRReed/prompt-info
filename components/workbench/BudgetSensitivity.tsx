@@ -32,7 +32,7 @@ export function BudgetSensitivity({
       <div className="budget-heading-row">
         <div>
           <p className="data-label">Budget and uncertainty</p>
-          <h2 id="budget-heading">Test the estimate before it becomes a commitment.</h2>
+          <h2 id="budget-heading">See a low, base, and high case.</h2>
         </div>
         <p className={`budget-status ${sensitivity.highWithinBudget ? 'is-within' : 'is-over'}`}>
           {budget === 0

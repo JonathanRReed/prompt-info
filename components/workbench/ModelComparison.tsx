@@ -78,7 +78,7 @@ export function ModelComparison({
                 <span><small>Monthly</small><strong>{formatUsd(row?.monthlyCost)}</strong></span>
                 <span><small>Annual</small><strong>{formatUsd(row?.annualCost)}</strong></span>
               </div>
-              {isRecommended ? <p className="comparison-observation">{recommendation.criterion}</p> : null}
+              {isRecommended ? <p className="comparison-observation">Lowest measured in this selection: {recommendation.criterion}</p> : null}
               {!row?.isUsable ? <p className="comparison-unavailable">{row?.unavailableReason ?? 'Waiting for pricing data.'}</p> : null}
             </article>
           );

@@ -65,12 +65,11 @@ export default function TokenEfficiencyPage() {
         <div className="flex w-full flex-col justify-end px-4 pb-12 pt-16 sm:px-6 md:px-12 md:pb-16">
           <p className="data-label text-rose-love">Token efficiency</p>
           <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
-            Cheap per token is not cheap per task.
+            Token price is only half the cost.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
-            A rate card prices tokens. Your bill prices tasks. What a task costs is the per-token price times the
-            tokens the model spends to finish it, and models differ far more on the second number than the first. A
-            verbose model with cheap tokens can invoice above a pricier model that answers in half the length.
+            Cost per task combines the input, the output rate, and how many output tokens a model uses for your work.
+            A lower token price can still produce a higher total when the response is longer.
           </p>
           <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
             <time dateTime="2026-08-29">Published August 29, 2026</time>. Reference data retrieved {EFFICIENCY_REFERENCE_DATE}.
@@ -79,15 +78,13 @@ export default function TokenEfficiencyPage() {
       </section>
 
       <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-12 sm:px-6 md:px-12 md:py-16">
-        <p className="data-label">The evidence</p>
+        <p className="data-label">Dated reference snapshot</p>
         <h2 className="mt-4 max-w-4xl text-[clamp(2.2rem,5vw,4.6rem)] font-black uppercase leading-[0.9] tracking-[-0.06em] text-rose-text">
-          Same eval suite, very different bills.
+          Output length can change the price order.
         </h2>
         <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-          Artificial Analysis runs every model through the same Intelligence Index task suite and publishes both the
-          output tokens each model generated and what the full run cost. Kimi K3 prices 25% below GPT-5.6 Sol on
-          every token, then emits almost twice the tokens, so the identical workload cost 20% more. Gemini 3.7 Flash
-          is cheap <em>and</em> concise, which is why it wins on cost, at a lower intelligence score.
+          This August 29 snapshot uses three published Artificial Analysis configurations to show why output length
+          belongs beside the rate card. It is a worked example, not a current model ranking or a recommendation.
         </p>
 
         <div className="mt-8 overflow-x-auto border border-rose-highlightMed">
@@ -120,9 +117,8 @@ export default function TokenEfficiencyPage() {
         </div>
 
         <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-muted">
-          OpenAI leans on the same effect from the other side: on the Artificial Analysis Coding Agent Index, GPT-5.6
-          Sol at max reasoning set the high score of 80 while using 54% fewer output tokens and 57% less time than
-          the next-highest model. Token efficiency is now a headline spec, not a side effect.
+          The live comparison below is editable. Replace the example models and token counts with measurements from
+          your own task before using the result for planning.
         </p>
       </section>
 
@@ -136,7 +132,7 @@ export default function TokenEfficiencyPage() {
             <li>Per-task token counts are planning estimates anchored to Artificial Analysis&apos; published totals for one benchmark suite. Your prompts, tool calls, and stop conditions will produce different counts.</li>
             <li>Reasoning tokens bill as output on every one of these models, which is why verbose thinking shows up directly on the invoice.</li>
             <li>Promotional rates skew comparisons. Two of the three presets are running time-limited pricing; the notes on each row say what expires and when.</li>
-            <li>Efficiency compounds in agent sessions: every extra output token is re-sent as input on each later turn. The <Link href="/" className="underline decoration-rose-love underline-offset-4 hover:text-rose-text">cost workbench</Link> models that loop with caching and compaction.</li>
+            <li>Efficiency compounds in agent sessions: every extra output token is re-sent as input on each later turn. The <Link href="/" className="underline decoration-rose-love underline-offset-4 hover:text-rose-text">cost calculator</Link> models that loop with caching and compaction.</li>
           </ul>
         </article>
         <article className="bg-rose-base p-5 sm:p-8 md:p-10">

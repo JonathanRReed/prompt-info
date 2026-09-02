@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { CostComparisonRow } from '../../lib/costComparison';
 import { formatUsd, scaleBars } from './chartFormat';
 
@@ -21,9 +21,15 @@ export function CostByModelChart({
   metric?: CostMetric;
 }) {
   const titleId = useId();
+  const [activeMetric, setActiveMetric] = useState<CostMetric>(metric);
+
+  useEffect(() => {
+    setActiveMetric(metric);
+  }, [metric]);
+
   const usableRows = rows
     .flatMap(row => {
-      const value = row[metric];
+      const value = row[activeMetric];
       return row.isUsable && typeof value === 'number' && Number.isFinite(value)
         ? [{ id: row.model, model: row.model, value }]
         : [];
@@ -35,14 +41,28 @@ export function CostByModelChart({
     <section className="workbench-chart" aria-labelledby={titleId}>
       <div className="chart-heading-row">
         <div>
-          <p className="data-label">{METRIC_LABELS[metric]}</p>
+          <p className="data-label">{METRIC_LABELS[activeMetric]}</p>
           <h3 id={titleId}>Cost by model</h3>
         </div>
         <span className="chart-unit">USD</span>
       </div>
 
+      <div className="chart-metric-picker" aria-label="Cost chart period">
+        {(Object.keys(METRIC_LABELS) as CostMetric[]).map(value => (
+          <button
+            key={value}
+            type="button"
+            className={activeMetric === value ? 'is-active' : ''}
+            aria-pressed={activeMetric === value}
+            onClick={() => setActiveMetric(value)}
+          >
+            {value === 'requestCost' ? 'Request' : value === 'sessionCost' ? 'Session' : value === 'monthlyCost' ? 'Monthly' : 'Annual'}
+          </button>
+        ))}
+      </div>
+
       {bars.length > 0 ? (
-        <div className="cost-bar-list" role="img" aria-label={`${METRIC_LABELS[metric]} comparison for ${bars.length} selected models`}>
+        <div className="cost-bar-list" aria-label={`${METRIC_LABELS[activeMetric]} comparison for ${bars.length} selected models`}>
           {bars.map((bar, index) => (
             <div className="cost-bar-row" key={bar.id}>
               <div className="cost-bar-meta">
@@ -65,9 +85,9 @@ export function CostByModelChart({
       <details className="chart-data-table">
         <summary>Exact cost data</summary>
         <table>
-          <thead><tr><th scope="col">Model</th><th scope="col">{METRIC_LABELS[metric]}</th></tr></thead>
+          <thead><tr><th scope="col">Model</th><th scope="col">{METRIC_LABELS[activeMetric]}</th></tr></thead>
           <tbody>
-            {rows.map(row => <tr key={row.model}><th scope="row">{row.model}</th><td>{formatUsd(row[metric])}</td></tr>)}
+            {rows.map(row => <tr key={row.model}><th scope="row">{row.model}</th><td>{formatUsd(row[activeMetric])}</td></tr>)}
           </tbody>
         </table>
       </details>

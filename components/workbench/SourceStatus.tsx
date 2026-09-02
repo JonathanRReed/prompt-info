@@ -36,7 +36,7 @@ export function SourceStatus({
     return (
       <div className="source-status is-loading" role="status" aria-live="polite">
         <span className="source-signal" aria-hidden="true" />
-        <span>Pricing source: loading verified model rates</span>
+        <span>Pricing source: checking model rates</span>
       </div>
     );
   }
@@ -55,7 +55,7 @@ export function SourceStatus({
     <div className={`source-status is-${catalog.freshness}`} role="status" aria-live="polite">
       <span className="source-signal" aria-hidden="true" />
       <span>
-        Pricing source: <strong>{SOURCE_LABELS[catalog.source]}</strong>. {modelCount.toLocaleString()} priced models. Retrieved {formatTimestamp(catalog.retrievedAt)}.
+        Pricing source: <strong>{SOURCE_LABELS[catalog.source]}</strong>. {modelCount.toLocaleString()} priced models. {catalog.freshness === 'static' ? 'Snapshot dated' : 'Checked'} {formatTimestamp(catalog.retrievedAt)}.
       </span>
       {catalog.isFallback && catalog.fallbackReason ? <span className="source-fallback">{catalog.fallbackReason}</span> : null}
       <a href={catalog.sourceUrl} target="_blank" rel="noopener noreferrer">Source</a>

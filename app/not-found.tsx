@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Page not found',
-  description: 'That Prompt Info URL does not exist. Use the links here to reach the cost workbench, format lab, about, privacy, or contact pages.',
+  description: 'That Prompt Info URL does not exist. Use the links here to reach the cost calculator, format comparison, about, privacy, or contact pages.',
   alternates: {
     canonical: null,
   },
@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 };
 
 const destinations: [string, string, string][] = [
-  ['Cost Workbench', '/', 'Compare request, session, monthly, and annual AI costs.'],
-  ['Format lab', '/format-comparison/', 'Compare TOON, JSON, YAML, XML, and CSV payload shapes.'],
+  ['Cost Calculator', '/', 'Estimate request, session, monthly, and annual AI costs.'],
+  ['Format comparison', '/format-comparison/', 'Compare TOON, JSON, YAML, XML, and CSV payload shapes.'],
   ['About Prompt Info', '/about/', 'Product scope, methodology, and references.'],
   ['Privacy policy', '/privacy/', 'Data-boundary notes for prompt handling.'],
   ['Contact', '/contact/', 'Questions, bug reports, and pricing corrections.'],

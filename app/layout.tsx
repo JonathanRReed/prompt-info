@@ -197,7 +197,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 </div>
                 <div className="grid gap-px bg-rose-highlightMed">
                   {[
-                    ['Format lab', '/format-comparison/'],
+                    ['Format comparison', '/format-comparison/'],
                     ['About Prompt Info', '/about/'],
                     ['Privacy policy', '/privacy/'],
                     ['Contact', '/contact/'],
@@ -214,8 +214,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   ))}
                 </div>
               </div>
-              <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between border-x border-rose-highlightMed px-5 py-4 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted sm:px-8">
+              <div className="mx-auto flex w-full max-w-[1500px] flex-wrap items-center justify-between gap-4 border-x border-rose-highlightMed px-5 py-4 font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted sm:px-8">
                 <span>&copy; 2026 Hello.World Consulting</span>
+                <nav aria-label="Related work" className="flex flex-wrap gap-4">
+                  <a className="hover:text-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love" href="https://ai-news.helloworldfirm.com/">AI News</a>
+                  <a className="hover:text-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love" href="https://aistats.jonathanrreed.com/">AI Stats</a>
+                  <a className="hover:text-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love" href="https://ai-dragrace.jonathanrreed.com/">AI Drag Racing</a>
+                </nav>
                 <span>Token and cost planning</span>
               </div>
             </footer>

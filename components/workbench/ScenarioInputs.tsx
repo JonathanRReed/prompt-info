@@ -53,12 +53,12 @@ export function ScenarioInputs({
     <div className="scenario-inputs">
       <div className="scenario-heading">
         <div>
-          <p className="data-label">Your workload</p>
-          <h2>Price the work, not the rate card.</h2>
+          <p className="data-label">Inputs and usage</p>
+          <h2>Enter a prompt and usage assumptions.</h2>
         </div>
         <div className="privacy-note">
-          <strong>Browser only</strong>
-          <span>Your prompt never leaves this device.</span>
+          <strong>Processed locally</strong>
+          <span>This app does not include prompt text in its network requests.</span>
         </div>
       </div>
 
@@ -74,7 +74,7 @@ export function ScenarioInputs({
       </div>
       <PromptInput id="prompt-input" value={prompt} onChange={onPromptChange} />
       <div className="prompt-actions">
-        <button type="button" onClick={() => onPromptChange(samplePrompt)}>Use example workload</button>
+        <button type="button" onClick={() => onPromptChange(samplePrompt)}>Use example prompt</button>
         <button type="button" onClick={() => onPromptChange('')}>Clear prompt</button>
       </div>
 

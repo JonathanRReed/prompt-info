@@ -1,12 +1,12 @@
 # Prompt Info
 
-> Prompt Info is a browser-based AI workload cost workbench built by Jonathan R. Reed through Hello.World Consulting. It compares current model pricing for a real prompt, request, multi-turn session, and recurring workload before a request reaches a provider.
+> Prompt Info is a browser-based model usage cost calculator built by Jonathan R. Reed through Hello.World Consulting. It estimates a request, multi-turn session, and recurring workload from a checked pricing source before a request reaches a provider.
 
 The estimates are planning values, so a provider invoice will not match them line for line.
 
 ## Key Pages
 
-- [Cost Workbench](https://prompt-info.helloworldfirm.com/): Compare request, session, monthly, and annual AI workload costs across current models.
+- [Cost Calculator](https://prompt-info.helloworldfirm.com/): Estimate request, session, monthly, and annual model usage across the priced models in the active source.
 - [Format Comparison](https://prompt-info.helloworldfirm.com/format-comparison/): Compare the token footprint of JSON, YAML, XML, CSV, and TOON.
 - [Token Efficiency](https://prompt-info.helloworldfirm.com/token-efficiency/): Compare cost per completed task; a cheaper per-token model that emits more tokens can cost more overall.
 - [About and references](https://prompt-info.helloworldfirm.com/about/): Product scope, methodology, and technical references.

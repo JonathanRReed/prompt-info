@@ -252,7 +252,7 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
                   } ${isSelected ? 'text-rose-love' : ''}`}
                 >
                   <span className="min-w-0">
-                    <span className="block truncate font-mono text-sm font-bold">{model}</span>
+                    <span className="block whitespace-normal break-words font-mono text-sm font-bold">{model}</span>
                     {modelEntry && (
                       <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.1em] text-rose-muted">
                         <span>{formatRate(modelEntry.pricing.input)} in</span>

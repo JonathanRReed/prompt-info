@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildPricingCatalogResponse } from './pricingCatalog';
+import { BUNDLED_PRICING_SNAPSHOT_AT, buildPricingCatalogResponse } from './pricingCatalog';
 
 const LIVE_ROW = {
   name: 'OpenAI: GPT-5.6 Sol',
@@ -60,6 +60,7 @@ describe('buildPricingCatalogResponse', () => {
     });
 
     expect(response.source).toBe('bundled-static');
+    expect(response.retrievedAt).toBe(BUNDLED_PRICING_SNAPSHOT_AT);
     expect(response.freshness).toBe('static');
     expect(response.isFallback).toBe(true);
     expect(response.fallbackReason).toContain('usable');
