@@ -1,23 +1,18 @@
 import type { Metadata } from 'next';
+import { AUTHOR_REF } from '../lib/author';
 import { OG_BASE, TWITTER_BASE } from '../lib/seo';
 import HomePageClient from './page-client';
 
 const pageJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  name: 'AI Workload Cost Calculator',
+  name: 'AI Workload Cost Calculator | Prompt Info',
   url: 'https://prompt-info.helloworldfirm.com/',
+  isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
+  mainEntity: { '@id': 'https://prompt-info.helloworldfirm.com/#app' },
   datePublished: '2026-04-21',
-  dateModified: '2026-09-01',
-  author: {
-    '@type': 'Person',
-    name: 'Jonathan R. Reed',
-    url: 'https://jonathanrreed.com/',
-    sameAs: [
-      'https://jonathanrreed.com/',
-      'https://github.com/JonathanRReed',
-    ],
-  },
+  dateModified: '2026-09-05',
+  author: AUTHOR_REF,
   publisher: {
     '@type': 'Organization',
     name: 'Hello.World Consulting',
@@ -31,7 +26,7 @@ const pageJsonLd = {
 };
 
 export const metadata: Metadata = {
-  title: 'AI Workload Cost Calculator',
+  title: 'AI Workload Cost Calculator | Prompt Info',
   description:
     'Estimate model usage costs for a prompt, multi-turn session, or recurring workload. Free, private, and source-transparent.',
   alternates: {
@@ -40,13 +35,13 @@ export const metadata: Metadata = {
   openGraph: {
     ...OG_BASE,
     url: 'https://prompt-info.helloworldfirm.com/',
-    title: 'AI Workload Cost Calculator',
+    title: 'AI Workload Cost Calculator | Prompt Info',
     description:
       'Estimate model usage costs for a prompt, multi-turn session, or recurring workload.',
   },
   twitter: {
     ...TWITTER_BASE,
-    title: 'AI Workload Cost Calculator',
+    title: 'AI Workload Cost Calculator | Prompt Info',
     description:
       'Compare request, session, monthly, and annual AI workload costs.',
   },

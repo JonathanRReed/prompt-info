@@ -13,6 +13,8 @@ The estimates are planning values, so a provider invoice will not match them lin
 - [Contact](https://prompt-info.helloworldfirm.com/contact/): Product questions, bug reports, and pricing corrections.
 - [Privacy](https://prompt-info.helloworldfirm.com/privacy/): Data-boundary notes for prompt handling and support requests.
 - [Sitemap](https://prompt-info.helloworldfirm.com/sitemap.xml): Every indexable URL on the site.
+- [Full pricing listing](https://prompt-info.helloworldfirm.com/llms-full.txt): Every priced model with input and output price per million tokens, context window, and output limit, plus the arithmetic the calculator uses. Generated at build.
+- Shareable estimates: `/?models=<id,id>&tokens=<n>&out=<n>&turns=<n>&mode=baseline|scenario&runs=<n>&cadence=once|day|week|month` opens the calculator with those assumptions and no prompt text. `/?model=<openrouter slug>` preselects one model.
 
 ## Policies
 

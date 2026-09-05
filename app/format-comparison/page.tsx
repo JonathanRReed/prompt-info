@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AUTHOR_REF } from '../../lib/author';
 import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 import FormatComparisonPageClient from './page-client';
 
@@ -10,11 +11,7 @@ const pageJsonLd = {
   url: 'https://prompt-info.helloworldfirm.com/format-comparison/',
   datePublished: '2026-04-21',
   dateModified: '2026-08-29',
-  author: {
-    '@type': 'Person',
-    name: 'Jonathan R. Reed',
-    url: 'https://jonathanrreed.com/',
-  },
+  author: AUTHOR_REF,
   publisher: {
     '@type': 'Organization',
     name: 'Hello.World Consulting',

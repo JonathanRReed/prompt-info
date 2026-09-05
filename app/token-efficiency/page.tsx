@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AUTHOR_REF } from '../../lib/author';
 import Link from 'next/link';
 import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 import { EFFICIENCY_PRESETS, EFFICIENCY_REFERENCE_DATE } from '../../lib/tokenEfficiency';
@@ -18,11 +19,7 @@ const pageJsonLd = {
   url: 'https://prompt-info.helloworldfirm.com/token-efficiency/',
   datePublished: '2026-08-29',
   dateModified: '2026-08-29',
-  author: {
-    '@type': 'Person',
-    name: 'Jonathan R. Reed',
-    url: 'https://jonathanrreed.com/',
-  },
+  author: AUTHOR_REF,
   publisher: {
     '@type': 'Organization',
     name: 'Hello.World Consulting',

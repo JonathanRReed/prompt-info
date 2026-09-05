@@ -22,6 +22,7 @@ import { fetchPricing, type PricingCatalogResponse, type PricingMap } from '../l
 import { BUNDLED_PRICING_SNAPSHOT_AT, isPricingMap } from '../lib/pricingCatalog';
 import { clampPrompt } from '../lib/promptLimits';
 import { chooseDefaultModels, findRequestedModel } from '../lib/modelSelection';
+import { buildScenarioLink, parseScenarioLink } from '../lib/scenarioLink';
 import { getModelTokenizerMultiplier, resolveModelTokenProfile } from '../lib/modelTokenLimits';
 import type { SessionRunMode } from '../lib/sessionMath';
 import type { WorkloadCadence } from '../lib/workloadMath';
@@ -98,7 +99,21 @@ export default function HomePageClient() {
   const [volumeVariancePct, setVolumeVariancePct] = useState(20);
   const [retryRatePct, setRetryRatePct] = useState(5);
   const [recipeState, setRecipeState] = useState<'idle' | 'exported' | 'imported' | 'error'>('idle');
+  const [linkState, setLinkState] = useState<'idle' | 'copied' | 'error'>('idle');
   const recipeInputRef = useRef<HTMLInputElement>(null);
+
+  // A shared estimate link carries the assumptions in the query string. The
+  // numeric ones apply immediately; the model set waits for the catalog.
+  useEffect(() => {
+    const link = parseScenarioLink(window.location.search);
+    if (link.tokenizer && TOKENIZERS.some(option => option.key === link.tokenizer)) setTokenizer(link.tokenizer as TokenizerKey);
+    if (link.promptTokens !== undefined) setPromptTokenOverride(link.promptTokens);
+    if (link.outputTokens !== undefined) setOutputTokens(link.outputTokens);
+    if (link.turns !== undefined) setTurns(link.turns);
+    if (link.sessionMode) setSessionMode(link.sessionMode);
+    if (link.workloadRuns !== undefined) setWorkloadRuns(link.workloadRuns);
+    if (link.workloadCadence) setWorkloadCadence(link.workloadCadence);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,9 +126,15 @@ export default function HomePageClient() {
         if (cancelled) return;
         setCatalog(response);
         const models = Object.keys(response.data);
-        // Sibling sites link here with ?model=<openrouter slug>; honor it once on load.
-        const requested = findRequestedModel(new URLSearchParams(window.location.search).get('model'), response.data);
+        // Sibling sites link here with ?model=<openrouter slug>; a shared
+        // estimate carries ?models=<a,b,c>. Both are honored once on load.
+        const search = window.location.search;
+        const requested = findRequestedModel(new URLSearchParams(search).get('model'), response.data);
+        const linked = (parseScenarioLink(search).models ?? [])
+          .map(model => findRequestedModel(model, response.data))
+          .filter((model): model is string => model !== null);
         setSelectedModels(current => {
+          if (linked.length) return [...new Set(linked)].slice(0, 3);
           const valid = current.filter(model => models.includes(model)).slice(0, 3);
           const base = valid.length >= 2 ? valid : chooseDefaultModels(models, response.data, 2);
           if (!requested || base[0] === requested) return base;
@@ -379,6 +400,28 @@ export default function HomePageClient() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
   }
 
+  async function copyScenarioLink() {
+    // Prefer the OpenRouter slug so the link survives a display-name change.
+    const link = buildScenarioLink(window.location.origin, {
+      models: selectedModels.map(model => pricing?.[model]?.openRouterId ?? model),
+      tokenizer,
+      promptTokens: effectiveTokenCount,
+      outputTokens,
+      turns,
+      sessionMode,
+      workloadRuns,
+      workloadCadence,
+    });
+    try {
+      await navigator.clipboard.writeText(link);
+      window.history.replaceState(null, '', link);
+      setLinkState('copied');
+    } catch {
+      setLinkState('error');
+    }
+    window.setTimeout(() => setLinkState('idle'), 2_500);
+  }
+
   async function importScenarioRecipe(file: File | undefined) {
     if (!file) return;
     try {
@@ -465,10 +508,17 @@ export default function HomePageClient() {
       <div className="workbench-section-shell">
         <div className="scenario-recipe-actions">
           <div>
-          <p className="data-label">Save the assumptions</p>
-            <p>Export or import the model set and numeric assumptions. Prompt text is never included.</p>
+          <p className="data-label">Save or share the assumptions</p>
+            <p>Copy a link, or export and import the model set and numeric assumptions. Prompt text is never included.</p>
           </div>
           <div>
+            <button
+              type="button"
+              onClick={copyScenarioLink}
+              disabled={selectedModels.length === 0 || tokenizing || effectiveTokenCount === 0}
+            >
+              Copy link to this estimate
+            </button>
             <button
               type="button"
               onClick={exportScenarioRecipe}
@@ -490,7 +540,11 @@ export default function HomePageClient() {
             />
           </div>
           <p className="scenario-recipe-status" role="status">
-            {recipeState === 'exported'
+            {linkState === 'copied'
+              ? 'Link copied. It carries the model set and the numbers, not the prompt.'
+              : linkState === 'error'
+                ? 'The link could not be copied. The address bar now holds it.'
+                : recipeState === 'exported'
               ? 'Scenario exported without prompt text.'
               : recipeState === 'imported'
                 ? 'Scenario imported. Numeric prompt tokens are active until the prompt changes.'

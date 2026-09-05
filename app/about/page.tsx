@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AUTHOR_REF } from '../../lib/author';
 import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 
 const highlights = [
@@ -28,11 +29,7 @@ const pageJsonLd = {
   url: 'https://prompt-info.helloworldfirm.com/about/',
   datePublished: '2026-04-21',
   dateModified: '2026-09-01',
-  author: {
-    '@type': 'Person',
-    name: 'Jonathan R. Reed',
-    url: 'https://jonathanrreed.com/',
-  },
+  author: AUTHOR_REF,
   publisher: {
     '@type': 'Organization',
     name: 'Hello.World Consulting',

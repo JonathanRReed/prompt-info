@@ -7,6 +7,7 @@ import ThemeSelector from '../components/ThemeSelector'
 import Navigation from '../components/Navigation'
 import { ScenarioProvider } from '../components/ScenarioProvider'
 import { OG_BASE, TWITTER_BASE } from '../lib/seo'
+import { AUTHOR_PERSON, AUTHOR_REF } from '../lib/author'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://prompt-info.helloworldfirm.com'),
@@ -77,33 +78,59 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     })();
   `;
 
+  const siteUrl = 'https://prompt-info.helloworldfirm.com'
+  const publisher = {
+    '@type': 'Organization',
+    '@id': 'https://helloworldfirm.com/#organization',
+    name: 'Hello.World Consulting',
+    url: 'https://helloworldfirm.com/',
+    logo: {
+      '@type': 'ImageObject',
+      url: `${siteUrl}/prompt_info_assets/prompt-info-logo-normal-1200w.png`,
+    },
+  }
+  // One graph on every page: the site, the calculator as a WebApplication (no
+  // ratings, no invented review counts), the shared author entity, and the
+  // publisher. Pages add their own WebPage node and reference these by @id.
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'Prompt Info',
-    description: 'Compare request, session, monthly, and annual AI workload costs without sending your prompt anywhere.',
-    url: 'https://prompt-info.helloworldfirm.com/',
-    author: {
-      '@type': 'Person',
-      name: 'Jonathan R. Reed',
-      url: 'https://jonathanrreed.com',
-      sameAs: [
-        'https://jonathanrreed.com/',
-        'https://github.com/JonathanRReed',
-      ],
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Hello.World Consulting',
-      url: 'https://helloworldfirm.com',
-      logo: {
-        '@type': 'ImageObject',
-        url: 'https://prompt-info.helloworldfirm.com/prompt_info_assets/prompt-info-logo-normal-1200w.png',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl}/#website`,
+        name: 'Prompt Info',
+        description: 'Compare request, session, monthly, and annual AI workload costs without sending your prompt anywhere.',
+        url: `${siteUrl}/`,
+        author: AUTHOR_REF,
+        publisher: { '@id': publisher['@id'] },
+        inLanguage: 'en-US',
       },
-    },
-    inLanguage: 'en-US',
-    keywords: 'LLM token counter, GPT tokenizer, prompt cost calculator, BPE tokenizer',
-  };
+      {
+        '@type': 'WebApplication',
+        '@id': `${siteUrl}/#app`,
+        name: 'Prompt Info cost calculator',
+        url: `${siteUrl}/`,
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Any',
+        browserRequirements: 'Requires JavaScript. Prompt text is tokenized in the browser and never uploaded.',
+        isAccessibleForFree: true,
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'Token count for a prompt with a chosen tokenizer',
+          'Per-request, per-session, monthly, and annual cost for up to three models',
+          'Recurring workload planning with volume variance and retry allowance',
+          'Shareable estimate links and scenario JSON without prompt text',
+          'Format comparison for JSON, YAML, XML, CSV, and TOON',
+          'Cost per completed task across models',
+        ],
+        author: AUTHOR_REF,
+        publisher: { '@id': publisher['@id'] },
+        isPartOf: { '@id': `${siteUrl}/#website` },
+      },
+      AUTHOR_PERSON,
+      publisher,
+    ],
+  }
 
   const year = new Date().getFullYear();
 
