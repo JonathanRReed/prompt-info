@@ -20,6 +20,7 @@ export function BudgetSensitivity({
   retryRatePct: number;
   onRetryRateChange: (value: number) => void;
 }) {
+  const hasEstimate = monthlyCost !== null && Number.isFinite(monthlyCost);
   const sensitivity = buildBudgetSensitivity({
     monthlyCost: monthlyCost ?? 0,
     monthlyBudget: budget,
@@ -34,8 +35,8 @@ export function BudgetSensitivity({
           <p className="data-label">Budget and uncertainty</p>
           <h2 id="budget-heading">See a low, base, and high case.</h2>
         </div>
-        <p className={`budget-status ${sensitivity.highWithinBudget ? 'is-within' : 'is-over'}`}>
-          {budget === 0
+        <p className={`budget-status ${hasEstimate ? sensitivity.highWithinBudget ? 'is-within' : 'is-over' : ''}`}>
+          {!hasEstimate ? 'Estimate unavailable' : budget === 0
             ? 'No budget threshold set'
             : sensitivity.highWithinBudget
               ? 'High case remains within budget'
@@ -48,9 +49,9 @@ export function BudgetSensitivity({
         <label><span>Retry and failure allowance</span><input type="number" min="0" max="500" step="1" value={retryRatePct} onChange={event => onRetryRateChange(Number(event.target.value))} /><small>{retryRatePct}% added to the high case</small></label>
       </div>
       <dl className="budget-case-grid">
-        <div><dt>Low volume</dt><dd>{formatUsd(sensitivity.low)}<small>{Math.max(0, 100 - volumeVariancePct)}% of planned runs</small></dd></div>
-        <div><dt>Base estimate</dt><dd>{formatUsd(sensitivity.base)}<small>{budget > 0 ? `${formatUsd(Math.abs(sensitivity.remainingAtBase))} ${sensitivity.baseWithinBudget ? 'remaining' : 'over budget'}` : 'Current workload inputs'}</small></dd></div>
-        <div><dt>High case</dt><dd>{formatUsd(sensitivity.high)}<small>Volume variance plus retry allowance</small></dd></div>
+        <div><dt>Low volume</dt><dd>{hasEstimate ? formatUsd(sensitivity.low) : 'Unavailable'}<small>{Math.max(0, 100 - volumeVariancePct)}% of planned runs</small></dd></div>
+        <div><dt>Base estimate</dt><dd>{hasEstimate ? formatUsd(sensitivity.base) : 'Unavailable'}<small>{hasEstimate && budget > 0 ? `${formatUsd(Math.abs(sensitivity.remainingAtBase))} ${sensitivity.baseWithinBudget ? 'remaining' : 'over budget'}` : 'Current workload inputs'}</small></dd></div>
+        <div><dt>High case</dt><dd>{hasEstimate ? formatUsd(sensitivity.high) : 'Unavailable'}<small>Volume variance plus retry allowance</small></dd></div>
       </dl>
       <p className="budget-footnote">This is a planning range, not a probability forecast. It excludes labor, storage, search, tool APIs, taxes, and contract discounts.</p>
     </section>

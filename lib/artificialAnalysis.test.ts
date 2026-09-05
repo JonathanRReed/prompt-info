@@ -130,6 +130,23 @@ describe('matchArtificialAnalysisModel', () => {
 });
 
 describe('loadArtificialAnalysisCatalog', () => {
+  test('does not publish a partial or mixed-version response as live', async () => {
+    for (const second of [new Response('unavailable', { status: 503 }), Response.json({ intelligence_index_version: 4.1, pagination: { has_more: false }, data: [{ id: 'two', name: 'Two' }] })]) {
+      let calls = 0;
+      const catalog = await loadArtificialAnalysisCatalog({ apiKey: 'test', fetcher: async () => ++calls === 1
+        ? Response.json({ intelligence_index_version: 4.2, pagination: { has_more: true }, data: [{ id: 'one', name: 'One', slug: 'one', pricing: { price_1m_input_tokens: 1, price_1m_output_tokens: 2 } }] }) : second });
+      expect(catalog.source).toBe('dated-fallback');
+      expect(catalog.data).toEqual([]);
+    }
+  });
+
+  test('cache reports the observation date and recorded version', async () => {
+    const catalog = await loadArtificialAnalysisCatalog({ supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon', fetcher: async () => Response.json([
+      { id: 'one', name: 'One', slug: 'one', last_seen: '2026-09-04T12:00:00Z', source_metadata: { intelligence_index_version: 4.2 }, pricing: { price_1m_input_tokens: 1, price_1m_output_tokens: 2 } },
+    ]) });
+    expect(catalog.intelligenceIndexVersion).toBe(4.2);
+    expect(catalog.retrievedAt).toBe('2026-09-04T12:00:00Z');
+  });
   test('uses the attributed free API response when a server-side key is configured', async () => {
     const catalog = await loadArtificialAnalysisCatalog({
       apiKey: 'server-only-key',

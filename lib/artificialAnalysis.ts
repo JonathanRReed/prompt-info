@@ -69,6 +69,7 @@ export async function loadArtificialAnalysisCatalog(_: {
   if (apiKey) {
     const rows: unknown[] = [];
     let intelligenceIndexVersion: number | null = null;
+    let complete = false;
 
     for (let page = 1; page <= 10; page += 1) {
       const endpoint = new URL('https://artificialanalysis.ai/api/v2/language/models/free');
@@ -87,18 +88,22 @@ export async function loadArtificialAnalysisCatalog(_: {
         break;
       }
       const payload = result.body;
-      if (!isRecord(payload)) break;
-      if (intelligenceIndexVersion === null) {
+      if (!isRecord(payload) || !Array.isArray(payload.data) || payload.data.length === 0) break;
+      if (page === 1) {
         intelligenceIndexVersion = numberOrNull(payload.intelligence_index_version);
+      } else if (numberOrNull(payload.intelligence_index_version) !== intelligenceIndexVersion) {
+        directFailure = 'Artificial Analysis changed index versions during pagination.';
+        break;
       }
       if (Array.isArray(payload.data)) rows.push(...payload.data);
 
       const pagination = isRecord(payload.pagination) ? payload.pagination : {};
+      if (pagination.has_more === false) { complete = true; break; }
       if (pagination.has_more !== true) break;
     }
 
     const data = parseArtificialAnalysisPayload(rows);
-    if (data.length > 0) {
+    if (complete && data.length > 0) {
       return {
         schemaVersion: CATALOG_SCHEMA_VERSION,
         source: 'artificial-analysis-free-api',
@@ -127,14 +132,23 @@ export async function loadArtificialAnalysisCatalog(_: {
     }, timeoutMs);
 
     if (result.ok) {
-      const data = parseArtificialAnalysisPayload(result.body);
+      const availableRows = Array.isArray(result.body) ? result.body.filter(isRecord) : [];
+      const newest = [...availableRows].sort((a, b) => String(b.last_seen ?? '').localeCompare(String(a.last_seen ?? '')))[0];
+      const latestVersion = isRecord(newest?.source_metadata) ? numberOrNull(newest.source_metadata.intelligence_index_version) : null;
+      const rows = latestVersion === null ? availableRows : availableRows.filter(row =>
+        isRecord(row.source_metadata) && numberOrNull(row.source_metadata.intelligence_index_version) === latestVersion);
+      const data = parseArtificialAnalysisPayload(rows);
       if (data.length > 0) {
+        const versions = new Set(rows.map(row => isRecord(row.source_metadata)
+          ? numberOrNull(row.source_metadata.intelligence_index_version) : null));
+        const observed = data.map(model => model.lastSeen).filter((date): date is string =>
+          date !== null && Number.isFinite(Date.parse(date))).sort();
         return {
           schemaVersion: CATALOG_SCHEMA_VERSION,
           source: 'artificial-analysis-supabase-cache',
           sourceUrl: endpoint.toString(),
-          intelligenceIndexVersion: null,
-          retrievedAt,
+          intelligenceIndexVersion: versions.size === 1 ? [...versions][0] ?? null : null,
+          retrievedAt: observed[0] ?? ARTIFICIAL_ANALYSIS_FALLBACK_AT,
           freshness: 'cached',
           isFallback: true,
           fallbackReason: `${directFailure} Using the project benchmark cache.`,
@@ -281,9 +295,10 @@ export function parseArtificialAnalysisPayload(payload: unknown): ArtificialAnal
     const evaluations = isRecord(row.evaluations) ? row.evaluations : {};
     const pricing = isRecord(row.pricing) ? row.pricing : {};
     const performance = isRecord(row.performance) ? row.performance : row;
+    const metadata = isRecord(row.source_metadata) ? row.source_metadata : {};
     const cost = isRecord(row.artificial_analysis_intelligence_index_cost)
       ? row.artificial_analysis_intelligence_index_cost
-      : {};
+      : isRecord(metadata.index_cost) ? metadata.index_cost : {};
     const costPerTask = isRecord(cost.cost_per_task) ? cost.cost_per_task : {};
 
     return [{
