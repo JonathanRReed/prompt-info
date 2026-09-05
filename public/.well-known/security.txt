@@ -1,6 +1,6 @@
 # Security contact for prompt-info.helloworldfirm.com
 Contact: https://prompt-info.helloworldfirm.com/contact/
-Contact: https://helloworldfirm.com/
+Contact: https://jonathanrreed.com/contact/
 Expires: 2027-09-01T00:00:00.000Z
 Preferred-Languages: en
 Canonical: https://prompt-info.helloworldfirm.com/.well-known/security.txt
