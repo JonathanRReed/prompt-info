@@ -58,12 +58,12 @@ function formatUsd(value: number) {
 
 export default function TokenEfficiencyPage() {
   return (
-    <main className="w-full max-w-full overflow-x-hidden">
+    <main id="main-content" className="w-full max-w-full overflow-x-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
 
       <section className="mx-auto flex min-h-[54dvh] w-full max-w-[1500px] border-b border-rose-highlightMed">
         <div className="flex w-full flex-col justify-end px-4 pb-12 pt-16 sm:px-6 md:px-12 md:pb-16">
-          <p className="data-label text-rose-love">Token efficiency</p>
+          <p className="data-label text-signal-text">Token efficiency</p>
           <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
             Token price is only half the cost.
           </h1>
@@ -71,7 +71,7 @@ export default function TokenEfficiencyPage() {
             Cost per task combines the input, the output rate, and how many output tokens a model uses for your work.
             A lower token price can still produce a higher total when the response is longer.
           </p>
-          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+          <p className="mt-6 text-xs font-medium text-rose-muted">
             <time dateTime="2026-08-29">Published August 29, 2026</time>. Reference data retrieved {EFFICIENCY_REFERENCE_DATE}.
           </p>
         </div>
@@ -79,7 +79,7 @@ export default function TokenEfficiencyPage() {
 
       <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-12 sm:px-6 md:px-12 md:py-16">
         <p className="data-label">Dated reference snapshot</p>
-        <h2 className="mt-4 max-w-4xl text-[clamp(2.2rem,5vw,4.6rem)] font-black uppercase leading-[0.9] tracking-[-0.06em] text-rose-text">
+        <h2 className="mt-4 max-w-4xl text-[clamp(2.2rem,5vw,4.6rem)] font-bold leading-[0.95] tracking-tight text-rose-text">
           Output length can change the price order.
         </h2>
         <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
@@ -92,7 +92,7 @@ export default function TokenEfficiencyPage() {
             <thead>
               <tr className="border-b border-rose-highlightMed">
                 {['Model', 'Input $/M', 'Output $/M', 'Output tokens, full suite', 'Cost to run the suite', 'Intelligence index'].map(heading => (
-                  <th key={heading} className="bg-rose-overlay px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-muted">
+                  <th key={heading} className="bg-rose-overlay px-4 py-3 text-xs font-medium text-rose-muted">
                     {heading}
                   </th>
                 ))}
@@ -108,7 +108,7 @@ export default function TokenEfficiencyPage() {
                   <td className="px-4 py-4 font-mono text-sm font-bold text-rose-text tabular-nums">${preset.inputPerMillion.toLocaleString()}</td>
                   <td className="px-4 py-4 font-mono text-sm font-bold text-rose-text tabular-nums">${preset.outputPerMillion.toLocaleString()}</td>
                   <td className="px-4 py-4 font-mono text-sm font-bold text-rose-text tabular-nums">{preset.indexOutputTokensMillions}M</td>
-                  <td className="px-4 py-4 font-mono text-sm font-bold text-rose-love tabular-nums">{formatUsd(preset.indexEvalCost)}</td>
+                  <td className="px-4 py-4 font-mono text-sm font-bold text-signal-text tabular-nums">{formatUsd(preset.indexEvalCost)}</td>
                   <td className="px-4 py-4 font-mono text-sm font-bold text-rose-text tabular-nums">{preset.intelligenceIndex}</td>
                 </tr>
               ))}
@@ -144,7 +144,7 @@ export default function TokenEfficiencyPage() {
                 href={source.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-16 bg-rose-base p-4 font-mono text-xs font-bold uppercase tracking-[0.12em] text-rose-subtle transition duration-200 hover:bg-rose-love hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none"
+                className="min-h-16 bg-rose-base p-4 text-xs font-medium text-rose-subtle transition duration-200 hover:bg-rose-love hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none"
               >
                 {source.label}
               </a>

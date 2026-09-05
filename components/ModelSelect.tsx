@@ -143,13 +143,13 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
   if (isLoading) {
     return (
       <div className="flex h-12 w-full items-center border border-rose-highlightMed bg-rose-surface px-4 py-3" role="status" aria-live="polite">
-        <span className="font-mono text-xs uppercase tracking-[0.14em] text-rose-subtle">Loading models</span>
+        <span className="font-mono text-xs  text-rose-subtle">Loading models</span>
       </div>
     );
   }
 
   if (!optionList.length) {
-    return <div className="border border-rose-love bg-rose-base p-3 text-sm text-rose-love">No models available. Check the pricing data source.</div>;
+    return <div className="border border-rose-love bg-rose-base p-3 text-sm text-signal-text">No models available. Check the pricing data source.</div>;
   }
 
   return (
@@ -204,19 +204,19 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
             setIsOpen(open => !open);
             inputRef.current?.focus();
           }}
-          className="min-h-12 bg-rose-base px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:bg-rose-overlay hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none"
+          className="min-h-12 bg-rose-base px-4 text-xs font-medium text-rose-subtle transition duration-200 hover:bg-rose-overlay hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none"
           aria-label={isOpen ? 'Close model results' : 'Open model results'}
         >
           {isOpen ? 'Close' : 'Browse'}
         </button>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-rose-muted">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-rose-muted">
         <span>Selected: <span className="text-rose-text">{selectedModel || optionList[0]}</span></span>
         <span>{query.trim() ? `${filteredModels.length.toLocaleString()} matches` : `Provider-diverse browse set · ${filteredModels.length.toLocaleString()} of ${optionList.length.toLocaleString()}`}</span>
       </div>
       {selectedEntry && (
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-rose-muted">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-rose-muted">
           <span>{formatRate(selectedEntry.pricing.input)} in</span>
           <span>{formatRate(selectedEntry.pricing.output)} out</span>
           <span>{formatContext(selectedEntry.contextWindowTokens)}</span>
@@ -249,19 +249,19 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
                   onClick={() => selectModel(model)}
                   className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-rose-highlightMed px-4 py-3 text-left transition duration-150 last:border-b-0 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none ${
                     isActive ? 'bg-rose-overlay text-rose-text' : 'bg-rose-base text-rose-subtle'
-                  } ${isSelected ? 'text-rose-love' : ''}`}
+                  } ${isSelected ? 'text-signal-text' : ''}`}
                 >
                   <span className="min-w-0">
                     <span className="block whitespace-normal break-words font-mono text-sm font-bold">{model}</span>
                     {modelEntry && (
-                      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.1em] text-rose-muted">
+                      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-rose-muted">
                         <span>{formatRate(modelEntry.pricing.input)} in</span>
                         <span>{formatRate(modelEntry.pricing.output)} out</span>
                         <span>{formatContext(modelEntry.contextWindowTokens)}</span>
                       </span>
                     )}
                   </span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-rose-muted">
+                  <span className="text-xs text-rose-muted">
                     {isSelected ? 'Selected' : 'Use'}
                   </span>
                 </button>

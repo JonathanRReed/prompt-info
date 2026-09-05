@@ -64,11 +64,11 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="w-full max-w-full overflow-x-hidden">
+    <main id="main-content" className="w-full max-w-full overflow-x-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
       <section className="mx-auto grid min-h-[54dvh] w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_340px]">
         <div className="border-rose-highlightMed px-4 py-16 sm:px-6 md:border-r md:px-12 md:py-24">
-          <p className="data-label text-rose-love">About the utility</p>
+          <p className="data-label text-signal-text">About the utility</p>
           <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
             Prompt inspection for model operators.
           </h1>
@@ -78,7 +78,7 @@ export default function AboutPage() {
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
             Prompt text stays in browser memory. Same-origin server routes collect public pricing and benchmark catalogs, while every estimate prints its assumptions beside the result. There is nothing to sign up for.
           </p>
-          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+          <p className="mt-6 text-xs font-medium text-rose-muted">
             <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
             <time dateTime="2026-09-01">Updated September 1, 2026</time>.
           </p>
@@ -100,7 +100,7 @@ export default function AboutPage() {
       <section className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px sm:grid-cols-2 lg:grid-cols-4">
         {highlights.map(item => (
           <article key={item.title} className="bg-rose-base p-5 sm:p-7 md:min-h-72">
-            <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{item.title}</h2>
+            <h2 className="text-sm font-semibold text-rose-text">{item.title}</h2>
             <p className="mt-6 text-sm leading-7 text-rose-subtle">{item.body}</p>
           </article>
         ))}
@@ -131,7 +131,7 @@ export default function AboutPage() {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-16 bg-rose-base p-4 font-mono text-xs font-bold uppercase tracking-[0.12em] text-rose-subtle transition duration-200 hover:bg-rose-love hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none"
+                className="min-h-16 bg-rose-base p-4 text-xs font-medium text-rose-subtle transition duration-200 hover:bg-rose-love hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none"
               >
                 {link.label}
               </a>

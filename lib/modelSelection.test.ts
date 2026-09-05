@@ -56,3 +56,16 @@ describe('chooseDefaultModels', () => {
     expect(chooseDefaultModels(Object.keys(broadPricing), broadPricing, 6)).toHaveLength(6);
   });
 });
+
+import { findRequestedModel } from './modelSelection';
+
+test('findRequestedModel resolves an OpenRouter slug or a normalized name', () => {
+  const pricing = {
+    'OpenAI: GPT-5': { pricing: { input: 1, output: 2 }, co2eFactor: 0, openRouterId: 'openai/gpt-5' },
+    'Anthropic: Claude Sonnet 5': { pricing: { input: 1, output: 2 }, co2eFactor: 0 },
+  };
+  expect(findRequestedModel('openai/gpt-5', pricing)).toBe('OpenAI: GPT-5');
+  expect(findRequestedModel('anthropic/claude-sonnet-5', pricing)).toBe('Anthropic: Claude Sonnet 5');
+  expect(findRequestedModel('nobody/nothing', pricing)).toBeNull();
+  expect(findRequestedModel(null, pricing)).toBeNull();
+});

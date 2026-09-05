@@ -13,6 +13,8 @@ export type PricingEntry = {
   contextWindowTokens?: number;
   outputTokenLimitSource?: string;
   outputTokenLimitConfidence?: TokenLimitConfidence;
+  /** OpenRouter `author/model` slug, the canonical key shared with the sibling sites. */
+  openRouterId?: string;
 };
 
 export type PricingMap = Record<string, PricingEntry>;
@@ -119,6 +121,7 @@ type RowShape = {
   outputTokenLimitConfidence: TokenLimitConfidence;
   inputCacheRead?: number;
   inputCacheWrite?: number;
+  openRouterId?: string;
 };
 
 function isPreferredModelRow(a: RowShape, b: RowShape) {
@@ -208,8 +211,10 @@ export function buildPricingMap(data: unknown[]): PricingMap {
       continue;
     }
 
+    const openRouterId = typeof row.id === 'string' && row.id.includes('/') ? row.id : undefined;
     rows.push({
       name,
+      openRouterId,
       dedupeKey: dedupeKeyForModel(name),
       hasQualifier: /\([^)]*\)/.test(name),
       perMillionIn,
@@ -284,6 +289,7 @@ export function buildPricingMap(data: unknown[]): PricingMap {
       contextWindowTokens: row.contextWindowTokens,
       outputTokenLimitSource: row.outputTokenLimitSource,
       outputTokenLimitConfidence: row.outputTokenLimitConfidence,
+      ...(row.openRouterId ? { openRouterId: row.openRouterId } : {}),
     };
   }
 

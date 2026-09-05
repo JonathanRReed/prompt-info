@@ -250,7 +250,7 @@ export default function TokenEfficiencyPageClient() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="data-label">Editable comparison</p>
-          <h2 className="mt-4 max-w-4xl text-[clamp(2.2rem,5vw,4.6rem)] font-black uppercase leading-[0.9] tracking-[-0.06em] text-rose-text">
+          <h2 className="mt-4 max-w-4xl text-[clamp(2.2rem,5vw,4.6rem)] font-bold leading-[0.95] tracking-tight text-rose-text">
             Use your own task measurements.
           </h2>
         </div>
@@ -262,7 +262,7 @@ export default function TokenEfficiencyPageClient() {
             setInputTokensPerTask(DEFAULT_INPUT_TOKENS_PER_TASK);
             setPlannerApplied(false);
           }}
-          className="self-start border border-rose-highlightMed bg-rose-base px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:border-rose-love hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none sm:self-end"
+          className="self-start border border-rose-highlightMed bg-rose-base px-4 py-3 text-xs font-medium text-rose-subtle transition duration-200 hover:border-rose-love hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none sm:self-end"
         >
           Reset example
         </button>
@@ -275,7 +275,7 @@ export default function TokenEfficiencyPageClient() {
 
       <div className="mt-6 flex flex-col gap-3 border border-rose-highlightMed bg-rose-overlay p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-love">
+          <p className="text-xs font-medium text-signal-text">
             Artificial Analysis catalog · {catalogModels.length.toLocaleString()} models
           </p>
           <p className="mt-2 text-xs leading-5 text-rose-muted">
@@ -298,7 +298,7 @@ export default function TokenEfficiencyPageClient() {
           href="https://artificialanalysis.ai/"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-text underline decoration-rose-love underline-offset-4 hover:text-rose-love"
+          className="text-xs font-medium text-rose-text underline decoration-rose-love underline-offset-4 hover:text-signal-text"
         >
           Artificial Analysis
         </a>
@@ -311,7 +311,7 @@ export default function TokenEfficiencyPageClient() {
             <p className="mt-2 text-sm text-rose-subtle">
               {scenario.model || 'Selected model'} · {scenario.inputTokensPerRun.toLocaleString()} input · {scenario.outputTokensPerRun.toLocaleString()} output · {scenario.workloadRuns.toLocaleString()} runs / {scenario.workloadCadence}
             </p>
-            {plannerApplied && <p className="mt-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-love">Planner scenario applied</p>}
+            {plannerApplied && <p className="mt-2 text-xs font-medium text-signal-text">Planner scenario applied</p>}
           </div>
           <button
             type="button"
@@ -394,18 +394,18 @@ export default function TokenEfficiencyPageClient() {
           <article key={row.key} className="flex flex-col bg-rose-base p-5 sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{row.name}</h3>
+                <h3 className="text-sm font-semibold text-rose-text">{row.name}</h3>
                 <p className="mt-1 text-xs text-rose-muted">{row.provider}</p>
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-rose-muted">Rates: {row.rateSource}</p>
+                <p className="mt-1 font-mono text-[9px]  text-rose-muted">Rates: {row.rateSource}</p>
               </div>
               <div className="flex flex-col items-end gap-1">
                 {row.isCheapestPerToken && (
-                  <span className="border border-rose-highlightMed px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-rose-muted">
+                  <span className="border border-rose-highlightMed px-2 py-1 text-xs font-medium text-rose-muted">
                     Lowest output rate in set
                   </span>
                 )}
                 {row.isCheapestPerTask && (
-                  <span className="bg-rose-love px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-white">
+                  <span className="bg-rose-love px-2 py-1 text-xs font-medium text-white">
                     Lowest calculated cost in set
                   </span>
                 )}
@@ -413,7 +413,7 @@ export default function TokenEfficiencyPageClient() {
             </div>
 
             <div className="mt-5">
-              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rose-muted" htmlFor={`${row.key}-catalog-model`}>
+              <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-catalog-model`}>
                 Comparison model {index + 1}
               </label>
               <select
@@ -436,18 +436,18 @@ export default function TokenEfficiencyPageClient() {
 
             <dl className="mt-4 grid grid-cols-2 gap-px bg-rose-highlightMed">
               <div className="bg-rose-base p-3">
-                <dt className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-rose-muted">AA intelligence</dt>
+                <dt className="font-mono text-[9px] font-bold  text-rose-muted">AA intelligence</dt>
                 <dd className="mt-1 font-mono text-sm font-bold text-rose-text tabular-nums">{row.intelligenceIndex ?? 'N/A'}</dd>
               </div>
               <div className="bg-rose-base p-3">
-                <dt className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-rose-muted">AA cost / task</dt>
+                <dt className="font-mono text-[9px] font-bold  text-rose-muted">AA cost / task</dt>
                 <dd className="mt-1 font-mono text-sm font-bold text-rose-text tabular-nums">{formatCost(row.benchmarkCostPerTask)}</dd>
               </div>
             </dl>
 
             <div className="mt-5 grid gap-3">
               <div>
-                <label className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rose-muted" htmlFor={`${row.key}-input-rate`}>
+                <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-input-rate`}>
                   Input $ / M tokens
                 </label>
                 <input
@@ -463,7 +463,7 @@ export default function TokenEfficiencyPageClient() {
                 />
               </div>
               <div>
-                <label className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rose-muted" htmlFor={`${row.key}-output-rate`}>
+                <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-output-rate`}>
                   Output $ / M tokens
                 </label>
                 <input
@@ -479,7 +479,7 @@ export default function TokenEfficiencyPageClient() {
                 />
               </div>
               <div>
-                <label className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rose-muted" htmlFor={`${row.key}-output-tokens`}>
+                <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-output-tokens`}>
                   Your output tokens / task
                 </label>
                 <input
@@ -496,18 +496,18 @@ export default function TokenEfficiencyPageClient() {
             </div>
 
             <div className="mt-6 border-t border-rose-highlightMed pt-5">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rose-muted">Cost per task</p>
-              <output className="mt-1 block font-mono text-2xl font-black text-rose-love tabular-nums">
+              <p className="text-xs font-medium text-rose-muted">Cost per task</p>
+              <output className="mt-1 block font-mono text-2xl font-bold text-signal-text tabular-nums">
                 {formatCost(row.taskCost)}
               </output>
-              <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rose-muted">
+              <p className="mt-3 text-xs font-medium text-rose-muted">
                 {tasks.toLocaleString()} tasks
               </p>
               <output className="mt-1 block font-mono text-sm font-bold text-rose-text tabular-nums">
                 {formatCost(row.taskCost === null ? null : row.taskCost * tasks)}
               </output>
               {row.outputTokensPerSecond !== null && (
-                <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-rose-muted">
+                <p className="mt-3 text-xs text-rose-muted">
                   AA speed · {row.outputTokensPerSecond.toLocaleString()} output tok/s
                 </p>
               )}

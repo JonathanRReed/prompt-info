@@ -44,17 +44,17 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="w-full max-w-full overflow-x-hidden">
+    <main id="main-content" className="w-full max-w-full overflow-x-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
       <section className="mx-auto min-h-[54dvh] w-full max-w-[1500px] border-b border-rose-highlightMed px-4 py-16 sm:px-6 md:px-12 md:py-24">
-        <p className="data-label text-rose-love">Privacy policy</p>
+        <p className="data-label text-signal-text">Privacy policy</p>
         <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
           Prompt Info is built for preflight prompt checks.
         </h1>
         <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
           This page explains the practical data boundaries for Prompt Info. The utility is designed for browser-based estimation, public model metadata, and support conversations.
         </p>
-        <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+        <p className="mt-6 text-xs font-medium text-rose-muted">
           <time dateTime="2026-06-19">Updated June 19, 2026</time>.
         </p>
         <div className="mt-10 grid gap-px bg-rose-highlightMed md:grid-cols-3">
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
             ['Sensitive material', 'Avoid entering private credentials, confidential customer data, or unreleased product material into any public planning utility.'],
           ].map(([title, body]) => (
             <article key={title} className="bg-rose-base p-5 sm:p-7">
-              <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{title}</h2>
+              <h2 className="text-sm font-semibold text-rose-text">{title}</h2>
               <p className="mt-6 text-sm leading-7 text-rose-subtle">{body}</p>
             </article>
           ))}
@@ -78,7 +78,7 @@ export default function PrivacyPage() {
             ['Third-party references', 'External documentation links and provider references are included for review context. Those destinations are governed by their own policies and availability.'],
           ].map(([title, body]) => (
             <article key={title} className="bg-rose-base p-5 sm:p-7">
-              <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{title}</h2>
+              <h2 className="text-sm font-semibold text-rose-text">{title}</h2>
               <p className="mt-6 text-sm leading-7 text-rose-subtle">{body}</p>
             </article>
           ))}

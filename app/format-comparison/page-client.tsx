@@ -183,10 +183,10 @@ export default function FormatComparisonPageClient() {
       <section className="mx-auto w-full max-w-[1500px] border-b border-rose-highlightMed bg-rose-base p-4 sm:p-6 md:p-10">
         {scenario?.prompt && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border border-rose-highlightMed bg-rose-overlay px-4 py-3">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-love">
+            <span className="text-xs font-medium text-signal-text">
               Planner scenario loaded
             </span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-rose-muted">
+            <span className="text-xs text-rose-muted">
               {scenario.model || 'Model not selected'} · {scenario.turns.toLocaleString()} {scenario.turns === 1 ? 'turn' : 'turns'}
             </span>
           </div>
@@ -195,7 +195,7 @@ export default function FormatComparisonPageClient() {
           <label className="data-label" htmlFor="format-prompt">
             Source prompt
           </label>
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-rose-muted tabular-nums">{prompt.length.toLocaleString()} / {MAX_PROMPT_CHARACTERS.toLocaleString()} chars</span>
+          <span className="text-xs text-rose-muted tabular-nums">{prompt.length.toLocaleString()} / {MAX_PROMPT_CHARACTERS.toLocaleString()} chars</span>
         </div>
         <textarea
           id="format-prompt"
@@ -218,13 +218,13 @@ export default function FormatComparisonPageClient() {
                 <option key={option.key} value={option.key}>{option.label} · {option.description}</option>
               ))}
             </select>
-            <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.14em] text-rose-muted">
+            <p className="mt-3 text-xs text-rose-muted">
               Tokenized with {selectedTokenizer}
             </p>
           </div>
           <div className="bg-rose-base p-4">
             <p className="data-label">Raw prompt baseline</p>
-            <output className="mt-2 block font-mono text-2xl font-black text-rose-love tabular-nums">
+            <output className="mt-2 block font-mono text-2xl font-bold text-signal-text tabular-nums">
               {rawPromptTokens === null ? 'Counting…' : `${rawPromptTokens.toLocaleString()} tokens`}
             </output>
             <p className="mt-2 text-xs leading-5 text-rose-muted">Each card reports its signed net token difference from this unformatted prompt.</p>
@@ -287,18 +287,18 @@ export default function FormatComparisonPageClient() {
             <article key={card.key} className="group flex min-h-[300px] flex-col bg-rose-base transition duration-300 hover:bg-rose-overlay motion-reduce:transition-none">
               <div className="flex items-start justify-between gap-3 border-b border-rose-highlightMed p-4 sm:p-5">
                 <div>
-                  <h2 className="font-mono text-sm font-bold uppercase tracking-[0.18em] text-rose-text">{card.label}</h2>
+                  <h2 className="text-sm font-semibold text-rose-text">{card.label}</h2>
                   <p className="mt-2 text-sm text-rose-subtle">{card.description}</p>
                 </div>
                 <button
                   onClick={() => navigator.clipboard.writeText(card.content)}
-                  className="min-h-11 border border-rose-highlightMed bg-rose-base px-4 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-rose-subtle transition duration-200 hover:border-rose-love hover:bg-rose-love hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
+                  className="min-h-11 border border-rose-highlightMed bg-rose-base px-4 text-xs font-medium text-rose-subtle transition duration-200 hover:border-rose-love hover:bg-rose-love hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
                   aria-label={`Copy ${card.label} snippet`}
                 >
                   Copy
                 </button>
               </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-rose-highlightMed px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] sm:px-5">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-rose-highlightMed px-4 py-2 text-xs sm:px-5">
                 <span className="font-bold text-rose-text tabular-nums">
                   {tokens !== undefined
                     ? `${tokens.toLocaleString()} tokens`
@@ -306,9 +306,9 @@ export default function FormatComparisonPageClient() {
                 </span>
                 <span className="text-rose-muted tabular-nums">{bytes.toLocaleString()} bytes</span>
                 {netTokenDifference !== null && <span className="text-rose-muted tabular-nums">{netTokenDifference > 0 ? '+' : ''}{netTokenDifference.toLocaleString()} net tokens vs raw</span>}
-                {isSmallest && <span className="text-rose-love">Fewest tokens</span>}
+                {isSmallest && <span className="text-signal-text">Fewest tokens</span>}
                 {overhead !== null && <span className="text-rose-muted tabular-nums">+{overhead}% vs best</span>}
-                {inputCost && <span className="text-rose-love tabular-nums">{inputCost} input</span>}
+                {inputCost && <span className="text-signal-text tabular-nums">{inputCost} input</span>}
               </div>
               <pre className="min-h-[180px] flex-1 overflow-x-auto whitespace-pre-wrap break-words p-4 font-mono text-[13px] leading-7 text-rose-subtle sm:p-5">
                 {card.content}

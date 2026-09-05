@@ -44,24 +44,24 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <main className="w-full max-w-full overflow-x-hidden">
+    <main id="main-content" className="w-full max-w-full overflow-x-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
       <section className="mx-auto grid min-h-[54dvh] w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_360px]">
         <div className="border-rose-highlightMed px-4 py-16 sm:px-6 md:border-r md:px-12 md:py-24">
-          <p className="data-label text-rose-love">Contact</p>
+          <p className="data-label text-signal-text">Contact</p>
           <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
             Reach the person who maintains Prompt Info.
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
             Product questions, bug reports, and pricing corrections all land in the same inbox.
           </p>
-          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rose-muted">
+          <p className="mt-6 text-xs font-medium text-rose-muted">
             <time dateTime="2026-06-19">Updated June 19, 2026</time>.
           </p>
         </div>
         <aside className="bg-rose-base p-5 sm:p-8">
           <p className="data-label">Primary contact</p>
-          <p className="mt-8 block break-words text-2xl font-black text-rose-text">
+          <p className="mt-8 block break-words text-2xl font-bold text-rose-text">
             hello [at] helloworldfirm [dot] com
           </p>
           <p className="mt-6 text-sm leading-7 text-rose-subtle">
@@ -76,7 +76,7 @@ export default function ContactPage() {
           ['Data corrections', 'Share the provider source, model identifier, observed value, expected value, and the date the page was checked. Provider units differ, so note whether the source quotes per-token or per-million prices.'],
         ].map(([title, body]) => (
           <article key={title} className="bg-rose-base p-5 sm:p-7">
-            <h2 className="font-mono text-sm font-bold uppercase tracking-[0.16em] text-rose-text">{title}</h2>
+            <h2 className="text-sm font-semibold text-rose-text">{title}</h2>
             <p className="mt-6 text-sm leading-7 text-rose-subtle">{body}</p>
           </article>
         ))}

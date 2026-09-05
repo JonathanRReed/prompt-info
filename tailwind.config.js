@@ -7,6 +7,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        'signal-text': 'var(--signal-text)',
         rose: {
           base: 'var(--color-rose-base, #191724)',
           surface: 'var(--color-rose-surface, #1f1d2e)',
@@ -26,8 +27,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['var(--font-outfit)', 'Nebula Sans', 'sans-serif'],
-        mono: ['var(--font-space-mono)', 'monospace'],
+        sans: ['var(--font-sans)'],
+        mono: ['var(--font-mono)'],
       }
     }
   },

@@ -1,30 +1,30 @@
 @config "../tailwind.config.js";
 @import "tailwindcss";
+@import "./fonts.css";
+@import "./ecosystem.css";
 
-@font-face {
-  font-family: 'Nebula Sans';
-  src: url('/fonts/nebula sans/NebulaSans-Book.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
+/*
+  Legacy palette names used across the existing stylesheet and markup.
+  They alias the ecosystem contract, so both themes flow through untouched.
+*/
 :root {
-  --color-rose-base: #0a0a0a;
-  --color-rose-surface: #101010;
-  --color-rose-overlay: #181818;
-  --color-rose-muted: #777777;
-  --color-rose-subtle: #b7b7b7;
-  --color-rose-text: #eaeaea;
-  --color-rose-love: #e61919;
-  --color-rose-gold: #d7d7d7;
-  --color-rose-rose: #cfcfcf;
-  --color-rose-pine: #777777;
-  --color-rose-foam: #eaeaea;
-  --color-rose-iris: #e61919;
-  --color-rose-highlightLow: #141414;
-  --color-rose-highlightMed: #2a2a2a;
-  --color-rose-highlightHigh: #4a4a4a;
+  --font-outfit: var(--font-sans);
+  --font-space-mono: var(--font-mono);
+  --color-rose-base: var(--surface-0);
+  --color-rose-surface: var(--surface-1);
+  --color-rose-overlay: var(--surface-2);
+  --color-rose-muted: var(--ink-2);
+  --color-rose-subtle: var(--ink-1);
+  --color-rose-text: var(--ink-0);
+  --color-rose-love: var(--signal);
+  --color-rose-gold: var(--ink-1);
+  --color-rose-rose: var(--ink-1);
+  --color-rose-pine: var(--ink-2);
+  --color-rose-foam: var(--ink-0);
+  --color-rose-iris: var(--signal);
+  --color-rose-highlightLow: var(--surface-1);
+  --color-rose-highlightMed: var(--line-1);
+  --color-rose-highlightHigh: var(--ink-3);
 }
 
 html {
@@ -38,32 +38,9 @@ body {
   overflow-x: hidden;
   background-color: var(--color-rose-base);
   color: var(--color-rose-text);
-  font-family: var(--font-outfit), 'Nebula Sans', sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.18;
-  background-image:
-    repeating-linear-gradient(0deg, transparent 0, transparent 2px, color-mix(in srgb, var(--color-rose-text) 8%, transparent) 2px, color-mix(in srgb, var(--color-rose-text) 8%, transparent) 3px),
-    radial-gradient(circle at 24% 12%, color-mix(in srgb, var(--color-rose-love) 18%, transparent), transparent 26rem);
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0.07;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.8'/%3E%3C/svg%3E");
 }
 
 button,
@@ -82,8 +59,8 @@ input[type='range'] {
 }
 
 ::selection {
-  background: var(--color-rose-love);
-  color: #ffffff;
+  background: var(--signal-soft);
+  color: var(--ink-0);
 }
 
 .page-bg {
@@ -106,10 +83,6 @@ input[type='range'] {
     linear-gradient(color-mix(in srgb, var(--color-rose-text) 13%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--color-rose-text) 13%, transparent) 1px, transparent 1px);
   background-size: 44px 44px;
-}
-
-[data-theme='light'] body::after {
-  opacity: 0.04;
 }
 
 [data-theme='light'] .grid-overlay {
@@ -139,10 +112,9 @@ input[type='range'] {
 }
 
 .macro-heading {
-  font-weight: 900;
-  line-height: 0.88;
-  letter-spacing: -0.07em;
-  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
   color: var(--color-rose-text);
   text-wrap: balance;
 }
@@ -201,11 +173,11 @@ input[type='range'] {
 }
 
 .data-label {
-  font-family: var(--font-space-mono), monospace;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--color-rose-subtle);
 }
 
@@ -284,8 +256,6 @@ input[type='range'] {
   align-items: baseline;
   font-family: var(--font-space-mono), monospace;
   font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
 }
 
 .receipt-row span {
@@ -311,7 +281,6 @@ input[type='range'] {
   border-top: 1px solid var(--color-rose-highlightMed);
   padding-top: 1rem;
   font-family: var(--font-space-mono), monospace;
-  text-transform: uppercase;
 }
 
 .receipt-total span {
@@ -319,7 +288,6 @@ input[type='range'] {
   color: var(--color-rose-subtle);
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
 }
 
 .receipt-total data {
@@ -327,7 +295,7 @@ input[type='range'] {
   flex: 1 1 auto;
   max-width: 100%;
   overflow-wrap: anywhere;
-  color: var(--color-rose-love);
+  color: var(--signal-text);
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 700;
   line-height: 0.82;
@@ -345,18 +313,16 @@ input[type='range'] {
   border-top: 1px solid var(--color-rose-highlightMed);
   padding-top: 0.85rem;
   font-family: var(--font-space-mono), monospace;
-  text-transform: uppercase;
 }
 
 .receipt-cost-total span {
   color: var(--color-rose-subtle);
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
 }
 
 .receipt-cost-total output {
-  color: var(--color-rose-love);
+  color: var(--signal-text);
   font-size: clamp(1.2rem, 2.2vw, 1.75rem);
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -382,10 +348,8 @@ input[type='range'] {
   background: color-mix(in srgb, var(--color-rose-love) 8%, var(--color-rose-base));
   padding: 0.65rem 0.75rem;
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--color-rose-subtle);
 }
 
@@ -408,8 +372,6 @@ input[type='range'] {
   font-family: var(--font-space-mono), monospace;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: #ffffff;
   transition: transform 0.2s ease, background-color 0.2s ease;
 }
@@ -524,8 +486,7 @@ input[type='range'] {
   .receipt-row {
     grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
     gap: 0.65rem;
-    font-size: 0.66rem;
-    letter-spacing: 0.06em;
+    font-size: var(--text-xs);
   }
 
   .receipt-row output {
@@ -538,8 +499,7 @@ input[type='range'] {
 
   .register-strip {
     flex-wrap: wrap;
-    font-size: 0.58rem;
-    letter-spacing: 0.08em;
+    font-size: var(--text-xs);
   }
 
   .receipt-total {
@@ -712,12 +672,9 @@ input[type='range'] {
   border-bottom: 1px solid var(--color-rose-highlightMed);
   padding: 0.65rem 1rem;
   color: var(--color-rose-subtle);
-  font-family: var(--font-space-mono), monospace;
-  font-size: 0.67rem;
-  font-weight: 700;
+  font-size: var(--text-xs);
+  font-weight: 500;
   line-height: 1.5;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .source-status strong,
@@ -738,8 +695,8 @@ input[type='range'] {
 
 .source-status a:hover,
 .source-status button:hover {
-  border-color: var(--color-rose-love);
-  color: var(--color-rose-love);
+  border-color: var(--signal-text);
+  color: var(--signal-text);
 }
 
 .source-signal {
@@ -751,21 +708,20 @@ input[type='range'] {
 }
 
 .source-status.is-live .source-signal {
-  color: #51b879;
+  color: var(--ok);
 }
 
 .source-status.is-cached .source-signal,
 .source-status.is-static .source-signal {
-  color: #e0a33a;
+  color: var(--warn);
 }
 
 .source-status.is-error .source-signal {
-  color: var(--color-rose-love);
+  color: var(--signal-text);
 }
 
 .source-fallback {
-  color: color-mix(in srgb, #e0a33a 72%, var(--color-rose-text));
-  text-transform: none;
+  color: var(--warn);
 }
 
 .cost-workbench {
@@ -815,16 +771,14 @@ input[type='range'] {
   padding: 0.6rem 0.8rem;
   color: var(--color-rose-text);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.64rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .scenario-recipe-actions button:hover,
 .scenario-recipe-actions button:focus-visible {
-  border-color: var(--color-rose-love);
-  color: var(--color-rose-love);
+  border-color: var(--signal-text);
+  color: var(--signal-text);
   outline: none;
 }
 
@@ -838,8 +792,7 @@ input[type='range'] {
   min-height: 1rem;
   color: var(--color-rose-subtle);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.62rem;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
 }
 
 .budget-sensitivity {
@@ -859,24 +812,22 @@ input[type='range'] {
   max-width: 52rem;
   color: var(--color-rose-text);
   font-size: clamp(1.55rem, 3vw, 2.8rem);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 0.98;
   letter-spacing: -0.045em;
-  text-transform: uppercase;
 }
 
 .budget-status {
   border: 1px solid var(--color-rose-highlightMed);
   padding: 0.55rem 0.7rem;
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   line-height: 1.4;
-  text-transform: uppercase;
 }
 
-.budget-status.is-within { color: color-mix(in srgb, #49c783 80%, var(--color-rose-text)); }
-.budget-status.is-over { border-color: var(--color-rose-love); color: var(--color-rose-love); }
+.budget-status.is-within { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+.budget-status.is-over { border-color: var(--signal-text); color: var(--signal-text); }
 
 .budget-control-grid,
 .budget-case-grid {
@@ -899,10 +850,8 @@ input[type='range'] {
   display: block;
   color: var(--color-rose-muted);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .budget-control-grid input {
@@ -923,7 +872,7 @@ input[type='range'] {
   display: block;
   margin-top: 0.5rem;
   color: var(--color-rose-muted);
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
 }
 
@@ -932,7 +881,7 @@ input[type='range'] {
   color: var(--color-rose-text);
   font-family: var(--font-space-mono), monospace;
   font-size: clamp(1.3rem, 3vw, 2rem);
-  font-weight: 900;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -969,10 +918,9 @@ input[type='range'] {
   margin-top: 0.5rem;
   color: var(--color-rose-text);
   font-size: clamp(1.7rem, 3vw, 3.1rem);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 0.95;
   letter-spacing: -0.05em;
-  text-transform: uppercase;
 }
 
 .privacy-note {
@@ -982,13 +930,12 @@ input[type='range'] {
   border-left: 2px solid var(--color-rose-love);
   padding-left: 0.75rem;
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
-  text-transform: uppercase;
 }
 
 .privacy-note strong {
-  color: var(--color-rose-love);
+  color: var(--signal-text);
 }
 
 .privacy-note span {
@@ -1009,10 +956,8 @@ input[type='range'] {
 .scenario-control-grid label > span {
   color: var(--color-rose-text);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .prompt-field-heading output {
@@ -1027,7 +972,7 @@ input[type='range'] {
   display: block;
   margin-top: 0.2rem;
   color: var(--color-rose-muted);
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
 }
 
 .prompt-actions {
@@ -1048,11 +993,9 @@ input[type='range'] {
   background: var(--color-rose-base);
   color: var(--color-rose-subtle);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.08em;
   text-decoration: none;
-  text-transform: uppercase;
   transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
 }
 
@@ -1061,7 +1004,7 @@ input[type='range'] {
 .comparison-remove:hover,
 .receipt-actions button:hover,
 .lab-links a:hover {
-  border-color: var(--color-rose-love);
+  border-color: var(--signal-text);
   color: var(--color-rose-text);
 }
 
@@ -1131,24 +1074,21 @@ input[type='range'] {
   border-bottom: 1px dashed var(--color-rose-highlightHigh);
   padding-bottom: 0.85rem;
   color: var(--color-rose-muted);
-  font-family: var(--font-space-mono), monospace;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
+  font-weight: 500;
 }
 
 .receipt-topline span {
-  color: var(--color-rose-love);
+  color: var(--signal-text);
 }
 
 .cost-receipt h2 {
   margin-top: 1.2rem;
   color: var(--color-rose-text);
-  font-size: clamp(1.4rem, 3vw, 2.8rem);
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.045em;
+  font-size: clamp(1.4rem, 3vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
 }
 
 .receipt-primary-total {
@@ -1162,20 +1102,17 @@ input[type='range'] {
 .receipt-primary-total span,
 .receipt-total-grid dt {
   color: var(--color-rose-muted);
-  font-family: var(--font-space-mono), monospace;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
+  font-weight: 500;
 }
 
 .receipt-primary-total output {
   overflow-wrap: anywhere;
-  color: var(--color-rose-love);
-  font-family: var(--font-space-mono), monospace;
-  font-size: clamp(2.2rem, 5vw, 5.4rem);
-  font-weight: 700;
-  letter-spacing: -0.07em;
+  color: var(--signal-text);
+  font-family: var(--font-mono);
+  font-size: clamp(2.2rem, 5vw, 4.6rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
   line-height: 0.95;
   font-variant-numeric: tabular-nums;
 }
@@ -1294,10 +1231,8 @@ input[type='range'] {
 .comparison-rate-grid small {
   color: var(--color-rose-muted);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.58rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .comparison-rate-grid strong {
@@ -1322,13 +1257,12 @@ input[type='range'] {
   background: color-mix(in srgb, var(--color-rose-love) 8%, var(--color-rose-base));
   color: var(--color-rose-subtle);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
-  text-transform: uppercase;
 }
 
 .comparison-unavailable {
-  color: var(--color-rose-love);
+  color: var(--signal-text);
 }
 
 .workbench-chart-grid {
@@ -1363,11 +1297,10 @@ input[type='range'] {
   max-width: 10rem;
   color: var(--color-rose-muted);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   line-height: 1.5;
   text-align: right;
-  text-transform: uppercase;
 }
 
 .cost-bar-list,
@@ -1391,10 +1324,8 @@ input[type='range'] {
   background: var(--color-rose-surface);
   color: var(--color-rose-muted);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.58rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .chart-metric-picker button:hover,
@@ -1426,10 +1357,9 @@ input[type='range'] {
   margin-top: 0.5rem;
   color: var(--color-rose-text);
   font-size: clamp(1.7rem, 3vw, 3rem);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 0.95;
   letter-spacing: -0.045em;
-  text-transform: uppercase;
 }
 
 .format-overview-heading > p {
@@ -1468,7 +1398,7 @@ input[type='range'] {
 .format-bar-meta span {
   color: var(--color-rose-muted);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   text-align: right;
 }
 
@@ -1510,10 +1440,9 @@ input[type='range'] {
   margin-top: 0.45rem;
   color: var(--color-rose-text);
   font-size: clamp(1.35rem, 2.5vw, 2.2rem);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: -0.04em;
-  text-transform: uppercase;
 }
 
 .efficiency-bar-list {
@@ -1544,7 +1473,7 @@ input[type='range'] {
   flex: 0 0 auto;
   color: var(--color-rose-text);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
 }
 
 .efficiency-bar-track {
@@ -1586,7 +1515,7 @@ input[type='range'] {
   flex: 0 0 auto;
   color: var(--color-rose-text);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
 }
 
 .cost-bar-track {
@@ -1640,13 +1569,13 @@ input[type='range'] {
   align-items: center;
   gap: 0.5rem;
   color: var(--color-rose-subtle);
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
 }
 
 .composition-legend strong {
   color: var(--color-rose-text);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
 }
 
 .legend-key {
@@ -1756,9 +1685,7 @@ input[type='range'] {
 .session-selected-detail small {
   color: var(--color-rose-muted);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
 }
 
 .session-selected-detail strong {
@@ -1786,10 +1713,8 @@ input[type='range'] {
   cursor: pointer;
   color: var(--color-rose-subtle);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .chart-data-table table {
@@ -1797,7 +1722,7 @@ input[type='range'] {
   margin-top: 0.75rem;
   border-collapse: collapse;
   color: var(--color-rose-subtle);
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
 }
 
 .chart-data-table th,
@@ -1879,7 +1804,7 @@ input[type='range'] {
   background: var(--color-rose-base);
   color: var(--color-rose-text);
   font-family: var(--font-space-mono), monospace;
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
 }
 
 .token-chip-list .token-chip small {
@@ -1998,7 +1923,7 @@ input[type='range'] {
 
   .prompt-hero-compact .hero-proof {
     margin-top: 0.65rem;
-    font-size: 0.58rem;
+    font-size: var(--text-xs);
     line-height: 1.6;
   }
 
@@ -2131,11 +2056,8 @@ input[type='range'] {
   border: 1px solid var(--color-rose-highlightMed);
   background: var(--color-rose-surface);
   padding: 0.25rem 0.55rem;
-  font-family: var(--font-space-mono), monospace;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
+  font-weight: 500;
   color: var(--color-rose-subtle);
 }
 
@@ -2152,17 +2074,14 @@ input[type='range'] {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--color-rose-highlightMed);
-  padding: 0.9rem 1.15rem;
-  font-family: var(--font-space-mono), monospace;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  transition: transform 200ms ease, background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+  padding: 0 1.15rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
 }
 
 .action-primary {
-  border-color: var(--color-rose-love);
+  border-color: var(--signal-text);
   background: var(--color-rose-love);
   color: #ffffff;
 }
@@ -2172,14 +2091,14 @@ input[type='range'] {
   color: var(--color-rose-text);
 }
 
-.action-primary:hover,
-.action-secondary:hover {
-  transform: translateY(-2px);
+.action-primary:hover {
+  background: var(--signal-hover);
+  border-color: var(--signal-hover);
 }
 
-.action-primary:active,
-.action-secondary:active {
-  transform: translateY(0) scale(0.98);
+.action-secondary:hover {
+  background: var(--surface-2);
+  border-color: var(--ink-2);
 }
 
 .action-primary:focus-visible,
@@ -2189,7 +2108,7 @@ a:focus-visible,
 select:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--color-rose-love);
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 
@@ -2208,9 +2127,8 @@ textarea:focus-visible {
 }
 
 .token-chip:hover {
-  transform: scale(1.04);
-  border-color: var(--color-rose-love);
-  background: var(--color-rose-love);
+  border-color: var(--signal-text);
+  background: var(--signal-soft);
 }
 
 @keyframes scan-pass {
@@ -2258,4 +2176,13 @@ textarea:focus-visible {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.budget-case-grid dd small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--color-rose-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 400;
 }

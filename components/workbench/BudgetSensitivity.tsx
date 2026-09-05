@@ -48,9 +48,9 @@ export function BudgetSensitivity({
         <label><span>Retry and failure allowance</span><input type="number" min="0" max="500" step="1" value={retryRatePct} onChange={event => onRetryRateChange(Number(event.target.value))} /><small>{retryRatePct}% added to the high case</small></label>
       </div>
       <dl className="budget-case-grid">
-        <div><dt>Low volume</dt><dd>{formatUsd(sensitivity.low)}</dd><small>{Math.max(0, 100 - volumeVariancePct)}% of planned runs</small></div>
-        <div><dt>Base estimate</dt><dd>{formatUsd(sensitivity.base)}</dd><small>{budget > 0 ? `${formatUsd(Math.abs(sensitivity.remainingAtBase))} ${sensitivity.baseWithinBudget ? 'remaining' : 'over budget'}` : 'Current workload inputs'}</small></div>
-        <div><dt>High case</dt><dd>{formatUsd(sensitivity.high)}</dd><small>Volume variance plus retry allowance</small></div>
+        <div><dt>Low volume</dt><dd>{formatUsd(sensitivity.low)}<small>{Math.max(0, 100 - volumeVariancePct)}% of planned runs</small></dd></div>
+        <div><dt>Base estimate</dt><dd>{formatUsd(sensitivity.base)}<small>{budget > 0 ? `${formatUsd(Math.abs(sensitivity.remainingAtBase))} ${sensitivity.baseWithinBudget ? 'remaining' : 'over budget'}` : 'Current workload inputs'}</small></dd></div>
+        <div><dt>High case</dt><dd>{formatUsd(sensitivity.high)}<small>Volume variance plus retry allowance</small></dd></div>
       </dl>
       <p className="budget-footnote">This is a planning range, not a probability forecast. It excludes labor, storage, search, tool APIs, taxes, and contract discounts.</p>
     </section>

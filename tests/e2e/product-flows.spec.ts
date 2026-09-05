@@ -210,12 +210,13 @@ test('token efficiency lab can reuse the active planner workload', async ({ page
 test('theme selection persists across reloads', async ({ page }) => {
   await page.goto('/');
 
-  await page.getByTitle('Select interface theme').click();
-  await page.getByRole('option', { name: /Ledger Paper/ }).click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme-name', 'ledger');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Toggle light and dark theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
   await page.reload();
-  await expect(page.locator('html')).toHaveAttribute('data-theme-name', 'ledger');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await page.evaluate(() => localStorage.getItem('theme'))).toBe('light');
 });
 
 test('pricing function returns a populated, cacheable model map', async ({ request }) => {

@@ -21,7 +21,7 @@ import {
 import { fetchPricing, type PricingCatalogResponse, type PricingMap } from '../lib/fetchPricing';
 import { BUNDLED_PRICING_SNAPSHOT_AT, isPricingMap } from '../lib/pricingCatalog';
 import { clampPrompt } from '../lib/promptLimits';
-import { chooseDefaultModels } from '../lib/modelSelection';
+import { chooseDefaultModels, findRequestedModel } from '../lib/modelSelection';
 import { getModelTokenizerMultiplier, resolveModelTokenProfile } from '../lib/modelTokenLimits';
 import type { SessionRunMode } from '../lib/sessionMath';
 import type { WorkloadCadence } from '../lib/workloadMath';
@@ -111,9 +111,13 @@ export default function HomePageClient() {
         if (cancelled) return;
         setCatalog(response);
         const models = Object.keys(response.data);
+        // Sibling sites link here with ?model=<openrouter slug>; honor it once on load.
+        const requested = findRequestedModel(new URLSearchParams(window.location.search).get('model'), response.data);
         setSelectedModels(current => {
           const valid = current.filter(model => models.includes(model)).slice(0, 3);
-          return valid.length >= 2 ? valid : chooseDefaultModels(models, response.data, 2);
+          const base = valid.length >= 2 ? valid : chooseDefaultModels(models, response.data, 2);
+          if (!requested || base[0] === requested) return base;
+          return [requested, ...base.filter(model => model !== requested)].slice(0, 3);
         });
       } catch (error) {
         try {
@@ -477,6 +481,7 @@ export default function HomePageClient() {
               ref={recipeInputRef}
               className="sr-only"
               type="file"
+              aria-label="Import scenario JSON file"
               accept="application/json,.json"
               onChange={event => {
                 void importScenarioRecipe(event.target.files?.[0]);

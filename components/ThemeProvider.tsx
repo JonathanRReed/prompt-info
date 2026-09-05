@@ -1,35 +1,36 @@
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ThemeName, themes, applyTheme } from '../lib/themes';
+import { ThemeName, applyTheme, readStoredTheme, THEME_STORAGE_KEY } from '../lib/themes';
 
 type ThemeContextType = {
   theme: ThemeName;
   setTheme: (theme: ThemeName) => void;
+  toggleTheme: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeName>('night');
+  const [theme, setThemeState] = useState<ThemeName>('dark');
 
   useEffect(() => {
-    const stored = localStorage.getItem('rose-pine-theme') as ThemeName | null;
-    if (stored && themes[stored]) {
-      setThemeState(stored);
-      applyTheme(stored);
-    } else {
-      applyTheme('night');
-    }
+    const stored = readStoredTheme();
+    setThemeState(stored);
+    applyTheme(stored);
   }, []);
 
-  const setTheme = (newTheme: ThemeName) => {
-    setThemeState(newTheme);
-    localStorage.setItem('rose-pine-theme', newTheme);
-    applyTheme(newTheme);
+  const setTheme = (next: ThemeName) => {
+    setThemeState(next);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, next);
+    } catch {
+      // Storage can be blocked; the theme still applies for this page.
+    }
+    applyTheme(next);
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme: () => setTheme(theme === 'light' ? 'dark' : 'light') }}>
       {children}
     </ThemeContext.Provider>
   );
