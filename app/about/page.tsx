@@ -1,4 +1,5 @@
-import type { Metadata } from 'next';
+import type { Metadata } from 'next'
+import MachineReadable from '../../components/MachineReadable';
 import { AUTHOR_REF } from '../../lib/author';
 import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 
@@ -135,6 +136,20 @@ export default function AboutPage() {
             ))}
           </div>
         </article>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1500px] border-t border-rose-highlightMed bg-rose-base px-5 py-10 sm:px-8 md:px-10">
+        <p className="data-label">Machine-readable</p>
+        <h2 className="mt-4 max-w-3xl text-2xl font-semibold text-rose-text">
+          The same prices the calculator uses, as JSON.
+        </h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-rose-subtle">
+          Both endpoints are same-origin, need no key, and are built at deploy time from the catalog
+          the interface reads. Nothing here is behind an account.
+        </p>
+        <div className="mt-6 max-w-3xl">
+          <MachineReadable />
+        </div>
       </section>
     </main>
   );
