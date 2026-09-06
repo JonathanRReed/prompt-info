@@ -1,67 +1,37 @@
 # Prompt Info
 
-**AI Model Usage Cost Calculator**
+Estimate model usage costs for a prompt, multi-turn session, or recurring workload. Compare model prices and token counts, inspect the assumptions, and export an image receipt.
 
-A product of [Hello.World Consulting](https://helloworldfirm.com).
-Made by Jonathan R. Reed.
+Built by Jonathan R. Reed for [Hello.World Consulting](https://helloworldfirm.com).
 
----
+## Calculations
 
-## Overview
+The calculator uses OpenRouter pricing with database and static fallbacks. It separates input and output costs and displays rates per million tokens. BPE tokenizers include `o200k_base`, `cl100k_base`, `p50k_base`, `p50k_edit`, and `r50k_base`; other providers use calibration where needed.
 
-Prompt Info is a browser-based model usage cost calculator. Paste a real prompt, compare priced models, estimate a request or multi-turn session, project recurring spend, inspect the assumptions, and export the result.
+Session estimates can model stateless calls or conversations that resend history each turn, with provider-specific cache reads, cache writes, and compaction calls. Recurring projections scale one request or session by daily, weekly, monthly, or batch volume. They cover model usage only, not infrastructure or other operating costs.
 
-Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Bun 1.4.
+Format comparison measures the same payload as TOON, JSON, compact JSON, YAML, XML, and CSV. It reports token counts, wrapper overhead, and planner-model input cost. The task comparison uses attributed Artificial Analysis data and editable assumptions to show why a lower per-token price need not mean a cheaper task.
 
-## Features
+## Privacy and sources
 
-- **Token counting**: BPE tokenization with `o200k_base`, `cl100k_base`, `p50k_base`, `p50k_edit`, and `r50k_base`, plus per-provider calibration for vendors that bill with their own tokenizers.
-- **Cost calculator**: Live pricing from OpenRouter with a database/static fallback, input/output cost breakdowns, and per-million rate display.
-- **Agent sessions**: Baseline (stateless) and scenario modes. Scenario re-sends conversation history each turn, prices cache reads and writes per provider, and simulates compaction summarization calls.
-- **Recurring AI workloads**: Scale one priced request or agent session by runs per day, week, month, or one-time batch. Monthly and annual projections include model usage only.
-- **Format comparison**: The same payload as TOON, JSON, compact JSON, YAML, XML, and CSV, with selectable tokenizers, raw wrapper overhead, and planner-model input cost.
-- **Token efficiency**: An attributed Artificial Analysis catalog plus editable per-task comparisons showing how a cheaper per-token model that emits more tokens can cost more overall.
-- **Shared scenario**: The active prompt, tokenizer, model, token plan, and workload move between the calculator, format comparison, and cost-per-task comparison in memory without storing pasted text.
-- **Private prompt boundary**: Pasted prompt text stays in browser memory. The browser contacts only same-origin catalog routes, never OpenRouter, Artificial Analysis, or Supabase directly.
-- **Receipt export**: Download an image receipt of the estimate.
+Pasted text stays in browser memory. The active prompt and settings move between tools without persisting the text. The browser requests catalogs from same-origin routes, not directly from OpenRouter, Artificial Analysis, or Supabase.
 
-## Requirements
+| Setting | Use |
+| --- | --- |
+| `OPENROUTER_API_BASE_URL` | Override the model-pricing endpoint |
+| `ARTIFICIAL_ANALYSIS_API_KEY` | Server-side Artificial Analysis catalog access; never sent to the browser |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Optional `aa_models` cache; existing `NEXT_PUBLIC_` equivalents are also supported |
 
-- Bun 1.4
-- Node.js 22.12 or newer
+Without live data, a dated three-model snapshot keeps the comparison usable. The interface identifies its source and leaves unavailable fields missing. Catalog routes validate upstream responses, enforce timeouts, and return freshness and fallback metadata.
 
-## Getting Started
+## Develop
 
-1. **Install dependencies:**
+Requires Bun 1.4 and Node 22.12+. The app uses Next.js 16, React 19, TypeScript, and Tailwind CSS 4.
 
-   ```bash
-   bun install --frozen-lockfile
-   ```
-
-2. **Run locally:**
-
-   ```bash
-   bun run dev
-   ```
-
-3. **Build for production:**
-
-   ```bash
-   bun run build
-   bun run preview:cloudflare
-   ```
-
-`preview:cloudflare` serves the `out/` static export together with the Pages Functions in `functions/api/`.
-
-## Data Sources
-
-- `OPENROUTER_API_BASE_URL` can override the default OpenRouter model-pricing endpoint.
-- `ARTIFICIAL_ANALYSIS_API_KEY` enables the server-side Artificial Analysis free API catalog. The key is never sent to the browser.
-- `SUPABASE_URL` and `SUPABASE_ANON_KEY`, or their existing `NEXT_PUBLIC_` equivalents, provide the project's `aa_models` cache when the direct Artificial Analysis API is not configured.
-- A dated three-model benchmark snapshot keeps the educational comparison usable when neither live source is available. The interface identifies the active source and does not invent missing cost-per-task fields.
-- Pricing and benchmark routes validate upstream payloads, enforce request timeouts, and return source, freshness, and fallback metadata with every usable catalog.
-
-## Quality Checks
+```bash
+bun install --frozen-lockfile
+bun run dev
+```
 
 ```bash
 bun run lint
@@ -69,22 +39,16 @@ bun run typecheck
 bun run test
 bun run test:e2e
 bun audit
+bun run build
+bun run preview:cloudflare
 ```
 
-Regenerate the 1200×630 social preview card with `bun run assets:social`.
+The Cloudflare preview serves `out/` with the Pages Functions in `functions/api/`. `bun run assets:social` regenerates the 1200×630 preview card.
 
-## Cloudflare Pages
+## Deploy
 
-- Build command: `bun install --frozen-lockfile && bun run build`
-- Build output directory: `out`
-- Production hostname: `prompt-info.helloworldfirm.com`
-
----
-
-For more info, visit [helloworldfirm.com](https://helloworldfirm.com)
+Cloudflare Pages builds with `bun install --frozen-lockfile && bun run build` and publishes `out` at `prompt-info.helloworldfirm.com`.
 
 ## License
 
-Licensed under the Functional Source License, Version 1.1, MIT Future License.
-This repository is source-available today and converts to MIT two years after
-each version is made available. See [`LICENSE`](./LICENSE).
+Functional Source License 1.1, MIT Future License. Each version converts to MIT two years after it is made available. See [LICENSE](LICENSE).
