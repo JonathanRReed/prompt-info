@@ -396,7 +396,7 @@ export default function TokenEfficiencyPageClient() {
               <div>
                 <h3 className="text-sm font-semibold text-rose-text">{row.name}</h3>
                 <p className="mt-1 text-xs text-rose-muted">{row.provider}</p>
-                <p className="mt-1 font-mono text-[9px]  text-rose-muted">Rates: {row.rateSource}</p>
+                <p className="mt-1 font-mono text-[length:var(--text-xs)] text-rose-muted">Rates: {row.rateSource}</p>
               </div>
               <div className="flex flex-col items-end gap-1">
                 {row.isCheapestPerToken && (
@@ -436,11 +436,11 @@ export default function TokenEfficiencyPageClient() {
 
             <dl className="mt-4 grid grid-cols-2 gap-px bg-rose-highlightMed">
               <div className="bg-rose-base p-3">
-                <dt className="font-mono text-[9px] font-bold  text-rose-muted">AA intelligence</dt>
+                <dt className="font-mono text-[length:var(--text-xs)] font-bold  text-rose-muted">AA intelligence</dt>
                 <dd className="mt-1 font-mono text-sm font-bold text-rose-text tabular-nums">{row.intelligenceIndex ?? 'N/A'}</dd>
               </div>
               <div className="bg-rose-base p-3">
-                <dt className="font-mono text-[9px] font-bold  text-rose-muted">AA cost / task</dt>
+                <dt className="font-mono text-[length:var(--text-xs)] font-bold  text-rose-muted">AA cost / task</dt>
                 <dd className="mt-1 font-mono text-sm font-bold text-rose-text tabular-nums">{formatCost(row.benchmarkCostPerTask)}</dd>
               </div>
             </dl>

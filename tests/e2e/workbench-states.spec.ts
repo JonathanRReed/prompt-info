@@ -74,7 +74,7 @@ test('supports keyboard access to the model browser and evidence disclosures', a
   await modelInput.press('Escape');
   await expect(page.getByRole('listbox')).toBeHidden();
 
-  const disclosure = page.getByText('Exact cost data', { exact: true });
+  const disclosure = page.getByText('Cost estimate detail', { exact: true });
   await disclosure.focus();
   await disclosure.press('Enter');
   await expect(page.getByRole('table').first()).toBeVisible();

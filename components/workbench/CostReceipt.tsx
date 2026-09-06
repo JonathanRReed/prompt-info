@@ -5,6 +5,12 @@ import type { PricingCatalogResponse } from '../../lib/pricingCatalog';
 import type { WorkloadCadence } from '../../lib/workloadMath';
 import { formatUsd } from '../charts/chartFormat';
 
+const FRESHNESS_LABELS: Record<PricingCatalogResponse['freshness'], string> = {
+  live: 'Live rates',
+  cached: 'Cached rates',
+  static: 'Dated snapshot',
+};
+
 export function CostReceipt({
   row,
   recommendation,
@@ -35,7 +41,7 @@ export function CostReceipt({
     <aside className="cost-receipt" aria-labelledby="receipt-heading">
       <div className="receipt-topline">
         <p>Current estimate</p>
-        <span>{catalog?.freshness ?? 'loading'}</span>
+        <span>{catalog ? FRESHNESS_LABELS[catalog.freshness] : 'Loading rates'}</span>
       </div>
       <h2 id="receipt-heading">{row?.model ?? selectedModel ?? 'Pricing unavailable'}</h2>
       <div className="receipt-primary-total">

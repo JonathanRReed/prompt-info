@@ -140,7 +140,18 @@ export default function FormatComparisonPageClient() {
     isFormatTokenizerKey(scenario?.tokenizer) ? scenario.tokenizer : 'o200k_base'
   );
   const [tokenizer, setTokenizer] = useState<TokenizerState>({ status: 'loading' });
+  const [copyStatus, setCopyStatus] = useState<{ key: string; state: 'copied' | 'error' } | null>(null);
   const cards = useMemo(() => buildFormats(prompt), [prompt]);
+
+  async function copyCard(key: string, content: string) {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopyStatus({ key, state: 'copied' });
+      window.setTimeout(() => setCopyStatus(current => (current?.key === key ? null : current)), 1_500);
+    } catch {
+      setCopyStatus({ key, state: 'error' });
+    }
+  }
 
   useEffect(() => {
     if (scenario?.prompt) setPrompt(clampPrompt(scenario.prompt));
@@ -282,6 +293,7 @@ export default function FormatComparisonPageClient() {
           const inputCost = tokens !== undefined && scenario?.inputPerMillion !== null && scenario?.inputPerMillion !== undefined
             ? formatInputCost(tokens, scenario.inputPerMillion)
             : null;
+          const cardCopyState = copyStatus?.key === card.key ? copyStatus.state : null;
 
           return (
             <article key={card.key} className="group flex min-h-[300px] flex-col bg-rose-base transition duration-300 hover:bg-rose-overlay motion-reduce:transition-none">
@@ -291,11 +303,16 @@ export default function FormatComparisonPageClient() {
                   <p className="mt-2 text-sm text-rose-subtle">{card.description}</p>
                 </div>
                 <button
-                  onClick={() => navigator.clipboard.writeText(card.content)}
+                  type="button"
+                  onClick={() => void copyCard(card.key, card.content)}
                   className="min-h-11 border border-rose-highlightMed bg-rose-base px-4 text-xs font-medium text-rose-subtle transition duration-200 hover:border-rose-love hover:bg-rose-love hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none"
-                  aria-label={`Copy ${card.label} snippet`}
+                  aria-label={cardCopyState === 'copied'
+                    ? `${card.label} snippet copied`
+                    : cardCopyState === 'error'
+                      ? `${card.label} snippet could not be copied`
+                      : `Copy ${card.label} snippet`}
                 >
-                  Copy
+                  {cardCopyState === 'copied' ? 'Copied' : cardCopyState === 'error' ? 'Copy failed' : 'Copy'}
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-rose-highlightMed px-4 py-2 text-xs sm:px-5">

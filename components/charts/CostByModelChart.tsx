@@ -83,7 +83,7 @@ export function CostByModelChart({
       )}
 
       <details className="chart-data-table">
-        <summary>Exact cost data</summary>
+        <summary>Cost estimate detail</summary>
         <table>
           <thead><tr><th scope="col">Model</th><th scope="col">{METRIC_LABELS[activeMetric]}</th></tr></thead>
           <tbody>

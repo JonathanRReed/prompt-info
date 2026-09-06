@@ -243,6 +243,7 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
                   id={`${inputId}-option-${index}`}
                   type="button"
                   role="option"
+                  tabIndex={-1}
                   aria-selected={isSelected}
                   onMouseDown={event => event.preventDefault()}
                   onMouseEnter={() => setActiveIndex(index)}

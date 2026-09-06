@@ -98,7 +98,8 @@ export default function HomePageClient() {
   const [monthlyBudget, setMonthlyBudget] = useState(100);
   const [volumeVariancePct, setVolumeVariancePct] = useState(20);
   const [retryRatePct, setRetryRatePct] = useState(5);
-  const [recipeState, setRecipeState] = useState<'idle' | 'exported' | 'imported' | 'error'>('idle');
+  const [recipeState, setRecipeState] = useState<'idle' | 'exported' | 'imported' | 'linked' | 'error'>('idle');
+  const [droppedImportModels, setDroppedImportModels] = useState(0);
   const [linkState, setLinkState] = useState<'idle' | 'copied' | 'error'>('idle');
   const recipeInputRef = useRef<HTMLInputElement>(null);
 
@@ -107,7 +108,12 @@ export default function HomePageClient() {
   useEffect(() => {
     const link = parseScenarioLink(window.location.search);
     if (link.tokenizer && TOKENIZERS.some(option => option.key === link.tokenizer)) setTokenizer(link.tokenizer as TokenizerKey);
-    if (link.promptTokens !== undefined) setPromptTokenOverride(link.promptTokens);
+    // A numeric token count from the link does not match the sample prompt on
+    // screen, so say that the number is in charge until the prompt changes.
+    if (link.promptTokens !== undefined) {
+      setPromptTokenOverride(link.promptTokens);
+      setRecipeState('linked');
+    }
     if (link.outputTokens !== undefined) setOutputTokens(link.outputTokens);
     if (link.turns !== undefined) setTurns(link.turns);
     if (link.sessionMode) setSessionMode(link.sessionMode);
@@ -412,9 +418,11 @@ export default function HomePageClient() {
       workloadRuns,
       workloadCadence,
     });
+    // Put the link in the address bar before the clipboard is touched, so it is
+    // available whether or not the clipboard write is permitted.
+    window.history.replaceState(null, '', link);
     try {
       await navigator.clipboard.writeText(link);
-      window.history.replaceState(null, '', link);
       setLinkState('copied');
     } catch {
       setLinkState('error');
@@ -429,9 +437,11 @@ export default function HomePageClient() {
       if (!recipe || !TOKENIZERS.some(option => option.key === recipe.tokenizer)) throw new Error('Invalid scenario recipe');
       const validModels = recipe.selectedModels.filter(model => availableModels.includes(model));
       if (validModels.length === 0) throw new Error('Scenario models are not in the current catalog');
+      const appliedModels = validModels.slice(0, 3);
+      setDroppedImportModels(recipe.selectedModels.length - appliedModels.length);
       setPromptTokenOverride(recipe.promptTokens);
       setTokenizer(recipe.tokenizer as TokenizerKey);
-      setSelectedModels(validModels.slice(0, 3));
+      setSelectedModels(appliedModels);
       setOutputTokens(recipe.outputTokens);
       setTurns(recipe.turns);
       setSessionMode(recipe.sessionMode);
@@ -543,11 +553,13 @@ export default function HomePageClient() {
             {linkState === 'copied'
               ? 'Link copied. It carries the model set and the numbers, not the prompt.'
               : linkState === 'error'
-                ? 'The link could not be copied. The address bar now holds it.'
+                ? 'The link could not be copied. Try again, or copy it from the address bar after pressing the button.'
                 : recipeState === 'exported'
               ? 'Scenario exported without prompt text.'
               : recipeState === 'imported'
-                ? 'Scenario imported. Numeric prompt tokens are active until the prompt changes.'
+                ? `Scenario imported. Numeric prompt tokens are active until the prompt changes.${droppedImportModels > 0 ? ` ${droppedImportModels} ${droppedImportModels === 1 ? 'model' : 'models'} in the file could not be applied and ${droppedImportModels === 1 ? 'was' : 'were'} dropped.` : ''}`
+              : recipeState === 'linked'
+                ? 'Numeric prompt tokens are active until the prompt changes.'
                 : recipeState === 'error'
                   ? 'That scenario file could not be applied to the current catalog.'
                   : ''}

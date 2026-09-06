@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 const destinations: [string, string, string][] = [
-  ['Cost Calculator', '/', 'Estimate request, session, monthly, and annual AI costs.'],
+  ['Cost calculator', '/', 'Estimate request, session, monthly, and annual AI costs.'],
   ['Format comparison', '/format-comparison/', 'Compare TOON, JSON, YAML, XML, and CSV payload shapes.'],
   ['About Prompt Info', '/about/', 'Product scope, methodology, and references.'],
   ['Privacy policy', '/privacy/', 'Data-boundary notes for prompt handling.'],

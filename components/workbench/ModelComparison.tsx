@@ -44,7 +44,11 @@ export function ModelComparison({
       </div>
 
       <div className="comparison-rows">
-        {selectedModels.map((model, index) => {
+        {selectedModels.length === 0 ? (
+          <p className="comparison-unavailable">
+            {loading ? 'Loading the model catalog.' : 'No models are selected yet.'}
+          </p>
+        ) : selectedModels.map((model, index) => {
           const row = rows.find(candidate => candidate.model === model);
           const entry = pricing?.[model];
           const isRecommended = recommendation?.model === model;
@@ -78,7 +82,7 @@ export function ModelComparison({
                 <span><small>Monthly</small><strong>{formatUsd(row?.monthlyCost)}</strong></span>
                 <span><small>Annual</small><strong>{formatUsd(row?.annualCost)}</strong></span>
               </div>
-              {isRecommended ? <p className="comparison-observation">Lowest measured in this selection: {recommendation.criterion}</p> : null}
+              {isRecommended ? <p className="comparison-observation">Lowest estimated cost in this selection.</p> : null}
               {!row?.isUsable ? <p className="comparison-unavailable">{row?.unavailableReason ?? 'Waiting for pricing data.'}</p> : null}
             </article>
           );

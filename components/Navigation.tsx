@@ -12,9 +12,9 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: '/', label: 'Cost Calculator', shortLabel: 'Calculator', description: 'Estimate request, session, and recurring AI costs' },
-  { href: '/format-comparison/', label: 'Format Comparison', shortLabel: 'Formats', description: 'Compare TOON, JSON, YAML, XML, and CSV' },
-  { href: '/token-efficiency/', label: 'Cost per Task', shortLabel: 'Per task', description: 'Combine token rates with measured output length' },
+  { href: '/', label: 'Cost calculator', shortLabel: 'Calculator', description: 'Estimate request, session, and recurring AI costs' },
+  { href: '/format-comparison/', label: 'Format comparison', shortLabel: 'Formats', description: 'Compare TOON, JSON, YAML, XML, and CSV' },
+  { href: '/token-efficiency/', label: 'Cost per task', shortLabel: 'Per task', description: 'Combine token rates with measured output length' },
   { href: '/about/', label: 'About', shortLabel: 'About', description: 'What this utility does' },
   { href: '/contact/', label: 'Contact', shortLabel: 'Contact', description: 'Contact Hello.World Consulting' },
 ];

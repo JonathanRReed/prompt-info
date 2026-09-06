@@ -89,13 +89,6 @@ input[type='range'] {
   opacity: 0.28;
 }
 
-.glass-card,
-.data-panel {
-  background: var(--color-rose-base);
-  border-color: var(--color-rose-highlightMed);
-  color: var(--color-rose-text);
-}
-
 .glass-select {
   background: var(--color-rose-surface);
   border-color: var(--color-rose-highlightMed);
@@ -107,32 +100,12 @@ input[type='range'] {
   color: var(--color-rose-text);
 }
 
-.card-border-strong {
-  border: 1px solid var(--color-rose-highlightMed);
-}
-
 .macro-heading {
   font-weight: 700;
   line-height: 0.92;
   letter-spacing: -0.03em;
   color: var(--color-rose-text);
   text-wrap: balance;
-}
-
-.inline-scan-image {
-  display: inline-block;
-  width: clamp(5rem, 10vw, 9rem);
-  height: clamp(2rem, 4vw, 3rem);
-  margin-inline: 0.18em;
-  vertical-align: 0.04em;
-  border: 1px solid var(--color-rose-love);
-  background-image:
-    repeating-linear-gradient(90deg, rgba(230, 25, 25, 0.8) 0 2px, transparent 2px 7px),
-    url('https://picsum.photos/seed/prompt-terminal/640/320');
-  background-size: auto, cover;
-  background-position: center;
-  filter: grayscale(1) contrast(1.35) brightness(0.72);
-  mix-blend-mode: screen;
 }
 
 .prompt-hero {
@@ -154,24 +127,6 @@ input[type='range'] {
   opacity: 0.8;
 }
 
-.theme-swatch {
-  display: inline-grid;
-  width: 2.25rem;
-  height: 1rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--color-rose-highlightMed);
-}
-
-.theme-swatch-lg {
-  width: 3rem;
-  height: 1.35rem;
-}
-
-.theme-swatch span {
-  display: block;
-}
-
 .data-label {
   font-family: var(--font-sans);
   font-size: var(--text-xs);
@@ -179,67 +134,6 @@ input[type='range'] {
   letter-spacing: 0;
   text-transform: none;
   color: var(--color-rose-subtle);
-}
-
-.metric-value {
-  display: block;
-  margin-top: 1rem;
-  font-family: var(--font-space-mono), monospace;
-  font-size: clamp(2.5rem, 8vw, 5.4rem);
-  font-weight: 700;
-  line-height: 0.9;
-  letter-spacing: -0.08em;
-  color: var(--color-rose-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.receipt-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background:
-    linear-gradient(135deg, transparent 0 30%, rgba(230, 25, 25, 0.08) 30% 31%, transparent 31% 100%),
-    var(--color-rose-base);
-}
-
-.receipt-card {
-  position: relative;
-  width: min(100%, 26rem);
-  border: 1px solid var(--color-rose-highlightMed);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 9rem),
-    var(--color-rose-surface);
-  padding: 1.35rem;
-  transform: rotate(-2deg);
-  box-shadow: 16px 16px 0 var(--color-rose-love);
-  overflow: visible;
-}
-
-[data-theme='light'] .receipt-card {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent 9rem),
-    var(--color-rose-surface);
-  box-shadow: 16px 16px 0 color-mix(in srgb, var(--color-rose-love) 72%, var(--color-rose-base));
-}
-
-.receipt-card::before,
-.receipt-card::after {
-  content: '';
-  position: absolute;
-  left: -1px;
-  right: -1px;
-  height: 0.7rem;
-  background:
-    radial-gradient(circle at 0.35rem 0.35rem, var(--color-rose-base) 0 0.27rem, transparent 0.28rem) repeat-x;
-  background-size: 0.7rem 0.7rem;
-}
-
-.receipt-card::before {
-  top: -0.35rem;
-}
-
-.receipt-card::after {
-  bottom: -0.35rem;
 }
 
 .receipt-perf {
@@ -338,32 +232,6 @@ input[type='range'] {
   white-space: nowrap;
 }
 
-.register-strip {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  overflow: hidden;
-  border: 1px solid var(--color-rose-highlightMed);
-  background: color-mix(in srgb, var(--color-rose-love) 8%, var(--color-rose-base));
-  padding: 0.65rem 0.75rem;
-  font-family: var(--font-space-mono), monospace;
-  font-size: var(--text-xs);
-  font-weight: 700;
-  color: var(--color-rose-subtle);
-}
-
-.register-strip::after {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 -35%;
-  width: 35%;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-rose-love) 24%, transparent), transparent);
-  opacity: 0;
-  animation: register-scan 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(230ms + (var(--receipt-count, 1) * 64ms));
-}
-
 .receipt-action {
   width: 100%;
   border: 1px solid var(--color-rose-love);
@@ -397,7 +265,6 @@ input[type='range'] {
 }
 
 .receipt-card-sequenced .receipt-row,
-.receipt-card-sequenced .register-strip,
 .receipt-card-sequenced .receipt-total,
 .receipt-card-sequenced .receipt-cost-total,
 .receipt-card-sequenced .receipt-note,
@@ -409,12 +276,6 @@ input[type='range'] {
 
 .receipt-card-sequenced .receipt-row {
   animation-delay: calc(80ms + (var(--receipt-index, 0) * 64ms));
-}
-
-.receipt-card-sequenced .register-strip {
-  animation-name: receipt-register-cycle;
-  animation-duration: 1.55s;
-  animation-delay: calc(170ms + (var(--receipt-count, 1) * 64ms));
 }
 
 .receipt-card-sequenced .receipt-total {
@@ -468,15 +329,10 @@ input[type='range'] {
     overflow-x: clip;
   }
 
-  .receipt-card,
   .receipt-card-final {
     width: min(100%, calc(100vw - 2.25rem));
     padding: 1rem;
     box-shadow: 9px 9px 0 var(--color-rose-love);
-  }
-
-  [data-theme='light'] .receipt-card {
-    box-shadow: 9px 9px 0 color-mix(in srgb, var(--color-rose-love) 72%, var(--color-rose-base));
   }
 
   .receipt-perf {
@@ -495,11 +351,6 @@ input[type='range'] {
 
   .register-price {
     max-width: 8.5rem;
-  }
-
-  .register-strip {
-    flex-wrap: wrap;
-    font-size: var(--text-xs);
   }
 
   .receipt-total {
@@ -544,23 +395,6 @@ input[type='range'] {
   }
 }
 
-@keyframes register-scan {
-  0% {
-    opacity: 0;
-    transform: translateX(0);
-  }
-  14% {
-    opacity: 1;
-  }
-  78% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(390%);
-  }
-}
-
 @keyframes receipt-pop-in {
   0% {
     opacity: 0;
@@ -573,45 +407,6 @@ input[type='range'] {
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes receipt-register-cycle {
-  0% {
-    max-height: 0;
-    margin-top: 0;
-    opacity: 0;
-    padding-bottom: 0;
-    padding-top: 0;
-    transform: translateY(0.65rem) scale(0.985);
-    border-color: transparent;
-  }
-  16% {
-    max-height: 4rem;
-    margin-top: 1.25rem;
-    opacity: 1;
-    padding-bottom: 0.65rem;
-    padding-top: 0.65rem;
-    transform: translateY(0) scale(1);
-    border-color: var(--color-rose-highlightMed);
-  }
-  72% {
-    max-height: 4rem;
-    margin-top: 1.25rem;
-    opacity: 1;
-    padding-bottom: 0.65rem;
-    padding-top: 0.65rem;
-    transform: translateY(0) scale(1);
-    border-color: var(--color-rose-highlightMed);
-  }
-  100% {
-    max-height: 0;
-    margin-top: 0;
-    opacity: 0;
-    padding-bottom: 0;
-    padding-top: 0;
-    transform: translateY(-0.35rem) scale(0.985);
-    border-color: transparent;
   }
 }
 
@@ -632,17 +427,12 @@ input[type='range'] {
 
 @media (prefers-reduced-motion: reduce) {
   .receipt-card-sequenced .receipt-row,
-  .receipt-card-sequenced .register-strip,
   .receipt-card-sequenced .receipt-total,
   .receipt-card-sequenced .receipt-cost-total,
   .receipt-card-sequenced .receipt-note,
   .receipt-card-sequenced .receipt-action-wrap {
     opacity: 1;
     transform: none;
-    animation: none;
-  }
-
-  .register-strip::after {
     animation: none;
   }
 }
@@ -779,7 +569,11 @@ input[type='range'] {
 .scenario-recipe-actions button:focus-visible {
   border-color: var(--signal-text);
   color: var(--signal-text);
-  outline: none;
+}
+
+.scenario-recipe-actions button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .scenario-recipe-actions button:disabled {
@@ -1002,7 +796,7 @@ input[type='range'] {
 .prompt-actions button:hover,
 .comparison-add:hover:not(:disabled),
 .comparison-remove:hover,
-.receipt-actions button:hover,
+.receipt-actions button:not(:first-child):hover:not(:disabled),
 .lab-links a:hover {
   border-color: var(--signal-text);
   color: var(--color-rose-text);
@@ -1027,7 +821,7 @@ input[type='range'] {
   white-space: nowrap;
 }
 
-.scenario-control-grid label {
+.scenario-control-cell {
   display: grid;
   align-content: start;
   gap: 0.55rem;
@@ -1166,9 +960,18 @@ input[type='range'] {
   background: var(--color-rose-highlightMed);
 }
 
-.receipt-actions button:first-child {
+/* The filled primary keeps its own ink in every state, so the shared hover
+   color never lands on the red fill. */
+.receipt-actions button:first-child,
+.receipt-actions button:first-child:hover,
+.receipt-actions button:first-child:focus-visible {
   background: var(--color-rose-love);
-  color: #fff;
+  color: var(--signal-ink);
+}
+
+.receipt-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .model-comparison {
@@ -1329,11 +1132,19 @@ input[type='range'] {
 }
 
 .chart-metric-picker button:hover,
-.chart-metric-picker button:focus-visible,
 .chart-metric-picker button.is-active {
   background: var(--color-rose-love);
-  color: #fff;
-  outline: none;
+  color: var(--signal-ink);
+}
+
+.chart-metric-picker button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The selected button keeps a marker so focus alone never reads as selected. */
+.chart-metric-picker button.is-active {
+  box-shadow: inset 0 -3px 0 var(--signal-ink);
 }
 
 .format-overview {
@@ -1969,7 +1780,7 @@ input[type='range'] {
     grid-template-columns: 1fr;
   }
 
-  .scenario-control-grid label,
+  .scenario-control-cell,
   .scenario-control-grid input,
   .scenario-control-grid select,
   .prompt-actions button,
@@ -2027,47 +1838,6 @@ input[type='range'] {
   }
 }
 
-.flow-step {
-  position: relative;
-  min-height: 13rem;
-  overflow: hidden;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--color-rose-love) 12%, transparent), transparent 42%),
-    var(--color-rose-base);
-}
-
-.flow-step::before {
-  content: attr(data-step);
-  position: absolute;
-  right: 1rem;
-  bottom: -0.35rem;
-  font-family: var(--font-space-mono), monospace;
-  font-size: clamp(3.8rem, 10vw, 7rem);
-  font-weight: 700;
-  line-height: 1;
-  color: color-mix(in srgb, var(--color-rose-text) 11%, transparent);
-  letter-spacing: -0.08em;
-}
-
-.stage-tag {
-  display: inline-flex;
-  min-height: 2rem;
-  align-items: center;
-  border: 1px solid var(--color-rose-highlightMed);
-  background: var(--color-rose-surface);
-  padding: 0.25rem 0.55rem;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--color-rose-subtle);
-}
-
-.stage-tag + .data-label,
-.stage-tag + label.data-label {
-  display: block;
-  margin-top: 1rem;
-}
-
-.action-primary,
 .action-secondary {
   display: inline-flex;
   min-height: 48px;
@@ -2080,20 +1850,9 @@ input[type='range'] {
   transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
 }
 
-.action-primary {
-  border-color: var(--signal-text);
-  background: var(--color-rose-love);
-  color: #ffffff;
-}
-
 .action-secondary {
   background: var(--color-rose-base);
   color: var(--color-rose-text);
-}
-
-.action-primary:hover {
-  background: var(--signal-hover);
-  border-color: var(--signal-hover);
 }
 
 .action-secondary:hover {
@@ -2101,7 +1860,6 @@ input[type='range'] {
   border-color: var(--ink-2);
 }
 
-.action-primary:focus-visible,
 .action-secondary:focus-visible,
 button:focus-visible,
 a:focus-visible,
@@ -2136,14 +1894,6 @@ textarea:focus-visible {
   100% { transform: translateY(100%); }
 }
 
-.data-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-}
-
 @media (max-width: 640px) {
   html {
     font-size: 16px;
@@ -2153,13 +1903,6 @@ textarea:focus-visible {
   select,
   textarea {
     font-size: 16px !important;
-  }
-}
-
-@media (max-width: 1024px) {
-  .receipt-card {
-    transform: none;
-    box-shadow: 10px 10px 0 var(--color-rose-love);
   }
 }
 

@@ -35,7 +35,7 @@ test('model comparison supports two or three credible priced models', async ({ p
   await expect(rows).toHaveCount(2);
   await page.getByRole('button', { name: 'Add comparison model' }).click();
   await expect(rows).toHaveCount(3);
-  await expect(page.locator('.comparison-observation').getByText(/Lowest .* cost among selected models/)).toBeVisible();
+  await expect(page.locator('.comparison-observation').getByText(/Lowest estimated cost in this selection/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Cost by model' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Billable work' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Cost by turn' })).toBeVisible();
@@ -113,6 +113,7 @@ test('session chart follows the latest turn until the user inspects a point', as
   await page.goto('/');
 
   await page.getByLabel(/Turns per run/).fill('12');
+  await page.getByLabel(/Turns per run/).blur();
   const selectedDetail = page.locator('.session-selected-detail');
   await expect(selectedDetail).toContainText('Selected turn');
   await expect(selectedDetail.locator('strong').first()).toHaveText('12');
@@ -128,8 +129,10 @@ test('cost workbench scales one AI session into a recurring workload', async ({ 
 
   await page.getByRole('textbox', { name: 'Prompt' }).fill('Summarize this support ticket and draft a reply.');
   await page.getByLabel(/Turns per run/).fill('3');
+  await page.getByLabel(/Turns per run/).blur();
   await page.getByLabel(/Session behavior/).selectOption('scenario');
   await page.getByLabel(/Runs per period/).fill('40');
+  await page.getByLabel(/Runs per period/).blur();
   await page.getByLabel(/Workload cadence/).selectOption('week');
 
   await expect(page.locator('.receipt-total-grid').getByText('Monthly', { exact: true })).toBeVisible();
@@ -199,6 +202,7 @@ test('token efficiency lab can reuse the active planner workload', async ({ page
   await page.goto('/');
   await page.getByRole('textbox', { name: 'Prompt' }).fill('Audit this pull request for regressions.');
   await page.getByLabel('Runs per period').fill('25');
+  await page.getByLabel('Runs per period').blur();
   await page.getByLabel('Workload cadence').selectOption('month');
   await page.getByRole('link', { name: 'Compare cost per task' }).click();
 
@@ -249,5 +253,5 @@ test('unknown routes return a noindex 404 with recovery navigation', async ({ pa
   await expect(robotsMeta).toHaveCount(1);
   await expect(robotsMeta).toHaveAttribute('content', /noindex/);
   await expect(page.getByRole('heading', { level: 1, name: 'That page is not here.' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Cost Calculator/ }).last()).toBeVisible();
+  await expect(page.getByRole('link', { name: /Cost calculator/ }).last()).toBeVisible();
 });

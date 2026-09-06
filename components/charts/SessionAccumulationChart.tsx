@@ -140,7 +140,7 @@ export function SessionAccumulationChart({
       )}
 
       <details className="chart-data-table">
-        <summary>Exact turn data</summary>
+        <summary>Turn estimate detail</summary>
         <table>
           <thead><tr><th scope="col">Turn</th><th scope="col">Added this turn</th><th scope="col">Cumulative cost</th></tr></thead>
           <tbody>

@@ -47,7 +47,7 @@ export function TokenCompositionChart({ segments }: { segments: TokenComposition
       )}
 
       <details className="chart-data-table">
-        <summary>Exact token data</summary>
+        <summary>Token count detail</summary>
         <table>
           <thead><tr><th scope="col">Category</th><th scope="col">Token equivalents</th><th scope="col">Share</th></tr></thead>
           <tbody>

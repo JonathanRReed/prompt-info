@@ -1,10 +1,79 @@
 'use client';
 
+import { useEffect, useId, useState } from 'react';
 import PromptInput from '../PromptInput';
 import type { SessionRunMode } from '../../lib/sessionMath';
 import type { WorkloadCadence } from '../../lib/workloadMath';
 
 export type TokenizerChoice = { key: string; label: string; description: string };
+
+// The committed value is a clamped number, but while the field has focus the
+// raw text is authoritative. Clearing the box leaves it empty instead of
+// snapping to the minimum, and a partial entry such as "-" is not treated as a
+// value until the field is left or Enter is pressed.
+function NumericAssumption({
+  label,
+  help,
+  value,
+  min,
+  max,
+  step,
+  onCommit,
+}: {
+  label: string;
+  help: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onCommit: (value: number) => void;
+}) {
+  const fieldId = useId();
+  const helpId = `${fieldId}-help`;
+  const [draft, setDraft] = useState(() => String(value));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(String(value));
+  }, [editing, value]);
+
+  function commit() {
+    const parsed = Number(draft);
+    const next = draft.trim() === '' || !Number.isFinite(parsed)
+      ? value
+      : Math.min(max, Math.max(min, Math.floor(parsed)));
+    setDraft(String(next));
+    onCommit(next);
+  }
+
+  return (
+    <div className="scenario-control-cell">
+      <label htmlFor={fieldId}><span>{label}</span></label>
+      <input
+        id={fieldId}
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        step={step}
+        value={draft}
+        aria-describedby={helpId}
+        onFocus={() => setEditing(true)}
+        onChange={event => setDraft(event.target.value)}
+        onBlur={() => {
+          commit();
+          setEditing(false);
+        }}
+        onKeyDown={event => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          commit();
+        }}
+      />
+      <small id={helpId}>{help}</small>
+    </div>
+  );
+}
 
 export function ScenarioInputs({
   prompt,
@@ -49,6 +118,11 @@ export function ScenarioInputs({
   workloadCadence: WorkloadCadence;
   onWorkloadCadenceChange: (value: WorkloadCadence) => void;
 }) {
+  const fieldPrefix = useId();
+  const tokenizerId = `${fieldPrefix}-tokenizer`;
+  const sessionModeId = `${fieldPrefix}-session-mode`;
+  const cadenceId = `${fieldPrefix}-cadence`;
+
   return (
     <div className="scenario-inputs">
       <div className="scenario-heading">
@@ -80,70 +154,73 @@ export function ScenarioInputs({
 
       <fieldset className="scenario-control-grid">
         <legend>Planning assumptions</legend>
-        <label>
-          <span>Tokenizer</span>
-          <select value={tokenizer} onChange={event => onTokenizerChange(event.target.value)}>
+        <div className="scenario-control-cell">
+          <label htmlFor={tokenizerId}><span>Tokenizer</span></label>
+          <select
+            id={tokenizerId}
+            aria-describedby={`${tokenizerId}-help`}
+            value={tokenizer}
+            onChange={event => onTokenizerChange(event.target.value)}
+          >
             {tokenizers.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
           </select>
-          <small>{tokenizers.find(option => option.key === tokenizer)?.description}</small>
-        </label>
-        <label>
-          <span>Output tokens per turn</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={64}
-            max={300_000}
-            step={64}
-            value={outputTokens}
-            onChange={event => onOutputTokensChange(Number(event.target.value))}
-          />
-          <small>Use the maximum response size you are willing to pay for.</small>
-        </label>
-        <label>
-          <span>Turns per run</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={200}
-            step={1}
-            value={turns}
-            onChange={event => onTurnsChange(Number(event.target.value))}
-          />
-          <small>One request or a multi-turn agent session.</small>
-        </label>
-        <label>
-          <span>Session behavior</span>
-          <select value={sessionMode} onChange={event => onSessionModeChange(event.target.value as SessionRunMode)}>
+          <small id={`${tokenizerId}-help`}>{tokenizers.find(option => option.key === tokenizer)?.description}</small>
+        </div>
+        <NumericAssumption
+          label="Output tokens per turn"
+          help="Use the maximum response size you are willing to pay for."
+          value={outputTokens}
+          min={64}
+          max={300_000}
+          step={64}
+          onCommit={onOutputTokensChange}
+        />
+        <NumericAssumption
+          label="Turns per run"
+          help="One request or a multi-turn agent session."
+          value={turns}
+          min={1}
+          max={200}
+          step={1}
+          onCommit={onTurnsChange}
+        />
+        <div className="scenario-control-cell">
+          <label htmlFor={sessionModeId}><span>Session behavior</span></label>
+          <select
+            id={sessionModeId}
+            aria-describedby={`${sessionModeId}-help`}
+            value={sessionMode}
+            onChange={event => onSessionModeChange(event.target.value as SessionRunMode)}
+          >
             <option value="baseline">Stateless requests</option>
             <option value="scenario">Growing conversation</option>
           </select>
-          <small>{sessionMode === 'baseline' ? 'Stateless mode prices each turn independently.' : 'Conversation mode includes history re-sends, cache pricing, and compaction.'}</small>
-        </label>
-        <label>
-          <span>Runs per period</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={1_000_000}
-            step={1}
-            value={workloadRuns}
-            onChange={event => onWorkloadRunsChange(Number(event.target.value))}
-          />
-          <small>Scale the complete run, not a single turn.</small>
-        </label>
-        <label>
-          <span>Workload cadence</span>
-          <select value={workloadCadence} onChange={event => onWorkloadCadenceChange(event.target.value as WorkloadCadence)}>
+          <small id={`${sessionModeId}-help`}>{sessionMode === 'baseline' ? 'Stateless mode prices each turn independently.' : 'Conversation mode includes history re-sends, cache pricing, and compaction.'}</small>
+        </div>
+        <NumericAssumption
+          label="Runs per period"
+          help="Scale the complete run, not a single turn."
+          value={workloadRuns}
+          min={1}
+          max={1_000_000}
+          step={1}
+          onCommit={onWorkloadRunsChange}
+        />
+        <div className="scenario-control-cell">
+          <label htmlFor={cadenceId}><span>Workload cadence</span></label>
+          <select
+            id={cadenceId}
+            aria-describedby={`${cadenceId}-help`}
+            value={workloadCadence}
+            onChange={event => onWorkloadCadenceChange(event.target.value as WorkloadCadence)}
+          >
             <option value="once">One-time batch</option>
             <option value="day">Every day</option>
             <option value="week">Every week</option>
             <option value="month">Every month</option>
           </select>
-          <small>Monthly and annual totals appear for recurring work.</small>
-        </label>
+          <small id={`${cadenceId}-help`}>Monthly and annual totals appear for recurring work.</small>
+        </div>
       </fieldset>
     </div>
   );
