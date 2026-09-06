@@ -3,6 +3,7 @@
 import type { CostComparisonRow, CostRecommendation } from '../../lib/costComparison';
 import type { PricingCatalogResponse } from '../../lib/pricingCatalog';
 import type { WorkloadCadence } from '../../lib/workloadMath';
+import { Badge } from '@/components/ui/badge';
 import { formatUsd } from '../charts/chartFormat';
 
 const FRESHNESS_LABELS: Record<PricingCatalogResponse['freshness'], string> = {
@@ -41,7 +42,9 @@ export function CostReceipt({
     <aside className="cost-receipt" aria-labelledby="receipt-heading">
       <div className="receipt-topline">
         <p>Current estimate</p>
-        <span>{catalog ? FRESHNESS_LABELS[catalog.freshness] : 'Loading rates'}</span>
+        <Badge variant={catalog?.freshness === 'static' ? 'secondary' : 'outline'}>
+          {catalog ? FRESHNESS_LABELS[catalog.freshness] : 'Loading rates'}
+        </Badge>
       </div>
       <h2 id="receipt-heading">{row?.model ?? selectedModel ?? 'Pricing unavailable'}</h2>
       <div className="receipt-primary-total">

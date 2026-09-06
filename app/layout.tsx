@@ -8,7 +8,6 @@ import Navigation from '../components/Navigation'
 import { ScenarioProvider } from '../components/ScenarioProvider'
 import { OG_BASE, TWITTER_BASE } from '../lib/seo'
 import { AUTHOR_PERSON, AUTHOR_REF } from '../lib/author'
-
 export const metadata: Metadata = {
   metadataBase: new URL('https://prompt-info.helloworldfirm.com'),
   title: {
