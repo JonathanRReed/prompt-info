@@ -1,4 +1,3 @@
-@config "../tailwind.config.js";
 @import "tailwindcss";
 @import "./fonts.css";
 @import "./ecosystem.css";
@@ -1977,6 +1976,30 @@ textarea:focus-visible {
   ---break---
 */
 @theme inline {
+  /*
+    Moved here from tailwind.config.js when this project went v4-native.
+    The rose-* names are the legacy palette the existing markup still uses;
+    each one already aliases an ecosystem contract token in :root above, so
+    both themes keep flowing through untouched.
+  */
+  --color-signal-text: var(--signal-text);
+  --color-rose-base: var(--surface-0);
+  --color-rose-surface: var(--surface-1);
+  --color-rose-overlay: var(--surface-2);
+  --color-rose-muted: var(--ink-2);
+  --color-rose-subtle: var(--ink-1);
+  --color-rose-text: var(--ink-0);
+  --color-rose-love: var(--signal);
+  --color-rose-gold: var(--ink-1);
+  --color-rose-rose: var(--ink-1);
+  --color-rose-pine: var(--ink-2);
+  --color-rose-foam: var(--ink-0);
+  --color-rose-iris: var(--signal);
+  --color-rose-highlightLow: var(--surface-1);
+  --color-rose-highlightMed: var(--line-1);
+  --color-rose-highlightHigh: var(--ink-3);
+  --font-mono: var(--font-mono);
+
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
