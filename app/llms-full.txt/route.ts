@@ -41,7 +41,7 @@ export async function GET() {
     `Cost per task: ${SITE}/token-efficiency/`,
     'A link of the form /?models=<id,id>&tokens=<n>&out=<n>&turns=<n>&mode=baseline|scenario&runs=<n>&cadence=once|day|week|month opens the calculator with those assumptions and no prompt text.',
     '',
-    'Usage policy: search indexing allowed, AI answers with a link back allowed, AI training not allowed. Matches the content signals in /robots.txt.',
+    'Usage policy: search indexing and AI answers with a link back are allowed. Google-Extended may use the site for Gemini grounding and training; other AI training is not allowed. See /robots.txt.',
     '',
     `## Models (${names.length})`,
     '',
