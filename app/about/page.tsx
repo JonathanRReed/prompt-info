@@ -39,7 +39,7 @@ const pageJsonLd = {
 };
 
 export const metadata: Metadata = {
-  title: 'About Prompt Info',
+  title: 'About',
   description:
     'How Prompt Info measures prompt tokens, estimates model costs, and compares payload formats before a request reaches a provider.',
   alternates: {
