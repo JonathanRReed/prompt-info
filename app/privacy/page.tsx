@@ -18,7 +18,7 @@ const pageJsonLd = {
 };
 
 export const metadata: Metadata = {
-  title: 'Prompt Info Privacy Policy',
+  title: 'Privacy Policy',
   description:
     'Privacy notes for Prompt Info, covering prompt handling, browser processing, model pricing data, analytics, and support requests.',
   alternates: {

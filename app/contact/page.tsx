@@ -18,7 +18,7 @@ const pageJsonLd = {
 };
 
 export const metadata: Metadata = {
-  title: 'Contact Prompt Info',
+  title: 'Contact',
   description:
     'Contact Hello.World Consulting about Prompt Info, token counting, prompt cost planning, bug reports, and pricing corrections.',
   alternates: {
