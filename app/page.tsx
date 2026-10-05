@@ -5,11 +5,11 @@ import HomePageClient from './page-client';
 
 const pageJsonLd = {
   '@context': 'https://schema.org',
+  '@id': 'https://prompt-info.helloworldfirm.com/#webpage',
   '@type': 'WebPage',
   name: 'AI Workload Cost Calculator | Prompt Info',
   url: 'https://prompt-info.helloworldfirm.com/',
   isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
-  mainEntity: { '@id': 'https://prompt-info.helloworldfirm.com/#app' },
   datePublished: '2026-04-21',
   dateModified: '2026-09-05',
   author: AUTHOR_REF,

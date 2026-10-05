@@ -5,10 +5,11 @@ import FormatComparisonPageClient from './page-client';
 
 const pageJsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'TechArticle',
+  '@id': 'https://prompt-info.helloworldfirm.com/format-comparison/#webpage',
+  '@type': 'WebPage',
   name: 'Prompt Format Comparison Tool',
-  headline: 'Prompt Format Comparison Tool',
   url: 'https://prompt-info.helloworldfirm.com/format-comparison/',
+  isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
   datePublished: '2026-04-21',
   dateModified: '2026-08-29',
   author: AUTHOR_REF,

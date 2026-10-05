@@ -88,9 +88,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       url: `${siteUrl}/prompt_info_assets/prompt-info-logo-normal-1200w.png`,
     },
   }
-  // One graph on every page: the site, the calculator as a WebApplication (no
-  // ratings, no invented review counts), the shared author entity, and the
-  // publisher. Pages add their own WebPage node and reference these by @id.
+  // Shared site, author, and publisher entities. Each route describes its own
+  // page. Software-app rich results require a genuine rating or review; this
+  // site has neither, so do not emit SoftwareApplication/WebApplication markup.
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -103,28 +103,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         author: AUTHOR_REF,
         publisher: { '@id': publisher['@id'] },
         inLanguage: 'en-US',
-      },
-      {
-        '@type': 'WebApplication',
-        '@id': `${siteUrl}/#app`,
-        name: 'Prompt Info cost calculator',
-        url: `${siteUrl}/`,
-        applicationCategory: 'DeveloperApplication',
-        operatingSystem: 'Any',
-        browserRequirements: 'Requires JavaScript. Prompt text is tokenized in the browser and never uploaded.',
-        isAccessibleForFree: true,
-        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-        featureList: [
-          'Token count for a prompt with a chosen tokenizer',
-          'Per-request, per-session, monthly, and annual cost for up to three models',
-          'Recurring workload planning with volume variance and retry allowance',
-          'Shareable estimate links and scenario JSON without prompt text',
-          'Format comparison for JSON, YAML, XML, CSV, and TOON',
-          'Cost per completed task across models',
-        ],
-        author: AUTHOR_REF,
-        publisher: { '@id': publisher['@id'] },
-        isPartOf: { '@id': `${siteUrl}/#website` },
       },
       AUTHOR_PERSON,
       publisher,

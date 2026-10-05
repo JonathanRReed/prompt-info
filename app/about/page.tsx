@@ -25,9 +25,11 @@ const links = [
 
 const pageJsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'WebPage',
+  '@id': 'https://prompt-info.helloworldfirm.com/about/#webpage',
+  '@type': 'AboutPage',
   name: 'About Prompt Info',
   url: 'https://prompt-info.helloworldfirm.com/about/',
+  isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
   datePublished: '2026-04-21',
   dateModified: '2026-09-01',
   author: AUTHOR_REF,
