@@ -4,9 +4,11 @@ import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 
 const pageJsonLd = {
   '@context': 'https://schema.org',
+  '@id': 'https://prompt-info.helloworldfirm.com/privacy/#webpage',
   '@type': 'WebPage',
   name: 'Prompt Info Privacy Policy',
   url: 'https://prompt-info.helloworldfirm.com/privacy/',
+  isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
   datePublished: '2026-04-21',
   dateModified: '2026-06-19',
   author: AUTHOR_REF,

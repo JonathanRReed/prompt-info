@@ -14,9 +14,11 @@ const sources = [
 
 const pageJsonLd = {
   '@context': 'https://schema.org',
+  '@id': 'https://prompt-info.helloworldfirm.com/token-efficiency/#webpage',
   '@type': 'WebPage',
   name: 'LLM Token Efficiency Comparison',
   url: 'https://prompt-info.helloworldfirm.com/token-efficiency/',
+  isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
   datePublished: '2026-08-29',
   dateModified: '2026-08-29',
   author: AUTHOR_REF,
