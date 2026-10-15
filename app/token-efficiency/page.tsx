@@ -20,7 +20,7 @@ const pageJsonLd = {
   url: 'https://prompt-info.helloworldfirm.com/token-efficiency/',
   isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
   datePublished: '2026-08-29',
-  dateModified: '2026-08-29',
+  dateModified: '2026-10-15',
   author: AUTHOR_REF,
   publisher: {
     '@type': 'Organization',
@@ -60,13 +60,13 @@ export default function TokenEfficiencyPage() {
     <main id="main-content" className="w-full max-w-full overflow-x-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
 
-      <section className="mx-auto flex min-h-[54dvh] w-full max-w-[1500px] border-b border-rose-highlightMed">
-        <div className="flex w-full flex-col justify-end px-4 pb-12 pt-16 sm:px-6 md:px-12 md:pb-16">
+      <section className="mx-auto flex w-full max-w-[1500px] border-b border-rose-highlightMed">
+        <div className="flex w-full flex-col justify-end px-4 py-8 sm:px-6 md:px-12 md:py-10">
           <p className="data-label text-signal-text">Token efficiency</p>
-          <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
+          <h1 className="macro-heading mt-3 max-w-6xl text-[clamp(2.2rem,4vw,4rem)]">
             Token price is only half the cost.
           </h1>
-          <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
+          <p className="mt-4 max-w-3xl text-base leading-7 text-rose-subtle sm:text-lg">
             Cost per task combines the input, the output rate, and how many output tokens a model uses for your work.
             A lower token price can still produce a higher total when the response is longer.
           </p>
@@ -76,8 +76,12 @@ export default function TokenEfficiencyPage() {
         </div>
       </section>
 
+      <TokenEfficiencyPageClient />
+
       <section className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-12 sm:px-6 md:px-12 md:py-16">
-        <p className="data-label">Dated reference snapshot</p>
+        <details>
+        <summary className="cursor-pointer text-lg font-semibold text-rose-text">Worked example and historical reference data</summary>
+        <p className="data-label mt-6">Dated reference snapshot</p>
         <h2 className="mt-4 max-w-4xl text-[clamp(2.2rem,5vw,4.6rem)] font-bold leading-[0.95] tracking-tight text-rose-text">
           Output length can change the price order.
         </h2>
@@ -116,12 +120,12 @@ export default function TokenEfficiencyPage() {
         </div>
 
         <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-muted">
-          The live comparison below is editable. Replace the example models and token counts with measurements from
+          The comparison above is editable. Replace the example models and token counts with measurements from
           your own task before using the result for planning.
         </p>
+        </details>
       </section>
 
-      <TokenEfficiencyPageClient />
 
       <section className="mx-auto grid w-full max-w-[1500px] gap-px bg-rose-highlightMed px-px pb-px md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <article className="bg-rose-base p-5 sm:p-8 md:p-10">
@@ -150,8 +154,7 @@ export default function TokenEfficiencyPage() {
             ))}
           </div>
           <p className="mt-5 text-sm leading-6 text-rose-muted">
-            Retrieved {EFFICIENCY_REFERENCE_DATE}. Benchmark scores, token counts, and prices move; treat every number
-            on this page as a dated snapshot.
+            Retrieved {EFFICIENCY_REFERENCE_DATE}. These sources support the historical example. The editable comparison labels its own data source and observation dates.
           </p>
         </article>
       </section>

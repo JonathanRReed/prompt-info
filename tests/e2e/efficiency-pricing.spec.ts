@@ -20,7 +20,8 @@ test('missing model rates stay uncalculated and free rates remain usable', async
   const card = page.locator('#efficiency-lab article').first();
   const select = page.getByLabel('Comparison model 1');
   await expect(select).toBeEnabled();
-  await select.selectOption('partial');
+  await select.fill('Partial price');
+  await page.getByRole('option', { name: /Partial price model/ }).click();
   await expect(card.getByRole('heading', { name: 'Partial price model' })).toBeVisible();
   await expect(card.getByLabel('Input $ / M tokens')).toHaveValue('');
   await expect(card.getByLabel('Output $ / M tokens')).toHaveValue('3');
@@ -28,7 +29,8 @@ test('missing model rates stay uncalculated and free rates remain usable', async
   await expect(card.locator('output').first()).toHaveText('N/A');
   await card.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `test-results/efficiency-missing-price-${test.info().project.name}.png` });
-  await select.selectOption('free');
+  await select.fill('Free price');
+  await page.getByRole('option', { name: /Free price model/ }).click();
   await expect(card.getByLabel('Input $ / M tokens')).toHaveValue('0');
   await expect(card.locator('output').first()).toHaveText('$0.00');
   await card.getByLabel('Input $ / M tokens').fill('');

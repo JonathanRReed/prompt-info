@@ -69,3 +69,16 @@ test('findRequestedModel resolves an OpenRouter slug or a normalized name', () =
   expect(findRequestedModel('nobody/nothing', pricing)).toBeNull();
   expect(findRequestedModel(null, pricing)).toBeNull();
 });
+
+test('defaults move to newer base families without accidentally choosing a Pro suffix', () => {
+  const models = ['OpenAI: GPT-5.6 Sol Pro', 'OpenAI: GPT-6 Sol', 'OpenAI: GPT-6.1 Sol', 'Anthropic: Claude Sonnet 5', 'Anthropic: Claude Sonnet 5.5'];
+  const prices = Object.fromEntries(models.map(model => [model, { pricing: { input: 0.001, output: 0.002 }, co2eFactor: 0 }]));
+  expect(chooseDefaultModels(models, prices)).toEqual(['OpenAI: GPT-6.1 Sol', 'Anthropic: Claude Sonnet 5.5']);
+  expect(chooseDefaultModel(models)).toBe('OpenAI: GPT-6.1 Sol');
+});
+
+test('natural version order handles two-digit generations and keeps provider diversity', () => {
+  const models = ['OpenAI: GPT-9 Sol', 'OpenAI: GPT-10 Sol', 'Anthropic: Claude Sonnet 9', 'Anthropic: Claude Sonnet 10', 'Google: Gemini 10 Flash'];
+  const prices = Object.fromEntries(models.map(model => [model, { pricing: { input: 0.001, output: 0.002 }, co2eFactor: 0 }]));
+  expect(chooseDefaultModels(models, prices, 3)).toEqual(['OpenAI: GPT-10 Sol', 'Anthropic: Claude Sonnet 10', 'Google: Gemini 10 Flash']);
+});

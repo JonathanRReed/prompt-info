@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import ModelSelect from '../../components/ModelSelect';
 import { usePromptScenario } from '../../components/ScenarioProvider';
 import { catalogModelFields, plannerModelFields, rateOrNull } from '../../lib/efficiencyModelRates';
 import {
@@ -281,7 +282,7 @@ export default function TokenEfficiencyPageClient() {
           <p className="mt-2 text-xs leading-5 text-rose-muted">
             Source: {catalogError ? 'unavailable, editable presets retained' : sourceLabel(catalog?.source)}.
             {catalog?.intelligenceIndexVersion ? ` Intelligence Index v${catalog.intelligenceIndexVersion}.` : ''}
-            {catalog?.retrievedAt ? ` ${catalog.freshness === 'static' ? 'Snapshot dated' : 'Checked'} ${new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
+            {catalog?.retrievedAt ? ` ${catalog.freshness === 'static' ? 'Snapshot dated' : catalog.freshness === 'cached' ? 'Oldest model observation' : 'Checked'} ${new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
             {latestObservation ? ` Latest model observation ${latestObservation}.` : ''}
           </p>
           {catalog && (
@@ -416,18 +417,15 @@ export default function TokenEfficiencyPageClient() {
               <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-catalog-model`}>
                 Comparison model {index + 1}
               </label>
-              <select
+              <ModelSelect
                 id={`${row.key}-catalog-model`}
-                value={row.aaModelId ?? ''}
-                onChange={event => selectCatalogModel(row.key, event.target.value)}
-                disabled={catalogModels.length === 0}
-                className="glass-select mt-1 min-h-11 w-full border px-3 font-mono text-xs font-bold text-rose-text focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">{catalogModels.length ? 'Choose from catalog' : catalog || catalogError ? 'Catalog unavailable' : 'Catalog loading'}</option>
-                {catalogModels.map(model => (
-                  <option key={model.id} value={model.id}>{model.displayName}</option>
-                ))}
-              </select>
+                models={catalogModels.map(model => model.id)}
+                modelLabels={Object.fromEntries(catalogModels.map(model => [model.id, model.displayName]))}
+                value={row.aaModelId ?? undefined}
+                loading={!catalog && !catalogError}
+                autoSelect={false}
+                onChange={id => selectCatalogModel(row.key, id)}
+              />
             </div>
 
             {(row.inputPerMillion === null || row.outputPerMillion === null) && (
