@@ -79,7 +79,7 @@ test('custom thinking bounds remain effective at zero size variance', async ({ p
   await page.getByLabel('High thinking scenario per call', { exact: true }).fill('3000');
   await expect(page.getByTestId('agent-run-range')).toHaveText(`${formatUsd(.252)} – ${formatUsd(.412)}`);
   await page.getByLabel('Low thinking scenario per call', { exact: true }).fill('5000');
-  await expect(page.getByRole('alert')).toContainText('low ≤ base ≤ high');
+  await expect(page.getByRole('main').getByRole('alert')).toContainText('low ≤ base ≤ high');
   await expect(page.getByTestId('agent-run-total')).toHaveText('Unavailable');
 });
 test('retry budgets repeat the workload and display an unenforced-budget warning', async ({ page }) => {
@@ -100,4 +100,15 @@ test('effort selection uses published choices and explicitly editable example ra
   await expect(page.getByLabel('High thinking scenario per call', { exact: true })).toHaveValue('20000');
   await expect(page.getByText(/illustrative, editable token scenarios/)).toBeVisible();
   await expect(page.locator('#agent-effort option')).toHaveCount(3);
+});
+
+test('opening a narrow-screen model search brings results into view', async ({ page }) => {
+  await page.goto('/agent-planner/');
+  await page.getByRole('combobox', { name: 'Comparison model 1', exact: true }).fill('Sol');
+  const input = await page.getByRole('combobox', { name: 'Comparison model 1', exact: true }).boundingBox();
+  const result = await page.getByRole('option', { name: /GPT-6.1 Sol/ }).first().boundingBox();
+  if (page.viewportSize()!.width <= 900) {
+    expect(input!.y).toBeGreaterThanOrEqual(0);
+    expect(result!.y + result!.height).toBeLessThan(page.viewportSize()!.height - 60);
+  }
 });

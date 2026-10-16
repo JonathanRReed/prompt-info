@@ -2128,3 +2128,6 @@ textarea:focus-visible {
 .agent-inputs,.agent-comparison,.agent-sensitivity,.agent-details,.agent-range>div { min-width: 0; }
 .agent-range strong { overflow-wrap: anywhere; }
 @media(max-width:900px) { .agent-workbench { grid-template-columns: minmax(0,1fr); } }
+
+.agent-model-selectors > div, .agent-receipt > div { scroll-margin-top: 1rem; }
+.agent-mobile-total a:first-child { min-width: 0; overflow-wrap: anywhere; }

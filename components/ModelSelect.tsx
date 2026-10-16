@@ -120,6 +120,12 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
   }, [isOpen]);
 
   useEffect(() => {
+    if (isOpen && window.matchMedia('(max-width: 900px)').matches) {
+      containerRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isOpen) listRef.current?.querySelector(`[id="${inputId}-option-${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
   }, [activeIndex, inputId, isOpen]);
 
