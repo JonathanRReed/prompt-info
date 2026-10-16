@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePromptScenario } from '../../components/ScenarioProvider';
 import { clampPrompt, MAX_PROMPT_CHARACTERS } from '../../lib/promptLimits';
+import { toonScalar } from '../../lib/toonScalar';
 import { yamlScalar } from '../../lib/yamlScalar';
 
 const SAMPLE_PROMPT = 'Summarize the latest product launch in 3 bullet points.';
@@ -75,7 +76,7 @@ function buildFormats(prompt: string): FormatCard[] {
   };
 
   const toon = [
-    `prompt: ${yamlScalar(clean)}`,
+    `prompt: ${toonScalar(clean)}`,
     `messages[${messages.length}]{id,role}:`,
     ...messages.map(m => `  ${m.id},${m.role}`),
     'meta:',
