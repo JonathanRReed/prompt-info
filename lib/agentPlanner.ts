@@ -44,7 +44,7 @@ export type AgentEstimate = {
 const rate = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 const count = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 10_000_000;
 
-function requestRates(model: PricingEntry, tokens: number) {
+export function requestRates(model: PricingEntry, tokens: number) {
   const pricing = { ...model.pricing };
   const tiers: LongContextTier[] = Array.isArray(pricing.longContextTiers) ? pricing.longContextTiers : [];
   for (const tier of tiers) {

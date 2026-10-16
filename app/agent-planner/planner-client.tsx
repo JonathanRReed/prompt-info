@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState, useId, useRef } from 'react';
 import ModelSelect from '../../components/ModelSelect';
+import MeasuredUsage from './measured-usage';
 import { SourceStatus } from '../../components/workbench/SourceStatus';
 import { formatUsd } from '../../components/charts/chartFormat';
 import { fetchPricing, type PricingCatalogResponse } from '../../lib/fetchPricing';
@@ -37,6 +38,7 @@ export default function AgentPlannerClient() {
   const [plan, setPlan] = useState<AgentPlan>(INITIAL);
   const [mode, setMode] = useState<WorkMode>('agent');
   const [panel, setPanel] = useState(0);
+  const [usageMode, setUsageMode] = useState<'plan' | 'measured'>('plan');
   const savedModes = useRef<Record<WorkMode, AgentPlan>>({ chat: CHAT_INITIAL, agent: INITIAL });
   function changeMode(next: WorkMode) {
     if (next === mode) return;
@@ -63,7 +65,7 @@ export default function AgentPlannerClient() {
     function restore() {
       const shared = readAgentPlanHash(window.location.hash);
       if (!shared) return;
-      setPlan(shared.plan); setMode(shared.mode ?? 'agent');
+      setPlan(shared.plan); setMode(shared.mode ?? 'agent'); setUsageMode('plan');
       setRuns(shared.runs); setVariance(shared.variance); setBudget(shared.budget ?? 1); setInputMode('estimate');
       setSelected(shared.models); setActive(shared.models[0] ?? '');
     }
@@ -179,6 +181,9 @@ export default function AgentPlannerClient() {
 
   return <div className="agent-planner">
     <header className="planner-heading"><div><h1>What will your AI task cost?</h1><p>Set up a chat or an agent run. Compare the estimate before you build.</p></div><span className="planner-private">Calculated on your device</span></header>
+    <div className="planner-segment" role="group" aria-label="Estimate method"><button type="button" aria-pressed={usageMode === 'plan'} onClick={() => setUsageMode('plan')}>Plan a task</button><button type="button" aria-pressed={usageMode === 'measured'} onClick={() => setUsageMode('measured')}>Use actual token usage</button></div>
+    <div hidden={usageMode !== 'measured'}><MeasuredUsage catalog={catalog} initialModel={primary?.name ?? ''} /></div>
+    <div hidden={usageMode !== 'plan'}>
     <div className="agent-workbench">
       <div className="agent-inputs">
         <section className="planner-model-card" aria-label="Selected model"><label htmlFor="agent-primary">Model to price</label><ModelSelect id="agent-primary" value={primary?.name} models={models} pricing={catalog?.data} loading={loading} onChange={name => { setActive(name); setSelected(current => current.includes(name) ? current : [name, ...current].slice(0, 6)); }} /></section>
@@ -196,19 +201,19 @@ export default function AgentPlannerClient() {
           <section className="planner-panel" role="tabpanel" id="planner-panel-1" aria-labelledby="planner-tab-1" hidden={panel !== 1}>
             <div className="planner-panel-title"><h2>Answer & thinking</h2><p>Both can be billed as output. Estimate them separately.</p></div>
             {primary?.entry.reasoning?.supportedEfforts?.length ? <div className="agent-field"><label htmlFor="agent-effort">Reasoning effort for {primary.name}</label><select id="agent-effort" value={primary.entry.reasoning.supportedEfforts.includes(plan.reasoningEffort as ReasoningEffort) ? plan.reasoningEffort : ''} onChange={event => { if (!event.target.value) return; const effort = event.target.value as ReasoningEffort; const example = REASONING_SCENARIOS[effort]; setPlan(current => ({ ...current, reasoningEffort: effort, reasoningTokens: example.base, reasoningLow: example.low, reasoningHigh: example.high })); }}><option value="">Custom token assumptions</option>{primary.entry.reasoning.supportedEfforts.map(effort => <option key={effort} value={effort}>{effort}</option>)}</select><small>These supported settings load illustrative, editable token scenarios. They are not measured usage or provider bounds.</small></div> : <p className="planner-callout">This catalog entry has no verified effort choices. Set your own thinking allowance below.</p>}
-            <Field label="Visible output tokens per step" value={plan.visibleOutputTokens} onChange={value => update('visibleOutputTokens', value)} hint="The answer or tool-call text you expect to receive." />
+            <Field label="Visible output tokens per step" value={plan.visibleOutputTokens} onChange={value => update('visibleOutputTokens', value)} hint="Average per-request answer or tool-call text. Real requests can differ; use actual usage when available." />
             <div className="planner-presets" aria-label="Visible output examples">{[[200,'Short'],[800,'Detailed'],[2000,'Long']].map(([value,label]) => <button className="planner-button" key={value} type="button" onClick={() => update('visibleOutputTokens', Number(value))}>{label} · {number(Number(value))}</button>)}</div>
             <fieldset className="planner-thinking-group"><legend>Thinking tokens per call</legend><div className="planner-thinking-grid"><Field label="Low thinking scenario per call" displayLabel="Low" value={plan.reasoningLow ?? Math.ceil(plan.reasoningTokens * Math.max(0, 1 - variance / 100))} onChange={value => update('reasoningLow', value)} hint="Low scenario" /><Field label="Thinking tokens per step" displayLabel="Base" value={plan.reasoningTokens} onChange={value => update('reasoningTokens', value)} hint="Base scenario" /><Field label="High thinking scenario per call" displayLabel="High" value={plan.reasoningHigh ?? Math.ceil(plan.reasoningTokens * (1 + variance / 100))} onChange={value => update('reasoningHigh', value)} hint="High scenario" /></div><p>Your assumptions, not minimum or maximum guarantees.</p></fieldset>
             {!thinkingRangeValid && <p role="alert" className="agent-warning">Thinking scenarios must satisfy low ≤ base ≤ high. Enter whole non-negative token counts.</p>}
             <Field label="Token-size uncertainty (%)" value={variance} max={100} onChange={setVariance} hint="Vary input and visible answer sizes by this percentage. Thinking uses the scenarios above." />
-            <details className="planner-disclosure"><summary>Reasoning and context details</summary><p>Effort does not determine a fixed token count. Replace these example allowances with measured usage when you have it.</p><label className="agent-check"><input type="checkbox" checked={Boolean(plan.replayReasoning)} onChange={event => update('replayReasoning', event.target.checked)} />Include thinking tokens in later context as well</label><small>Use this only if your provider or agent replays thinking as input.</small></details>
-            <button className="planner-next" type="button" onClick={() => selectPanel(2)}>Set calls, caching and retries →</button>
+            <details className="planner-disclosure"><summary>Reasoning and context details</summary><p>Cost comes from billed input and generated tokens at the selected rates. Repeated requests accumulate these tokens; tools only add model cost when their text or results are processed. Separately priced tool services can add fees.</p><p>Effort does not determine a fixed token count. Replace these example allowances with measured usage when you have it.</p><label className="agent-check"><input type="checkbox" checked={Boolean(plan.replayReasoning)} onChange={event => update('replayReasoning', event.target.checked)} />Include thinking tokens in later context as well</label><small>Use this only if your provider or agent replays thinking as input.</small></details>
+            <button className="planner-next" type="button" onClick={() => selectPanel(2)}>Set requests, caching and reruns →</button>
           </section>
           <section className="planner-panel" role="tabpanel" id="planner-panel-2" aria-labelledby="planner-tab-2" hidden={panel !== 2}>
-            <div className="planner-panel-title"><h2>How the task runs</h2><p>Each reply or agent step is a model call.</p></div>
-            <div className="agent-field-grid"><Field label={mode === 'chat' ? 'Replies per conversation' : 'Model calls per run'} value={plan.steps} min={1} max={200} onChange={value => update('steps', value)} hint={mode === 'chat' ? 'Assistant replies in one conversation.' : 'Include planning, tool selection and follow-up calls.'} /><Field label="Runs per month" value={runs} min={1} onChange={setRuns} hint="Complete tasks your team expects each month." /></div>
+            <div className="planner-panel-title"><h2>How the task runs</h2><p>A request sends input to the model and generates output. Tool actions and waiting time are not flat model fees.</p></div>
+            <div className="agent-field-grid"><Field label={mode === 'chat' ? 'Replies per conversation' : 'Model requests within one task'} value={plan.steps} min={1} max={200} onChange={value => update('steps', value)} hint={mode === 'chat' ? 'Assistant replies in one conversation.' : 'Separate model generations within the same task, not tool executions or whole-task restarts.'} /><Field label="Runs per month" value={runs} min={1} onChange={setRuns} hint="Complete tasks your team expects each month." /></div>
             <fieldset className="planner-option-group"><legend>Context & caching</legend><label className="agent-check"><input type="checkbox" checked={plan.keepHistory} onChange={event => update('keepHistory', event.target.checked)} />Keep previous answers and supplied context</label><p>{plan.keepHistory ? 'Input grows with each call. No automatic compaction is assumed.' : 'Each call uses the original task and its new context only.'}</p><label className="agent-check"><input type="checkbox" checked={plan.cacheEnabled} onChange={event => update('cacheEnabled', event.target.checked)} />Assume prompt caching is enabled</label>{plan.cacheEnabled && <Field label="Cache hits on repeated input (%)" value={plan.cacheHitPct} max={100} onChange={value => update('cacheHitPct', value)} hint="First use is cold. Hits need an eligible unchanged prefix. Cache writes may cost extra." />}</fieldset>
-            <div className="agent-field-grid"><Field label="Full-run retries to budget for" value={plan.retries ?? 0} max={5} onChange={value => update('retries', value)} hint="Each retry repeats the whole task from a cold start." /><Field label="Planning budget per task (USD)" step={0.01} value={budget} onChange={setBudget} hint="An alert threshold. Set real stop limits in your agent or provider." /></div>
+            <div className="agent-field-grid"><Field label="Full-task reruns to budget for" value={plan.retries ?? 0} max={5} onChange={value => update('retries', value)} hint="Each retry repeats the whole task from a cold start." /><Field label="Planning budget per task (USD)" step={0.01} value={budget} onChange={setBudget} hint="An alert threshold. Set real stop limits in your agent or provider." /></div>
             <button className="planner-next" type="button" onClick={() => selectPanel(3)}>Compare model costs →</button>
           </section>
           <section id="planner-panel-3" className="planner-panel agent-comparison" role="tabpanel" aria-labelledby="planner-tab-3" hidden={panel !== 3}>
@@ -225,6 +230,7 @@ export default function AgentPlannerClient() {
           <div className="ticket-brand"><strong>Prompt Info</strong><span>Cost receipt</span></div>
           <div className="ticket-model"><span>{mode === 'chat' ? 'Chat estimate' : 'Agent estimate'}</span><h2>{primary?.name ?? 'Choose a model'}</h2><p>{number(plan.steps)} calls × {number(1 + (plan.retries ?? 0))} {plan.retries ? 'attempts' : 'attempt'}</p></div>
           <div className="ticket-range"><span>Estimated range per {mode === 'chat' ? 'conversation' : 'task'}</span><output data-testid="agent-run-range" aria-live="polite">{rangeLabel}</output><p>Central estimate: <strong data-testid="agent-run-total">{ready ? formatUsd(cost) : 'Unavailable'}</strong></p></div>
+          <p className="ticket-note">{number(primary?.expected.inputTokens ?? 0)} input tokens + {number((primary?.expected.visibleOutputTokens ?? 0) + (primary?.expected.reasoningTokens ?? 0))} generated tokens, including thinking.</p>
           <dl className="ticket-items">{breakdown.map(part => <div key={part.name}><dt>{part.name}</dt><dd>{ready ? formatUsd(part.value) : '—'}</dd></div>)}</dl>
           <div className="ticket-monthly"><span>{number(runs)} tasks / month</span><strong data-testid="agent-monthly-total">{formatUsd(total)}</strong></div>
           <p className="ticket-note">Actual token use varies. These are your low, base and high scenarios, not guaranteed bounds.</p>
@@ -239,5 +245,6 @@ export default function AgentPlannerClient() {
       </aside>
     </div>
     <div className="agent-mobile-total"><a href="#agent-price">{rangeLabel}<span>View receipt</span></a><button type="button" onClick={() => selectPanel(3)}>Compare</button></div>
+    </div>
   </div>;
 }
