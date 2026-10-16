@@ -184,3 +184,18 @@ test('large format examples stay bounded and count off the main thread',async({p
   await expect(page.locator('article').first().locator('pre')).toBeEmpty();
   await expect(page.locator('.format-bar-row')).toHaveCount(7);
 });
+
+test('secondary pages remain readable in both themes and viewport sizes',async({page},info)=>{
+  test.setTimeout(90000);
+  for(const route of ['/format-comparison/','/token-efficiency/','/about/','/contact/','/privacy/']){
+    await page.goto(route);
+    if(route==='/format-comparison/')await expect(page.locator('.format-bar-row')).toHaveCount(7);
+    if(route==='/token-efficiency/')await expect(page.getByRole('combobox',{name:'Comparison model 1',exact:true})).toBeVisible();
+    for(const theme of ['dark','light']){
+      const current=await page.locator('html').getAttribute('data-theme');
+      if(current!==theme)await page.getByRole('button',{name:'Toggle light and dark theme'}).click();
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+      await page.screenshot({path:`test-results/page-${info.project.name}-${route.replaceAll('/','')}-${theme}.png`,fullPage:true});
+    }
+  }
+});
