@@ -110,3 +110,22 @@ describe('comparison chart data', () => {
     expect(composition.every(segment => segment.value >= 0)).toBe(true);
   });
 });
+
+describe('long-context pricing in comparisons', () => {
+  test('a 300K-token prompt on a tiered model costs the published long-context rate', () => {
+    const entry = {
+      pricing: { input: 0.002, output: 0.01, longContextTiers: [{ minPromptTokens: 272_000, input: 0.004, output: 0.015 }] },
+      co2eFactor: 0.0002,
+      maxOutputTokens: 128_000,
+      contextWindowTokens: 1_050_000,
+    };
+    const { rows } = buildCostComparison({
+      models: [{ model: 'OpenAI: GPT-6.1 Sol', entry }],
+      scenario: { mode: 'baseline', promptTokens: 300_000, referenceOutputTokens: 2_048, turns: 1, outputTokenLimit: 300_000, contextWindowTokens: 1_000_000 },
+      workload: { runs: 1, cadence: 'once' },
+    });
+    // 300,000 x $4/M + 2,048 x $15/M = $1.23072, not $0.62048 at base rates.
+    expect(rows[0].requestCost).toBeCloseTo(1.23072, 8);
+    expect(rows[0].estimate?.longContextRequests).toBe(1);
+  });
+});

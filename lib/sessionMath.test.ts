@@ -224,3 +224,49 @@ describe('scenario mode', () => {
     expect(estimate.freshInputTokens).toBe(1000);
   });
 });
+
+describe('long-context rate tiers', () => {
+  // GPT-6.1 Sol on OpenRouter (2026-10-16): $2/$10 per million, $4/$15 above 272K prompt tokens.
+  const BASE = { inputRatePer1k: 0.002, outputRatePer1k: 0.01 };
+  const TIERS = [{ minPromptTokens: 272_000, inputRatePer1k: 0.004, outputRatePer1k: 0.015 }];
+
+  test('a stateless request above the threshold is billed entirely at the higher tier', () => {
+    const estimate = simulateSessionRunCost({
+      mode: 'baseline', promptTokens: 300_000, referenceOutputTokens: 2_000, turns: 1, outputTokenLimit: 128_000, ...BASE, rateTiers: TIERS,
+    });
+    expect(estimate.inputCost).toBeCloseTo(300_000 / 1000 * 0.004, 10);
+    expect(estimate.outputCost).toBeCloseTo(2_000 / 1000 * 0.015, 10);
+    expect(estimate.longContextRequests).toBe(1);
+  });
+
+  test('a request below the threshold keeps base rates', () => {
+    const estimate = simulateSessionRunCost({
+      mode: 'baseline', promptTokens: 100_000, referenceOutputTokens: 2_000, turns: 3, outputTokenLimit: 128_000, ...BASE, rateTiers: TIERS,
+    });
+    expect(estimate.totalCost).toBeCloseTo(3 * (100 * 0.002 + 2 * 0.01), 10);
+    expect(estimate.longContextRequests).toBe(0);
+  });
+
+  test('a growing conversation switches tier on the turn whose re-sent history crosses the threshold', () => {
+    const input = {
+      mode: 'scenario' as const, promptTokens: 100_000, referenceOutputTokens: 1_000, turns: 3, outputTokenLimit: 128_000,
+      contextWindowTokens: 1_050_000, cachedInputBillablePct: 100, turnOverheadTokens: 0, ...BASE,
+    };
+    const flat = simulateSessionRunCost(input);
+    const tiered = simulateSessionRunCost({ ...input, rateTiers: TIERS });
+    // Turn prompts: 100K, 201K, 302K. Only turn 3 (302K) crosses 272K.
+    expect(tiered.longContextRequests).toBe(1);
+    const turn3Input = 302_000 / 1000;
+    const turn3Output = 1_000 / 1000;
+    expect(tiered.totalCost! - flat.totalCost!).toBeCloseTo(turn3Input * (0.004 - 0.002) + turn3Output * (0.015 - 0.01), 10);
+  });
+
+  test('ignores malformed tiers instead of zeroing the estimate', () => {
+    const estimate = simulateSessionRunCost({
+      mode: 'baseline', promptTokens: 300_000, referenceOutputTokens: 0, turns: 1, outputTokenLimit: 128_000, ...BASE,
+      rateTiers: [{ minPromptTokens: Number.NaN, inputRatePer1k: 0.004, outputRatePer1k: 0.015 }, { minPromptTokens: 1, inputRatePer1k: 0, outputRatePer1k: 0 }],
+    });
+    expect(estimate.inputCost).toBeCloseTo(300 * 0.002, 10);
+    expect(estimate.longContextRequests).toBe(0);
+  });
+});

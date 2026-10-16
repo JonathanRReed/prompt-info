@@ -12,6 +12,13 @@ const FRESHNESS_LABELS: Record<PricingCatalogResponse['freshness'], string> = {
   static: 'Dated snapshot',
 };
 
+export function longContextNote(row: CostComparisonRow) {
+  const count = row.estimate?.longContextRequests ?? 0;
+  const threshold = row.entry?.pricing.longContextTiers?.[0]?.minPromptTokens;
+  const thresholdLabel = threshold ? ` above ${threshold.toLocaleString()} prompt tokens` : '';
+  return `${count.toLocaleString()} ${count === 1 ? 'request is' : 'requests are'} priced at this model's published long-context rate${thresholdLabel}.`;
+}
+
 export function CostReceipt({
   row,
   recommendation,
@@ -52,6 +59,11 @@ export function CostReceipt({
         <output data-testid="primary-session-cost" aria-live="polite">{estimateReady ? formatUsd(primaryValue) : 'Unavailable'}</output>
       </div>
       <p className="receipt-scope">{estimateReady ? `${workloadRuns.toLocaleString()} runs ${cadenceLabel}.` : 'Enter a prompt and complete token counting to calculate model usage.'}</p>
+      {estimateReady && row?.estimate && row.estimate.longContextRequests > 0 ? (
+        <p className="receipt-criterion" data-testid="long-context-note">
+          {longContextNote(row)}
+        </p>
+      ) : null}
       <dl className="receipt-total-grid">
         <div><dt>One request</dt><dd>{formatUsd(row?.requestCost)}</dd></div>
         <div><dt>Monthly</dt><dd>{formatUsd(row?.monthlyCost)}</dd></div>

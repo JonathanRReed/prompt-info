@@ -6,6 +6,11 @@ export type PricingEntry = {
     output: number;
     inputCacheRead?: number;
     inputCacheWrite?: number;
+    /**
+     * Whole-request rates (per 1K tokens) that apply once a request's prompt
+     * reaches `minPromptTokens`, from OpenRouter `pricing.overrides`.
+     */
+    longContextTiers?: LongContextTier[];
   };
   co2eFactor: number;
   avgOutputTokens?: number;
@@ -16,6 +21,8 @@ export type PricingEntry = {
   /** OpenRouter `author/model` slug, the canonical key shared with the sibling sites. */
   openRouterId?: string;
 };
+
+export type LongContextTier = { minPromptTokens: number; input: number; output: number };
 
 export type PricingMap = Record<string, PricingEntry>;
 
@@ -108,6 +115,31 @@ function readCacheRatePer1k(fields: Record<string, unknown>, perMillionPaths: st
   return toCacheRatePer1k(readPerMillionPrice(fields, perMillionPaths, perTokenPaths));
 }
 
+// OpenRouter publishes prompt-size tiers as `pricing.overrides` entries with a
+// `min_prompt_tokens` threshold and per-token `prompt`/`completion` prices.
+// Time-window discounts (utc_start/utc_end/utc_days) and entries without a
+// threshold are not prompt-size tiers and are ignored.
+function readLongContextTiers(fields: Record<string, unknown>): LongContextTier[] {
+  const overrides = readPath(fields, 'overrides') ?? readPath(fields, 'pricing.overrides');
+  if (!Array.isArray(overrides)) return [];
+  const tiers: LongContextTier[] = [];
+  for (const override of overrides) {
+    if (!isRecord(override)) continue;
+    if ('utc_start' in override || 'utc_end' in override || 'utc_days' in override) continue;
+    const minPromptTokens = parseNumberLike(override.min_prompt_tokens);
+    const perTokenIn = parseNumberLike(override.prompt);
+    const perTokenOut = parseNumberLike(override.completion);
+    if (!Number.isFinite(minPromptTokens) || minPromptTokens <= 0) continue;
+    if (!Number.isFinite(perTokenIn) || perTokenIn <= 0 || !Number.isFinite(perTokenOut) || perTokenOut <= 0) continue;
+    tiers.push({
+      minPromptTokens: Math.floor(minPromptTokens),
+      input: (perTokenIn * 1_000_000) / MILLION_TO_THOUSAND_RATIO,
+      output: (perTokenOut * 1_000_000) / MILLION_TO_THOUSAND_RATIO,
+    });
+  }
+  return tiers.sort((a, b) => a.minPromptTokens - b.minPromptTokens);
+}
+
 type RowShape = {
   name: string;
   dedupeKey: string;
@@ -121,6 +153,7 @@ type RowShape = {
   outputTokenLimitConfidence: TokenLimitConfidence;
   inputCacheRead?: number;
   inputCacheWrite?: number;
+  longContextTiers: LongContextTier[];
   openRouterId?: string;
 };
 
@@ -226,6 +259,7 @@ export function buildPricingMap(data: unknown[]): PricingMap {
       outputTokenLimitConfidence: tokenProfile.confidence,
       inputCacheRead: inputCacheRead,
       inputCacheWrite: inputCacheWrite,
+      longContextTiers: readLongContextTiers(fields),
     });
   }
 
@@ -282,6 +316,7 @@ export function buildPricingMap(data: unknown[]): PricingMap {
         output,
         ...(Number.isFinite(row.inputCacheRead) ? { inputCacheRead: row.inputCacheRead } : {}),
         ...(Number.isFinite(row.inputCacheWrite) ? { inputCacheWrite: row.inputCacheWrite } : {}),
+        ...(row.longContextTiers.length ? { longContextTiers: row.longContextTiers } : {}),
       },
       co2eFactor: BASE_CO2E_FACTOR * multiplier,
       avgOutputTokens: row.maxOutputTokens,

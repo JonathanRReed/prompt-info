@@ -74,6 +74,11 @@ function estimateFor(
     outputRatePer1k: entry.pricing.output,
     outputTokenLimit: entry.maxOutputTokens ?? scenario.outputTokenLimit,
     contextWindowTokens: entry.contextWindowTokens ?? scenario.contextWindowTokens,
+    rateTiers: entry.pricing.longContextTiers?.map(tier => ({
+      minPromptTokens: tier.minPromptTokens,
+      inputRatePer1k: tier.input,
+      outputRatePer1k: tier.output,
+    })),
     cachedInputBillablePct: cacheReadPercent(entry) ?? scenario.cachedInputBillablePct,
     cacheWriteMultiplier: cacheWriteMultiplier(entry) ?? scenario.cacheWriteMultiplier,
   });

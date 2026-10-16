@@ -91,3 +91,34 @@ describe('buildPricingMap with OpenRouter rows', () => {
     expect(map5['Anthropic: Claude Opus 4.8 (2026-01-15)']).toBeUndefined();
   });
 });
+
+describe('OpenRouter long-context overrides', () => {
+  test('keeps prompt-size tiers in per-1K units and ignores time-window discounts', () => {
+    const map = buildPricingMap([
+      {
+        id: 'openai/gpt-6.1-sol',
+        name: 'OpenAI: GPT-6.1 Sol',
+        context_length: 1_050_000,
+        pricing: {
+          prompt: '0.000002',
+          completion: '0.00001',
+          overrides: [
+            { min_prompt_tokens: 272000, prompt: '0.000004', completion: '0.000015', input_cache_read: '0.0000002' },
+          ],
+        },
+      },
+      {
+        id: 'lab/off-peak',
+        name: 'Lab: Off Peak',
+        pricing: {
+          prompt: '0.000001',
+          completion: '0.000002',
+          overrides: [{ prompt: '0.0000005', completion: '0.000001', utc_start: '16:30', utc_end: '00:30' }],
+        },
+      },
+    ]);
+    expect(map['OpenAI: GPT-6.1 Sol'].pricing.input).toBeCloseTo(0.002, 12);
+    expect(map['OpenAI: GPT-6.1 Sol'].pricing.longContextTiers).toEqual([{ minPromptTokens: 272_000, input: 0.004, output: 0.015 }]);
+    expect(map['Lab: Off Peak'].pricing.longContextTiers).toBeUndefined();
+  });
+});

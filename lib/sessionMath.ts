@@ -13,6 +13,19 @@ export const DEFAULT_SESSION_TURN_OVERHEAD_TOKENS = 32; // per-turn message fram
 export const DEFAULT_SESSION_COMPACTION_SUMMARY_FLOOR_TOKENS = 128; // minimum summary size
 
 export type SessionRunMode = 'baseline' | 'scenario';
+
+/**
+ * A higher rate that applies to a whole request once its prompt (including
+ * cached history) reaches `minPromptTokens`, as published in OpenRouter's
+ * `pricing.overrides` (for example GPT-6.1 Sol: $4/$15 per million above
+ * 272K prompt tokens instead of $2/$10). Cache discounts keep the base
+ * tier's read/write ratios.
+ */
+export type PromptRateTier = {
+  minPromptTokens: number;
+  inputRatePer1k: number;
+  outputRatePer1k: number;
+};
 export type SessionOutputSizing = 'planned' | 'costShare';
 
 export type SessionRunEstimateInput = {
@@ -24,6 +37,7 @@ export type SessionRunEstimateInput = {
   outputRatePer1k: number | null;
   outputTokenLimit: number;
   contextWindowTokens?: number;
+  rateTiers?: PromptRateTier[];
   outputSizing?: SessionOutputSizing;
   targetOutputCostSharePct?: number;
   cachedInputBillablePct?: number;
@@ -55,6 +69,8 @@ export type SessionRunEstimate = {
   totalOutputTokens: number;
   totalTokens: number;
   compactionCount: number;
+  /** Requests (turns and compaction calls) billed at a long-context tier. */
+  longContextRequests: number;
   turnInputCost: number | null;
   turnOutputCost: number | null;
   compactionInputCost: number | null;
@@ -118,6 +134,29 @@ function costForTokens(tokens: number, ratePer1k: number | null) {
   return (tokens / 1000) * ratePer1k;
 }
 
+function usableTiers(tiers: PromptRateTier[] | undefined) {
+  return (tiers ?? [])
+    .filter(tier => isFiniteNumber(tier.minPromptTokens) && tier.minPromptTokens > 0
+      && isFiniteNumber(tier.inputRatePer1k) && tier.inputRatePer1k > 0
+      && isFiniteNumber(tier.outputRatePer1k) && tier.outputRatePer1k > 0)
+    .sort((a, b) => a.minPromptTokens - b.minPromptTokens);
+}
+
+function ratesForRequest(
+  promptTokens: number,
+  base: { input: number | null; output: number | null },
+  tiers: PromptRateTier[],
+) {
+  let rates = { input: base.input, output: base.output, tiered: false };
+  if (!isFiniteNumber(base.input) || !isFiniteNumber(base.output)) return rates;
+  for (const tier of tiers) {
+    if (promptTokens >= tier.minPromptTokens) {
+      rates = { input: tier.inputRatePer1k, output: tier.outputRatePer1k, tiered: true };
+    }
+  }
+  return rates;
+}
+
 function sumCosts(values: Array<number | null>) {
   const finiteValues = values.filter((value): value is number => isFiniteNumber(value));
   if (finiteValues.length === 0) return null;
@@ -148,6 +187,7 @@ function buildEmptyEstimate(
     totalOutputTokens: 0,
     totalTokens: 0,
     compactionCount: 0,
+    longContextRequests: 0,
     turnInputCost: null,
     turnOutputCost: null,
     compactionInputCost: null,
@@ -194,6 +234,7 @@ export function simulateSessionRunCost({
   outputRatePer1k,
   outputTokenLimit,
   contextWindowTokens,
+  rateTiers,
   outputSizing = 'planned',
   targetOutputCostSharePct,
   cachedInputBillablePct,
@@ -213,12 +254,17 @@ export function simulateSessionRunCost({
     return buildEmptyEstimate(mode, 0, null, null, null, null);
   }
 
+  const tiers = usableTiers(rateTiers);
+  const baseRates = { input: inputRatePer1k, output: outputRatePer1k };
+
   // Baseline: simple multiplication
   if (mode === 'baseline') {
     const totalInputTokens = safePromptTokens * safeTurns;
     const totalOutputTokens = safeReferenceOutputTokens * safeTurns;
-    const turnInputCost = costForTokens(totalInputTokens, inputRatePer1k);
-    const turnOutputCost = costForTokens(totalOutputTokens, outputRatePer1k);
+    // Every stateless request carries the same prompt, so one tier applies to all.
+    const requestRates = ratesForRequest(safePromptTokens, baseRates, tiers);
+    const turnInputCost = costForTokens(totalInputTokens, requestRates.input);
+    const turnOutputCost = costForTokens(totalOutputTokens, requestRates.output);
     const turnCost = sumCosts([turnInputCost, turnOutputCost]);
 
     return {
@@ -237,6 +283,7 @@ export function simulateSessionRunCost({
       totalOutputTokens,
       totalTokens: totalInputTokens + totalOutputTokens,
       compactionCount: 0,
+      longContextRequests: requestRates.tiered ? safeTurns : 0,
       turnInputCost,
       turnOutputCost,
       compactionInputCost: 0,
@@ -283,6 +330,13 @@ export function simulateSessionRunCost({
   let compactionInputTokens = 0;
   let compactionOutputTokens = 0;
   let compactionCount = 0;
+  let longContextRequests = 0;
+  // Costs are summed per request because a long-context tier applies to a
+  // whole request, not to the tokens above the threshold.
+  let turnInputCostSum = 0;
+  let turnOutputCostSum = 0;
+  let compactionInputCostSum = 0;
+  let compactionOutputCostSum = 0;
 
   for (let turn = 0; turn < safeTurns; turn += 1) {
     const freshInputThisTurn = safePromptTokens + safeTurnOverheadTokens;
@@ -290,26 +344,30 @@ export function simulateSessionRunCost({
     const reusedThisTurn = cachedPrefixTokens;
     const cachedBilledThisTurn = reusedThisTurn * safeCachedInputBillablePct;
     const billableInputThisTurn = newPrefixTokens * safeCacheWriteMultiplier + cachedBilledThisTurn;
-    const billableInputCostThisTurn = costForTokens(billableInputThisTurn, inputRatePer1k);
+    const turnRates = ratesForRequest(reusedThisTurn + newPrefixTokens, baseRates, tiers);
+    const billableInputCostThisTurn = costForTokens(billableInputThisTurn, turnRates.input);
 
     let outputTokensThisTurn = safeReferenceOutputTokens;
     if (outputSizing === 'costShare') {
       const outputShareDenominator = 1 - safeTargetOutputSharePct;
       if (
         billableInputCostThisTurn !== null &&
-        isFiniteNumber(outputRatePer1k) &&
-        outputRatePer1k > 0 &&
+        isFiniteNumber(turnRates.output) &&
+        turnRates.output > 0 &&
         outputShareDenominator > 0
       ) {
         const targetOutputCostThisTurn =
           billableInputCostThisTurn * (safeTargetOutputSharePct / outputShareDenominator);
-        outputTokensThisTurn = roundToTokenStep(targetOutputCostThisTurn / (outputRatePer1k / 1000));
+        outputTokensThisTurn = roundToTokenStep(targetOutputCostThisTurn / (turnRates.output / 1000));
       } else if (outputShareDenominator <= 0) {
         outputTokensThisTurn = safeOutputLimit;
       }
     }
 
     outputTokensThisTurn = clampOutputTokens(outputTokensThisTurn, safeOutputLimit);
+    turnInputCostSum += billableInputCostThisTurn ?? 0;
+    turnOutputCostSum += costForTokens(outputTokensThisTurn, turnRates.output) ?? 0;
+    if (turnRates.tiered) longContextRequests += 1;
 
     freshInputTokens += freshInputThisTurn;
     reusedContextTokens += reusedThisTurn;
@@ -349,8 +407,12 @@ export function simulateSessionRunCost({
 
         if (summaryTokens >= historyTokens) break;
 
+        const compactionRates = ratesForRequest(historyTokens + safeTurnOverheadTokens, baseRates, tiers);
         compactionInputTokens += compactionBilledInput;
         compactionOutputTokens += summaryTokens;
+        compactionInputCostSum += costForTokens(compactionBilledInput, compactionRates.input) ?? 0;
+        compactionOutputCostSum += costForTokens(summaryTokens, compactionRates.output) ?? 0;
+        if (compactionRates.tiered) longContextRequests += 1;
         processedInputTokens += historyTokens + safeTurnOverheadTokens;
         compactionCount += 1;
         cachedPrefixTokens = 0;
@@ -365,10 +427,12 @@ export function simulateSessionRunCost({
     }
   }
 
-  const turnInputCost = costForTokens(turnInputTokens, inputRatePer1k);
-  const turnOutputCost = costForTokens(turnOutputTokens, outputRatePer1k);
-  const compactionInputCost = costForTokens(compactionInputTokens, inputRatePer1k);
-  const compactionOutputCost = costForTokens(compactionOutputTokens, outputRatePer1k);
+  const hasInputRate = isFiniteNumber(inputRatePer1k);
+  const hasOutputRate = isFiniteNumber(outputRatePer1k);
+  const turnInputCost = hasInputRate ? turnInputCostSum : null;
+  const turnOutputCost = hasOutputRate ? turnOutputCostSum : null;
+  const compactionInputCost = hasInputRate ? compactionInputCostSum : null;
+  const compactionOutputCost = hasOutputRate ? compactionOutputCostSum : null;
   const inputCost = sumCosts([turnInputCost, compactionInputCost]);
   const outputCost = sumCosts([turnOutputCost, compactionOutputCost]);
   const turnCost = sumCosts([turnInputCost, turnOutputCost]);
@@ -396,6 +460,7 @@ export function simulateSessionRunCost({
     totalOutputTokens,
     totalTokens,
     compactionCount,
+    longContextRequests,
     turnInputCost,
     turnOutputCost,
     compactionInputCost,
