@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ModelSelect from '../../components/ModelSelect';
+import { fetchBenchmarkCatalog } from '../../lib/fetchBenchmarks';
 import { usePromptScenario } from '../../components/ScenarioProvider';
-import { catalogModelFields, plannerModelFields, rateOrNull } from '../../lib/efficiencyModelRates';
+import { catalogModelFields, editedRate, plannerModelFields, rateOrNull } from '../../lib/efficiencyModelRates';
 import {
   matchArtificialAnalysisModel,
   type ArtificialAnalysisCatalogResponse,
@@ -91,6 +92,9 @@ const fieldInputClass =
 export default function TokenEfficiencyPageClient() {
   const { scenario } = usePromptScenario();
   const [tasks, setTasks] = useState(DEFAULT_TASKS);
+  // Raw text while the tasks field is being edited, so clearing it does not
+  // snap to 1 and turn a typed "500" into "1500".
+  const [tasksDraft, setTasksDraft] = useState<string | null>(null);
   const [inputTokensPerTask, setInputTokensPerTask] = useState(DEFAULT_INPUT_TOKENS_PER_TASK);
   const [models, setModels] = useState<EditableModel[]>(initialModels);
   const [catalog, setCatalog] = useState<ArtificialAnalysisCatalogResponse | null>(null);
@@ -100,11 +104,9 @@ export default function TokenEfficiencyPageClient() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch('/api/benchmarks')
-      .then(async response => {
-        if (!response.ok) throw new Error(`Benchmark catalog failed with ${response.status}`);
-        return await response.json() as ArtificialAnalysisCatalogResponse;
-      })
+    // Validated and time-bounded: a malformed 200 body used to reach render and
+    // crash the whole page; a stalled request left the pickers loading forever.
+    fetchBenchmarkCatalog()
       .then(response => {
         if (cancelled) return;
         setCatalog(response);
@@ -147,10 +149,10 @@ export default function TokenEfficiencyPageClient() {
 
   const updateModel = (key: string, field: EditableRateField, rawValue: string) => {
     const max = field === 'outputTokensPerTask' ? MAX_TOKENS_PER_TASK : MAX_RATE_PER_MILLION;
-    const value = clampNumber(Number(rawValue), max);
+    const value = field === 'outputTokensPerTask' ? clampNumber(Number(rawValue), max) : editedRate(rawValue, max);
     setModels(prev => prev.map(model => (
       model.key === key
-        ? { ...model, [field]: field !== 'outputTokensPerTask' && !rawValue.trim() ? null : value, rateSource: field === 'outputTokensPerTask' ? model.rateSource : 'Edited rate' }
+        ? { ...model, [field]: value, rateSource: field === 'outputTokensPerTask' ? model.rateSource : 'Edited rate' }
         : model
     )));
   };
@@ -260,6 +262,7 @@ export default function TokenEfficiencyPageClient() {
           onClick={() => {
             setModels(initialModels());
             setTasks(DEFAULT_TASKS);
+            setTasksDraft(null);
             setInputTokensPerTask(DEFAULT_INPUT_TOKENS_PER_TASK);
             setPlannerApplied(false);
           }}
@@ -336,8 +339,14 @@ export default function TokenEfficiencyPageClient() {
             min={1}
             max={MAX_TASKS}
             step={1}
-            value={tasks}
-            onChange={e => setTasks(Math.max(1, Math.floor(clampNumber(Number(e.target.value), MAX_TASKS))))}
+            value={tasksDraft ?? tasks}
+            onChange={e => {
+              const raw = e.target.value;
+              setTasksDraft(raw);
+              const parsed = Number(raw);
+              if (raw.trim() && Number.isFinite(parsed) && parsed >= 1) setTasks(Math.floor(Math.min(parsed, MAX_TASKS)));
+            }}
+            onBlur={() => setTasksDraft(null)}
             className={`mt-2 ${fieldInputClass}`}
           />
         </div>

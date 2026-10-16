@@ -35,3 +35,15 @@ export function plannerModelFields(
     rateSource: 'Planner pricing',
   };
 }
+
+/**
+ * A rate typed into the cost-per-task lab. Blank, partial, or negative input is
+ * "not reported" (null), never $0; zero stays a deliberate free rate so the
+ * cards can keep absent and free apart.
+ */
+export function editedRate(rawValue: string, max: number): number | null {
+  if (!rawValue.trim()) return null;
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.min(parsed, max);
+}

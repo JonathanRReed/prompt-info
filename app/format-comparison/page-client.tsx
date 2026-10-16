@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePromptScenario } from '../../components/ScenarioProvider';
 import { clampPrompt, MAX_PROMPT_CHARACTERS } from '../../lib/promptLimits';
+import { yamlScalar } from '../../lib/yamlScalar';
 
 const SAMPLE_PROMPT = 'Summarize the latest product launch in 3 bullet points.';
 
@@ -46,18 +47,6 @@ function isFormatTokenizerKey(value: string | undefined): value is FormatTokeniz
 function formatInputCost(tokenCount: number, ratePerMillion: number) {
   const cost = tokenCount / 1_000_000 * ratePerMillion;
   return cost < 0.01 ? `$${cost.toFixed(6)}` : `$${cost.toFixed(4)}`;
-}
-
-function yamlScalar(value: string) {
-  // Quote when YAML would otherwise misparse the scalar: special punctuation,
-  // control whitespace (the textarea allows newlines/tabs), or scalars YAML
-  // would type-coerce (true/no/null/numbers). JSON strings are valid YAML 1.2
-  // double-quoted scalars, so JSON.stringify round-trips safely.
-  if (/[:#?[\]{}&*!|>'"%@`\t\n\r]|^[\s-]|\s$|^$/.test(value)) return JSON.stringify(value);
-  if (/^(?:true|false|null|~|yes|no|on|off|[-+]?(?:\d[\d_]*\.?\d*(?:[eE][-+]?\d+)?|\.\d+))$/i.test(value)) {
-    return JSON.stringify(value);
-  }
-  return value;
 }
 
 function xmlEscape(value: string) {
