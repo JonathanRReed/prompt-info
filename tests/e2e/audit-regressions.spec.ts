@@ -20,13 +20,13 @@ const MANY_MODELS = {
 test('model search reports every match, not the 80-row render cap', async ({ page }) => {
   await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MANY_MODELS) }));
   await page.goto('/');
-  const search = page.locator('input[role="combobox"]').first();
+  const search = page.getByRole('combobox', {name:'Model to price',exact:true});
   await search.fill('alpha');
   await expect(page.locator('[role="listbox"] [role="option"]')).toHaveCount(80);
-  // 120 catalog rows; the other comparison row's model is excluded from this picker.
-  await expect(page.getByTestId('model-search-status').first()).toHaveText('Showing 80 of 120 matches. Refine to narrow.');
+  // The primary picker can search all 120 catalog rows.
+  await expect(page.getByRole('region',{name:'Selected model'}).getByTestId('model-search-status')).toHaveText('Showing 80 of 120 matches. Refine to narrow.');
   await search.fill('alpha 11');
-  await expect(page.getByTestId('model-search-status').first()).toHaveText(/^\d+ match(es)?$/);
+  await expect(page.getByRole('region',{name:'Selected model'}).getByTestId('model-search-status')).toHaveText(/^\d+ match(es)?$/);
   await search.fill('free');
   await expect(page.locator('[role="listbox"]')).toContainText('Free and unpriced variants are left out');
 });
@@ -52,13 +52,14 @@ test('a stalled pricing API falls back to the dated bundled catalog', async ({ p
   await expect(page.getByTestId('agent-run-total')).not.toHaveText('Unavailable');
 });
 
-test('a malformed benchmark response keeps the cost-per-task lab usable', async ({ page }) => {
+test('malformed prices keep output tradeoffs recoverable', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.route(/\/api\/benchmarks\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"hello":1}' }));
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"hello":1}' }));
+  await page.route('**/data/llm-data.json', route => route.fulfill({status:503,body:'offline'}));
   await page.goto('/token-efficiency/');
-  await expect(page.getByText(/unavailable, editable presets retained/)).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'How much does a longer answer cost?' })).toBeVisible();
+  await expect(page.getByRole('alert').filter({hasText:'Enter rates manually'})).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Compare a task' })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -79,13 +80,13 @@ test('the tasks field can be cleared and retyped without snapping to 1', async (
 test('a negative typed rate is not reported rather than priced as free', async ({ page }) => {
   await page.goto('/token-efficiency/');
   const card = page.locator('article').first();
-  const inputRate = card.locator('input[id$="-input-rate"]');
+  const inputRate = card.getByLabel('Input $ / M tokens');
   await inputRate.fill('-3');
   await expect(card.locator('p[role="status"]')).toContainText('A price is not reported');
-  await expect(card.locator('output').first()).toHaveText('N/A');
+  await expect(card.locator('output').first()).toHaveText('Unavailable');
   await inputRate.fill('0');
   await expect(card.locator('p[role="status"]')).toHaveCount(0);
-  await expect(card.locator('output').first()).not.toHaveText('N/A');
+  await expect(card.locator('output').first()).not.toHaveText('Unavailable');
 });
 
 const TIERED_CATALOG = {
@@ -143,16 +144,10 @@ test('a prompt larger than a model context window is flagged and not recommended
   await expect(page.locator('tr').filter({hasText:'Big Lab: Wide 1M'})).toContainText('Lowest base cost');
 });
 
-test('the dated benchmark fallback shows a date, not an invented clock time, and a version caveat', async ({ page }) => {
-  await page.route(/\/api\/benchmarks\/?(?:\?.*)?$/, async route => {
-    const response = await route.fetch();
-    const body = await response.json();
-    // Pin the no-API-key path so the assertion does not depend on deployment secrets.
-    if (body.source !== 'dated-fallback') test.skip(true, 'live benchmark catalog configured');
-    await route.fulfill({ response, json: body });
-  });
+test('output tradeoffs labels dated prices without presenting them as live',async({page})=>{
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/,route=>route.fulfill({json:{...MANY_MODELS,source:'bundled-static',freshness:'static',isFallback:true,retrievedAt:'2026-08-29T00:00:00Z',fallbackReason:'Using a dated snapshot.'}}));
   await page.goto('/token-efficiency/');
-  await expect(page.getByText(/Snapshot dated August 29, 2026\./)).toBeVisible();
-  await expect(page.getByText(/compare these only with each other/)).toBeVisible();
-  await expect(page.getByText(/Snapshot dated .*\d:\d\d/)).toHaveCount(0);
+  await expect(page.getByRole('link',{name:'Dated price catalog',exact:true})).toBeVisible();
+  await expect(page.getByText(/fallback rates/)).toBeVisible();
+  await expect(page.getByText('Using a dated snapshot.',{exact:true})).toBeVisible();
 });

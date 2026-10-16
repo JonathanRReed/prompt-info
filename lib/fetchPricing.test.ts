@@ -46,7 +46,7 @@ describe('fetchPricing', () => {
     }) as typeof fetch;
 
     await expect(fetchPricing()).rejects.toThrow('Pricing catalog is unavailable');
-    expect(requests).toEqual(['/api/pricing', '/api/pricing/']);
+    expect(requests).toEqual(['/api/pricing', '/api/pricing/', '/data/llm-data.json']);
     expect(requests.every(url => url.startsWith('/'))).toBe(true);
   });
 
@@ -70,7 +70,7 @@ describe('fetchPricing timeouts', () => {
     const started = Date.now();
     await expect(fetchPricing({ timeoutMs: 25 })).rejects.toThrow('Pricing catalog is unavailable');
     expect(Date.now() - started).toBeLessThan(2_000);
-    expect(aborted).toEqual(['/api/pricing', '/api/pricing/']);
+    expect(aborted).toEqual(['/api/pricing', '/api/pricing/', '/data/llm-data.json']);
   });
 
   test('treats an unparseable body as unavailable and still tries the slash variant', async () => {
@@ -81,6 +81,13 @@ describe('fetchPricing timeouts', () => {
     }) as typeof fetch;
 
     await expect(fetchPricing()).rejects.toThrow('Pricing catalog is unavailable');
-    expect(requests).toEqual(['/api/pricing', '/api/pricing/']);
+    expect(requests).toEqual(['/api/pricing', '/api/pricing/', '/data/llm-data.json']);
   });
+});
+
+
+test('all calculator paths get a dated fallback after API failure',async()=>{
+  globalThis.fetch=(async input=>String(input)==='/data/llm-data.json' ? Response.json(catalog.data) : new Response('offline',{status:503})) as typeof fetch;
+  const result=await fetchPricing();
+  expect(result.source).toBe('bundled-static');expect(result.freshness).toBe('static');expect(result.isFallback).toBe(true);expect(result.data).toEqual(catalog.data);
 });

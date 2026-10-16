@@ -70,7 +70,7 @@ test('keeps pasted prompt text out of every network request', async ({ page }) =
 test('supports keyboard access to the model browser and evidence disclosures', async ({ page }) => {
   await page.goto('/');
 
-  const modelInput = page.getByLabel('Model to price', { exact: true });
+  const modelInput = page.getByRole('combobox', { name: 'Model to price', exact: true });
   await modelInput.focus();
   await modelInput.press('ArrowDown');
   await expect(page.getByRole('listbox')).toBeVisible();
@@ -105,7 +105,7 @@ test('mobile keeps the prompt before the planning receipt', async ({ page }) => 
   const promptTop = await page.getByLabel('Material supplied').evaluate(element => (
     element.getBoundingClientRect().top
   ));
-  const receiptTop = await page.locator('.planner-receipt-column').evaluate(element => (
+  const receiptTop = await page.getByRole('complementary',{name:'Run cost estimate'}).evaluate(element => (
     element.getBoundingClientRect().top
   ));
   expect(promptTop).toBeLessThan(receiptTop);

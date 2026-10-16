@@ -376,7 +376,6 @@ export default function AgentPlannerClient() {
   const arithmeticReady =
     primary?.expected.totalCost !== null &&
     primary?.expected.totalCost !== undefined &&
-    (!recurring || (Number.isInteger(runs) && runs > 0 && runs <= 1000000)) &&
     Number.isFinite(variance) &&
     variance >= 0 &&
     variance <= 100;
@@ -406,14 +405,11 @@ export default function AgentPlannerClient() {
       (Number.isInteger(plan.stepsHigh) &&
         plan.stepsHigh >= plan.steps &&
         plan.stepsHigh <= 1000000));
-  const ready =
-    arithmeticReady &&
-    thinkingRangeValid &&
-    responseRangeValid &&
-    (!budgetEnabled ||
-      (Number.isFinite(budget) && budget >= 0 && budget <= 1000000));
+  const validRuns = Number.isInteger(runs) && runs > 0 && runs <= 1000000;
+  const validBudget = Number.isFinite(budget) && budget >= 0 && budget <= 1000000;
+  const ready = arithmeticReady && thinkingRangeValid && responseRangeValid;
   const cost = primary?.expected.totalCost ?? 0;
-  const total = ready && recurring ? cost * runs : null;
+  const total = ready && recurring && validRuns ? cost * runs : null;
   const breakdown = primary
     ? [
         {
@@ -443,7 +439,7 @@ export default function AgentPlannerClient() {
       ]
     : [];
   useEffect(() => {
-    if (!primary || !ready) return;
+    if (!primary || !ready || (recurring && !validRuns) || (budgetEnabled && !validBudget)) return;
     setScenario({
       planner: sharedState,
       prompt: inputMode === 'paste' ? prompt : '',
@@ -477,6 +473,9 @@ export default function AgentPlannerClient() {
     recurring,
     runs,
     setScenario,
+    validRuns,
+    validBudget,
+    budgetEnabled,
   ]);
   async function copyShareLink() {
     const link = buildAgentPlanLink(window.location.origin, {
@@ -535,10 +534,10 @@ export default function AgentPlannerClient() {
   const rangeLabel =
     loading && !catalog
       ? 'Loading prices…'
-      : ready
+      : ready && scenarioCosts.length === 3
         ? `${formatUsd(Math.min(...scenarioCosts))} – ${formatUsd(Math.max(...scenarioCosts))}`
         : 'Unavailable';
-  const workloadLabel = `${number(plan.workers ?? 1)} ${plan.workers && plan.workers > 1 ? 'agent streams' : 'stream'} · ${number(plan.steps)} responses each${plan.retries ? ` · ${number(1 + plan.retries)} attempts` : ''}`;
+  const workloadLabel = `${number(plan.workers ?? 1)} ${plan.workers && plan.workers > 1 ? 'agent streams' : 'stream'} · ${number(plan.steps)} ${plan.steps === 1 ? 'response' : 'responses'} each${plan.retries ? ` · ${number(1 + plan.retries)} attempts` : ''}`;
   const receiptText = [
     'Prompt Info · Cost estimate',
     primary?.name ?? 'Model unavailable',
@@ -879,12 +878,10 @@ export default function AgentPlannerClient() {
                   </div>
                 </details>
                 <p className="planner-assumption-note">
-                  This models {number(plan.stepsLow ?? plan.steps)}–
-                  {number(plan.stepsHigh ?? plan.steps)} model responses, with{' '}
-                  {number(plan.steps)} in the central scenario
-                  {(plan.workers ?? 1) > 1
-                    ? ` per agent across ${number(plan.workers!)} streams`
-                    : ''}
+                  {(plan.stepsLow ?? plan.steps) === (plan.stepsHigh ?? plan.steps)
+                    ? `This models ${number(plan.steps)} ${plan.steps === 1 ? 'model response' : 'model responses'}`
+                    : `This models ${number(plan.stepsLow ?? plan.steps)}–${number(plan.stepsHigh ?? plan.steps)} model responses, with ${number(plan.steps)} in the central scenario`}
+                  {(plan.workers ?? 1) > 1 ? ` per agent across ${number(plan.workers!)} streams` : ''}
                   . Task difficulty alone cannot predict usage.
                 </p>
                 <button
@@ -1643,7 +1640,10 @@ export default function AgentPlannerClient() {
                 . Review the replacement selection.
               </p>
             )}
-            {budgetEnabled && ready && Math.max(...scenarioCosts) > budget && (
+            {recurring && !validRuns && <p role="alert" className="agent-warning">Enter 1–1,000,000 completed tasks for the monthly projection. The per-task estimate is unchanged.</p>}
+            {budgetEnabled && !validBudget && <p role="alert" className="agent-warning">Enter a valid task budget to enable the warning.</p>}
+            {ready && scenarioCosts.length !== 3 && <p role="alert" className="agent-warning">The central estimate is available, but one range scenario could not be calculated. Review its response and token assumptions.</p>}
+            {budgetEnabled && validBudget && ready && Math.max(...scenarioCosts) > budget && (
               <p role="note" className="agent-warning">
                 The modeled range exceeds your {formatUsd(budget)} task budget.
               </p>

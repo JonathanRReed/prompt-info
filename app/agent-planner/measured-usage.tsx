@@ -160,7 +160,7 @@ export default function MeasuredUsage({
                     setNextId(imported.length + 1);
                     setUsageJson('');
                     setImportStatus(
-                      `Imported ${imported.length} requests. Previous rows were replaced.`,
+                      `Imported ${imported.length} ${imported.length === 1 ? 'request' : 'requests'}. Previous rows were replaced.`,
                     );
                   } catch (error) {
                     setImportStatus(

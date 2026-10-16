@@ -174,3 +174,28 @@ test('all presets, tabs and themes render without errors or clipped controls', a
   }
   expect(errors).toEqual([]);
 });
+
+test('an invalid optional monthly volume does not erase the per-task price',async({page})=>{
+  await page.goto('/?model=openai/gpt-6.1-sol');
+  await expect(page.getByTestId('agent-run-total')).toHaveText('$0.0068');
+  await page.getByRole('tab',{name:'Run settings',exact:true}).click();
+  await page.getByText('Optional budget planning',{exact:true}).click();
+  await page.getByLabel('Estimate a monthly budget',{exact:true}).check();
+  await page.getByLabel('Completed tasks per month',{exact:true}).fill('');
+  await expect(page.getByTestId('agent-monthly-total')).toHaveText('Unavailable');
+  await expect(page.getByTestId('agent-run-total')).toHaveText('$0.0068');
+});
+
+test('large planner token totals are not clipped when exploring output tradeoffs',async({page})=>{
+  await page.goto('/?model=anthropic/claude-fable-5.1');
+  await page.getByRole('button',{name:'Agent',exact:true}).click();
+  await page.getByRole('button',{name:'Large agent-team project',exact:true}).click();
+  await expect(page.getByTestId('agent-run-total')).toHaveText('$27,166.36');
+  if(await page.getByRole('button',{name:'Open navigation menu'}).isVisible()){
+    await page.getByRole('button',{name:'Open navigation menu'}).click();
+    await page.getByRole('dialog').getByRole('link',{name:/Output tradeoffs/}).click();
+  }else await page.getByRole('navigation',{name:'Main navigation',exact:true}).getByRole('link',{name:'Output tradeoffs',exact:true}).click();
+  await page.getByRole('button',{name:'Use planner token totals',exact:true}).click();
+  await expect(page.getByLabel('Input tokens per task')).toHaveValue('1689866000');
+  for(const field of await page.getByLabel('Your output tokens / task').all()) await expect(field).toHaveValue('301968000');
+});

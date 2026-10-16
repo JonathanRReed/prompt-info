@@ -326,7 +326,7 @@ html.light {
     z-index: 100;
     height: var(--header-h);
     border-bottom: 1px solid var(--line-0);
-    background: color-mix(in srgb, var(--surface-0) 88%, transparent);
+    background: var(--surface-0);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
   }

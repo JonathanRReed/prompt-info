@@ -187,7 +187,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     <ul>
                       <li><Link href="/">Cost calculator</Link></li>
                       <li><Link href="/format-comparison/">Format comparison</Link></li>
-                      <li><Link href="/token-efficiency/">Cost per task</Link></li>
+                      <li><Link href="/token-efficiency/">Output tradeoffs</Link></li>
                     </ul>
                   </nav>
                   <nav className="eco-footer-group" aria-labelledby="footer-data-heading">

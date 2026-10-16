@@ -2,523 +2,406 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ModelSelect from '../../components/ModelSelect';
-import { fetchBenchmarkCatalog } from '../../lib/fetchBenchmarks';
 import { usePromptScenario } from '../../components/ScenarioProvider';
-import { catalogModelFields, editedRate, plannerModelFields, rateOrNull } from '../../lib/efficiencyModelRates';
 import {
-  matchArtificialAnalysisModel,
-  type ArtificialAnalysisCatalogResponse,
-  type ArtificialAnalysisModel,
-} from '../../lib/artificialAnalysis';
-import {
-  breakEvenOutputRate,
-  costPerTask,
-} from '../../lib/tokenEfficiency';
+  fetchPricing,
+  type PricingCatalogResponse,
+} from '../../lib/fetchPricing';
+import { chooseDefaultModels } from '../../lib/modelSelection';
+import { editedRate } from '../../lib/efficiencyModelRates';
+import { costPerTask } from '../../lib/tokenEfficiency';
+import { formatUsd } from '../../components/charts/chartFormat';
 
-const DEFAULT_TASKS = 1;
-const DEFAULT_INPUT_TOKENS_PER_TASK = 5000;
-const MAX_TASKS = 1_000_000;
-const MAX_TOKENS_PER_TASK = 10_000_000;
-const MAX_RATE_PER_MILLION = 10_000;
-
-type EditableModel = {
+type Row = {
   key: string;
   name: string;
-  provider: string;
-  inputPerMillion: number | null;
-  outputPerMillion: number | null;
-  outputTokensPerTask: number;
-  intelligenceIndex: number | null;
-  benchmarkCostPerTask: number | null;
-  outputTokensPerSecond: number | null;
-  aaModelId: string | null;
-  rateSource: string;
+  inputRate: number | null;
+  outputRate: number | null;
+  tokens: number;
 };
-
-type EditableRateField = 'inputPerMillion' | 'outputPerMillion' | 'outputTokensPerTask';
-
-function initialModels(): EditableModel[] {
-  return ['a', 'b', 'c'].map(key => ({
-    key, name: `Example ${key.toUpperCase()}`, provider: 'Illustrative rates',
-    inputPerMillion: 2, outputPerMillion: 10, outputTokensPerTask: 500,
-    intelligenceIndex: null, benchmarkCostPerTask: null, outputTokensPerSecond: null,
-    aaModelId: null, rateSource: 'Editable example, not a model quote',
-  }));
-}
-
-function clampNumber(value: number, max: number) {
-  if (!Number.isFinite(value) || value < 0) return 0;
-  return Math.min(value, max);
-}
-
-function formatCost(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return 'N/A';
-  if (value === 0) return '$0.00';
-  if (value < 0.01) return `$${value.toFixed(6)}`;
-  if (value < 1) return `$${value.toFixed(4)}`;
-  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function sourceLabel(source: ArtificialAnalysisCatalogResponse['source'] | undefined) {
-  if (source === 'artificial-analysis-free-api') return 'live free API';
-  if (source === 'artificial-analysis-supabase-cache') return 'project database cache';
-  if (source === 'dated-fallback') return 'dated local fallback';
-  return 'loading';
-}
-
-function withCatalogModel(
-  current: EditableModel,
-  model: ArtificialAnalysisModel,
-  rateSource = 'Artificial Analysis',
-): EditableModel {
-  return {
-    ...current,
-    ...catalogModelFields(model, rateSource),
-  };
-}
-
-const fieldInputClass =
-  'glass-select w-full border px-3 py-2 text-right font-mono text-sm font-bold text-rose-text tabular-nums focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+const INITIAL: Row[] = ['a', 'b', 'c'].map((key) => ({
+  key,
+  name: '',
+  inputRate: null,
+  outputRate: null,
+  tokens: 500,
+}));
+const safeCount = (raw: string): number =>
+  raw.trim() && Number.isSafeInteger(Number(raw)) && Number(raw) >= 0
+    ? Number(raw)
+    : NaN;
+const inputClass =
+  'glass-select mt-2 min-h-11 w-full border px-3 py-2 font-mono text-sm text-rose-text';
 
 export default function TokenEfficiencyPageClient() {
   const { scenario } = usePromptScenario();
-  const [tasks, setTasks] = useState(DEFAULT_TASKS);
-  // Raw text while the tasks field is being edited, so clearing it does not
-  // snap to 1 and turn a typed "500" into "1500".
+  const [catalog, setCatalog] = useState<PricingCatalogResponse | null>(null);
+  const [error, setError] = useState('');
+  const [request, setRequest] = useState(0);
+  const [rows, setRows] = useState<Row[]>(INITIAL);
+  const [input, setInput] = useState(5000);
+  const [tasks, setTasks] = useState(1);
   const [tasksDraft, setTasksDraft] = useState<string | null>(null);
-  const [inputTokensPerTask, setInputTokensPerTask] = useState(DEFAULT_INPUT_TOKENS_PER_TASK);
-  const [models, setModels] = useState<EditableModel[]>(initialModels);
-  const [catalog, setCatalog] = useState<ArtificialAnalysisCatalogResponse | null>(null);
-  const [catalogError, setCatalogError] = useState(false);
-  const [plannerApplied, setPlannerApplied] = useState(false);
-
+  const [imported, setImported] = useState(false);
   useEffect(() => {
     let cancelled = false;
-
-    // Validated and time-bounded: a malformed 200 body used to reach render and
-    // crash the whole page; a stalled request left the pickers loading forever.
-    fetchBenchmarkCatalog()
-      .then(response => {
+    setError('');
+    fetchPricing()
+      .then((response) => {
         if (cancelled) return;
         setCatalog(response);
-        const rateSource = response.freshness === 'static'
-          ? 'Artificial Analysis dated snapshot'
-          : response.freshness === 'cached'
-            ? 'Artificial Analysis cache'
-            : 'Artificial Analysis';
-        const candidates = [...response.data].filter(model => rateOrNull(model.inputPerMillion) !== null && rateOrNull(model.outputPerMillion) !== null)
-          .sort((a,b) => (b.intelligenceIndex ?? -1) - (a.intelligenceIndex ?? -1));
-        const creators = new Set<string>();
-        const defaults = candidates.filter(model => { if(creators.has(model.creator)) return false; creators.add(model.creator); return true; }).slice(0,3);
-        setModels(current => current.map((model,index) => defaults[index] ? withCatalogModel(model, defaults[index], rateSource) : model));
+        const defaults = chooseDefaultModels(
+          Object.keys(response.data),
+          response.data,
+          3,
+        );
+        setRows((current) =>
+          current.map((row, index) => {
+            const name = response.data[row.name]
+              ? row.name
+              : (defaults[index] ?? '');
+            const price = response.data[name]?.pricing;
+            return {
+              ...row,
+              name,
+              inputRate: price ? price.input * 1000 : null,
+              outputRate: price ? price.output * 1000 : null,
+            };
+          }),
+        );
       })
-      .catch(() => {
-        if (!cancelled) setCatalogError(true);
+      .catch((error) => {
+        if (!cancelled)
+          setError(
+            error instanceof Error ? error.message : 'Prices unavailable.',
+          );
       });
-
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const catalogModels = useMemo(
-    () => (catalog?.data ?? []).filter(model => rateOrNull(model.inputPerMillion) !== null || rateOrNull(model.outputPerMillion) !== null),
-    [catalog]
-  );
-  const benchmarkCostCoverage = useMemo(
-    () => (catalog?.data ?? []).filter(model => model.benchmarkCostPerTask !== null).length,
-    [catalog],
-  );
-  const speedCoverage = useMemo(
-    () => (catalog?.data ?? []).filter(model => model.outputTokensPerSecond !== null).length,
-    [catalog],
-  );
-  const latestObservation = useMemo(() => (catalog?.data ?? [])
-    .map(model => model.lastSeen)
-    .filter((value): value is string => Boolean(value))
-    .sort()
-    .at(-1) ?? null, [catalog]);
-
-  const updateModel = (key: string, field: EditableRateField, rawValue: string) => {
-    const max = field === 'outputTokensPerTask' ? MAX_TOKENS_PER_TASK : MAX_RATE_PER_MILLION;
-    const value = field === 'outputTokensPerTask' ? clampNumber(Number(rawValue), max) : editedRate(rawValue, max);
-    setModels(prev => prev.map(model => (
-      model.key === key
-        ? { ...model, [field]: value, rateSource: field === 'outputTokensPerTask' ? model.rateSource : 'Edited rate' }
-        : model
-    )));
+  }, [request]);
+  const select = (key: string, name: string) => {
+    const rates = catalog?.data[name]?.pricing;
+    setRows((current) =>
+      current.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              name,
+              inputRate: rates ? rates.input * 1000 : null,
+              outputRate: rates ? rates.output * 1000 : null,
+            }
+          : row,
+      ),
+    );
   };
-
-  const selectCatalogModel = (slotKey: string, modelId: string) => {
-    const selected = catalogModels.find(model => model.id === modelId);
-    if (!selected) return;
-    const rateSource = catalog?.freshness === 'static'
-      ? 'Artificial Analysis dated snapshot'
-      : catalog?.freshness === 'cached'
-        ? 'Artificial Analysis cache'
-        : 'Artificial Analysis';
-    setModels(current => current.map(model => model.key === slotKey ? withCatalogModel(model, selected, rateSource) : model));
-  };
-
-  const usePlannerWorkload = () => {
-    if (!scenario) return;
-    setTasks(Math.max(1, Math.min(MAX_TASKS, scenario.workloadRuns)));
-    setInputTokensPerTask(clampNumber(scenario.inputTokensPerRun, MAX_TOKENS_PER_TASK));
-    setModels(current => {
-      const benchmarkMatch = catalog ? matchArtificialAnalysisModel(scenario.model, catalog.data) : null;
-      const referenceIndex = benchmarkMatch
-        ? Math.max(0, current.findIndex(model => model.aaModelId === benchmarkMatch.id))
-        : 0;
-      return current.map((model, index) => {
-        if (index !== referenceIndex) return { ...model, outputTokensPerTask: clampNumber(scenario.outputTokensPerRun, MAX_TOKENS_PER_TASK) };
-
-        return {
-          ...model,
-          ...plannerModelFields(scenario, benchmarkMatch),
-          outputTokensPerTask: clampNumber(scenario.outputTokensPerRun, MAX_TOKENS_PER_TASK),
-        };
-      });
-    });
-    setPlannerApplied(true);
-  };
-
-  const rows = useMemo(() => {
-    const computed = models.map(model => ({
-      ...model,
-      taskCost: costPerTask({
-        inputTokensPerTask,
-        outputTokensPerTask: model.outputTokensPerTask,
-        inputPerMillion: model.inputPerMillion,
-        outputPerMillion: model.outputPerMillion,
-      }),
-    }));
-
-    const validTaskCosts = computed.filter(row => row.taskCost !== null) as Array<(typeof computed)[number] & { taskCost: number }>;
-    const cheapestPerTask = validTaskCosts.length
-      ? validTaskCosts.reduce((best, row) => (row.taskCost < best.taskCost ? row : best))
-      : null;
-    const outputPriced = computed.filter((row): row is typeof row & { outputPerMillion: number } => row.outputPerMillion !== null);
-    const cheapestPerToken = outputPriced.length
-      ? outputPriced.reduce((best, row) => row.outputPerMillion < best.outputPerMillion ? row : best)
-      : null;
-
-    return computed.map(row => {
-      const isCheapestPerTask = cheapestPerTask !== null && row.key === cheapestPerTask.key;
-      const breakEven =
-        !isCheapestPerTask && cheapestPerTask !== null
-          ? breakEvenOutputRate(
-              {
-                inputTokensPerTask,
-                outputTokensPerTask: cheapestPerTask.outputTokensPerTask,
-                inputPerMillion: cheapestPerTask.inputPerMillion,
-                outputPerMillion: cheapestPerTask.outputPerMillion,
-              },
-              {
-                inputTokensPerTask,
-                outputTokensPerTask: row.outputTokensPerTask,
-                inputPerMillion: row.inputPerMillion,
-              }
-            )
-          : null;
-
-      return {
+  const update = (
+    key: string,
+    field: 'inputRate' | 'outputRate' | 'tokens',
+    raw: string,
+  ) =>
+    setRows((current) =>
+      current.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              [field]:
+                field === 'tokens' ? safeCount(raw) : editedRate(raw, 1000000),
+            }
+          : row,
+      ),
+    );
+  const calculated = useMemo(
+    () =>
+      rows.map((row) => ({
         ...row,
-        isCheapestPerTask,
-        isCheapestPerToken: row.key === cheapestPerToken?.key,
-        breakEven,
-      };
-    });
-  }, [models, inputTokensPerTask]);
-  const maxTaskCost = Math.max(...rows.map(row => row.taskCost ?? 0), 0);
-  const maxOutputTokens = Math.max(...rows.map(row => row.outputTokensPerTask), 1);
-
+        cost: costPerTask({
+          inputTokensPerTask: input,
+          outputTokensPerTask: row.tokens,
+          inputPerMillion: row.inputRate,
+          outputPerMillion: row.outputRate,
+        }),
+      })),
+    [rows, input],
+  );
+  const maximum = Math.max(0, ...calculated.map((row) => row.cost ?? 0));
+  const outputMaximum = Math.max(
+    1,
+    ...rows.map((row) => (Number.isFinite(row.tokens) ? row.tokens : 0)),
+  );
+  const applyPlanner = () => {
+    if (!scenario) return;
+    setInput(scenario.inputTokensPerRun);
+    setTasks(scenario.workloadRuns);
+    setTasksDraft(null);
+    setRows((current) =>
+      current.map((row, index) => ({
+        ...row,
+        tokens: scenario.outputTokensPerRun,
+        ...(index === 0
+          ? {
+              name: scenario.model,
+              inputRate: scenario.inputPerMillion,
+              outputRate: scenario.outputPerMillion,
+            }
+          : {}),
+      })),
+    );
+    setImported(true);
+  };
   return (
-    <section id="efficiency-lab" className="mx-auto w-full max-w-[1500px] border-x border-b border-rose-highlightMed bg-rose-base px-4 py-12 sm:px-6 md:px-12 md:py-16">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="data-label">Editable comparison</p>
-          <h2 className="mt-4 max-w-4xl text-[clamp(2.2rem,5vw,4.6rem)] font-bold leading-[0.95] tracking-tight text-rose-text">
-            How much does a longer answer cost?
-          </h2>
-        </div>
+    <section
+      id="efficiency-lab"
+      className="mx-auto w-full max-w-[1500px] border-b border-rose-highlightMed bg-rose-base p-4 sm:p-6 md:p-10"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">Compare a task</h2>
         <button
+          className="action-secondary"
           type="button"
           onClick={() => {
-            setModels(current => current.map(model => ({...model,outputTokensPerTask:500})));
-            setTasks(DEFAULT_TASKS);
+            setInput(5000);
+            setTasks(1);
             setTasksDraft(null);
-            setInputTokensPerTask(DEFAULT_INPUT_TOKENS_PER_TASK);
-            setPlannerApplied(false);
+            setRows((current) =>
+              current.map((row) => ({ ...row, tokens: 500 })),
+            );
+            setImported(false);
           }}
-          className="self-start border border-rose-highlightMed bg-rose-base px-4 py-3 text-xs font-medium text-rose-subtle transition duration-200 hover:border-rose-love hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none sm:self-end"
         >
           Reset token assumptions
         </button>
       </div>
-
-      <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-        Start with equal output lengths, then change them to test a hypothesis or enter measured usage. Generated output includes thinking where it is billed. These token counts are examples, not model-specific predictions.
+      <p className="mt-3 max-w-3xl text-sm leading-7 text-rose-subtle">
+        Start with equal output lengths, then change them to test a hypothesis
+        or enter measured usage. Output includes billed thinking. These counts
+        are editable examples, not model-specific predictions.
       </p>
-
-      <div className="mt-6 flex flex-col gap-3 border border-rose-highlightMed bg-rose-overlay p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-medium text-signal-text">
-            Artificial Analysis catalog · {catalogModels.length.toLocaleString()} models
-          </p>
-          <p className="mt-2 text-xs leading-5 text-rose-muted">
-            Source: {catalogError ? 'unavailable, editable presets retained' : sourceLabel(catalog?.source)}.
-            {catalog?.intelligenceIndexVersion ? ` Intelligence Index v${catalog.intelligenceIndexVersion}.` : ''}
-            {catalog?.retrievedAt ? ` ${catalog.freshness === 'static' ? 'Snapshot dated' : catalog.freshness === 'cached' ? 'Oldest model observation' : 'Checked'} ${catalog.freshness === 'static'
-              // A dated snapshot has a day, not a meaningful clock time.
-              ? new Date(catalog.retrievedAt).toLocaleDateString(undefined, { dateStyle: 'long', timeZone: 'UTC' })
-              : new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
-            {latestObservation ? ` Latest model observation ${latestObservation}.` : ''}
-          </p>
-          {catalog && (
-            <p className="mt-2 text-xs leading-5 text-rose-subtle">
-              Evidence coverage: {benchmarkCostCoverage.toLocaleString()} / {catalog.data.length.toLocaleString()} models with published cost-per-task data, {speedCoverage.toLocaleString()} / {catalog.data.length.toLocaleString()} with throughput data. Your modeled task cost remains separate.
-            </p>
-          )}
-          {catalog?.isFallback && catalog.fallbackReason ? (
-            <p className="mt-2 text-xs leading-5 text-rose-subtle">{catalog.fallbackReason}</p>
-          ) : null}
-          {catalog?.limitations ? <p className="mt-2 text-xs leading-5 text-rose-muted">{catalog.limitations}</p> : null}
-        </div>
-        <a
-          href="https://artificialanalysis.ai/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-medium text-rose-text underline decoration-rose-love underline-offset-4 hover:text-signal-text"
+      <p className="mt-3 text-xs leading-6 text-rose-muted">
+        {catalog ? (
+          <>
+            <a className="underline" href={catalog.sourceUrl}>
+              {catalog.source === 'openrouter-live'
+                ? 'OpenRouter price catalog'
+                : 'Dated price catalog'}
+            </a>{' '}
+            · {new Date(catalog.retrievedAt).toLocaleDateString()} ·{' '}
+            {catalog.freshness === 'live' ? 'live rates' : 'fallback rates'}
+          </>
+        ) : (
+          error || 'Loading current model prices…'
+        )}{' '}
+        <button
+          className="underline"
+          type="button"
+          onClick={() => setRequest((value) => value + 1)}
         >
-          Artificial Analysis
-        </a>
-      </div>
-
+          Refresh prices
+        </button>
+      </p>
+      {catalog?.isFallback && (
+        <p role="note" className="mt-2 text-xs text-rose-muted">
+          {catalog.fallbackReason}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-rose-subtle">
+          Enter rates manually or refresh to try again.
+        </p>
+      )}
       {scenario && (
-        <div className="mt-4 flex flex-col gap-3 border border-rose-highlightMed p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="data-label">Active planner scenario</p>
-            <p className="mt-2 text-sm text-rose-subtle">
-              {scenario.model || 'Selected model'} · {scenario.inputTokensPerRun.toLocaleString()} input · {scenario.outputTokensPerRun.toLocaleString()} output · {scenario.workloadRuns.toLocaleString()} runs / {scenario.workloadCadence}
-            </p>
-            {plannerApplied && <p className="mt-2 text-xs font-medium text-signal-text">Planner token totals applied equally. This simplified comparison excludes caching and conditional price tiers, so totals can differ from the full receipt.</p>}
-          </div>
+        <div className="mt-5 border border-rose-highlightMed p-4">
           <button
+            className="action-secondary"
             type="button"
-            onClick={usePlannerWorkload}
-            className="action-secondary justify-center"
+            onClick={applyPlanner}
           >
             Use planner token totals
           </button>
+          <p className="mt-2 text-xs text-rose-muted">
+            Imports the same input and output totals into this simplified
+            comparison. Caching and conditional tiers are excluded, so it will
+            not reproduce an agent receipt.
+          </p>
+          {imported && (
+            <p role="status" className="mt-2 text-sm text-signal-text">
+              Planner token totals applied equally.
+            </p>
+          )}
         </div>
       )}
-
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:max-w-xl">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:max-w-2xl">
         <div>
-          <label className="data-label" htmlFor="efficiency-tasks">
-            Tasks in workload
-          </label>
-          <input
-            id="efficiency-tasks"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={MAX_TASKS}
-            step={1}
-            value={tasksDraft ?? tasks}
-            onChange={e => {
-              const raw = e.target.value;
-              setTasksDraft(raw);
-              const parsed = Number(raw);
-              if (raw.trim() && Number.isFinite(parsed) && parsed >= 1) setTasks(Math.floor(Math.min(parsed, MAX_TASKS)));
-            }}
-            onBlur={() => setTasksDraft(null)}
-            className={`mt-2 ${fieldInputClass}`}
-          />
-        </div>
-        <div>
-          <label className="data-label" htmlFor="efficiency-input-tokens">
+          <label htmlFor="efficiency-input-tokens" className="data-label">
             Input tokens per task
           </label>
           <input
             id="efficiency-input-tokens"
+            className={inputClass}
             type="number"
-            inputMode="numeric"
             min={0}
-            max={MAX_TOKENS_PER_TASK}
-            step={64}
-            value={inputTokensPerTask}
-            onChange={e => setInputTokensPerTask(clampNumber(Number(e.target.value), MAX_TOKENS_PER_TASK))}
-            className={`mt-2 ${fieldInputClass}`}
+            max={Number.MAX_SAFE_INTEGER}
+            value={Number.isFinite(input) ? input : ''}
+            onChange={(e) => setInput(safeCount(e.target.value))}
+          />
+        </div>
+        <div>
+          <label htmlFor="efficiency-tasks" className="data-label">
+            Tasks in workload
+          </label>
+          <input
+            id="efficiency-tasks"
+            className={inputClass}
+            type="number"
+            min={1}
+            max={1000000}
+            value={tasksDraft ?? tasks}
+            onChange={(e) => {
+              setTasksDraft(e.target.value);
+              const n = safeCount(e.target.value);
+              if (n >= 1 && n <= 1000000) setTasks(n);
+            }}
+            onBlur={() => setTasksDraft(null)}
           />
         </div>
       </div>
-
-      <section className="efficiency-chart-grid" aria-label="Calculated cost and output comparison">
+      <section
+        className="efficiency-chart-grid"
+        aria-label="Calculated cost and output comparison"
+      >
         <div className="efficiency-chart">
-          <p className="data-label">Calculated from your fields</p>
           <h3>Cost per task</h3>
           <div className="efficiency-bar-list">
-            {rows.map(row => (
+            {calculated.map((row, index) => (
               <div className="efficiency-bar-row" key={row.key}>
-                <div><strong>{row.name}</strong><span>{formatCost(row.taskCost)}</span></div>
+                <div>
+                  <strong>{row.name || `Model ${index + 1}`}</strong>
+                  <span>{formatUsd(row.cost)}</span>
+                </div>
                 <div className="efficiency-bar-track" aria-hidden="true">
-                  <span style={{ transform: `scaleX(${maxTaskCost > 0 ? (row.taskCost ?? 0) / maxTaskCost : 0})` }} />
+                  <span
+                    style={{
+                      transform: `scaleX(${maximum ? (row.cost ?? 0) / maximum : 0})`,
+                    }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         </div>
         <div className="efficiency-chart">
-          <p className="data-label">Your output assumptions</p>
           <h3>Output tokens per task</h3>
           <div className="efficiency-bar-list">
-            {rows.map(row => (
+            {rows.map((row, index) => (
               <div className="efficiency-bar-row" key={row.key}>
-                <div><strong>{row.name}</strong><span>{row.outputTokensPerTask.toLocaleString()}</span></div>
+                <div>
+                  <strong>{row.name || `Model ${index + 1}`}</strong>
+                  <span>
+                    {Number.isFinite(row.tokens)
+                      ? row.tokens.toLocaleString()
+                      : '—'}
+                  </span>
+                </div>
                 <div className="efficiency-bar-track" aria-hidden="true">
-                  <span style={{ transform: `scaleX(${row.outputTokensPerTask / maxOutputTokens})` }} />
+                  <span
+                    style={{
+                      transform: `scaleX(${Number.isFinite(row.tokens) ? row.tokens / outputMaximum : 0})`,
+                    }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         </div>
       </section>
-
-      <div className="mt-8 grid gap-px bg-rose-highlightMed lg:grid-cols-3">
-        {rows.map((row, index) => (
-          <article key={row.key} className="flex flex-col bg-rose-base p-5 sm:p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold text-rose-text">{row.name}</h3>
-                <p className="mt-1 text-xs text-rose-muted">{row.provider}</p>
-                <p className="mt-1 font-mono text-[length:var(--text-xs)] text-rose-muted">Rates: {row.rateSource}</p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                {row.isCheapestPerToken && (
-                  <span className="border border-rose-highlightMed px-2 py-1 text-xs font-medium text-rose-muted">
-                    Lowest output rate in set
-                  </span>
-                )}
-                {row.isCheapestPerTask && (
-                  <span className="bg-rose-love px-2 py-1 text-xs font-medium text-white">
-                    Lowest calculated cost in set
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-catalog-model`}>
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        {calculated.map((row, index) => (
+          <article
+            key={row.key}
+            className="min-w-0 border border-rose-highlightMed bg-rose-surface p-4 sm:p-5"
+          >
+            <h3 className="text-sm font-semibold text-rose-text">
+              {row.name || `Model ${index + 1}`}
+            </h3>
+            <div className="mt-4">
+              <label
+                htmlFor={`efficiency-model-${row.key}`}
+                className="data-label"
+              >
                 Comparison model {index + 1}
               </label>
               <ModelSelect
-                id={`${row.key}-catalog-model`}
-                models={catalogModels.map(model => model.id)}
-                modelLabels={Object.fromEntries(catalogModels.map(model => [model.id, model.displayName]))}
-                value={row.aaModelId ?? undefined}
-                loading={!catalog && !catalogError}
+                id={`efficiency-model-${row.key}`}
+                models={Object.keys(catalog?.data ?? {})}
+                pricing={catalog?.data}
+                value={row.name}
+                loading={!catalog && !error}
                 autoSelect={false}
-                onChange={id => selectCatalogModel(row.key, id)}
+                onChange={(name) => select(row.key, name)}
               />
             </div>
-
-            {(row.inputPerMillion === null || row.outputPerMillion === null) && (
-              <p role="status" className="mt-3 text-xs leading-5 text-rose-subtle">A price is not reported. Enter both rates to calculate task cost.</p>
-            )}
-
-            <dl className="mt-4 grid grid-cols-2 gap-px bg-rose-highlightMed">
-              <div className="bg-rose-base p-3">
-                <dt className="font-mono text-[length:var(--text-xs)] font-bold  text-rose-muted">AA intelligence</dt>
-                <dd className="mt-1 font-mono text-sm font-bold text-rose-text tabular-nums">{row.intelligenceIndex ?? 'N/A'}</dd>
-              </div>
-              <div className="bg-rose-base p-3">
-                <dt className="font-mono text-[length:var(--text-xs)] font-bold  text-rose-muted">AA cost / task</dt>
-                <dd className="mt-1 font-mono text-sm font-bold text-rose-text tabular-nums">{formatCost(row.benchmarkCostPerTask)}</dd>
-              </div>
-            </dl>
-
-            <div className="mt-5 grid gap-3">
-              <div>
-                <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-input-rate`}>
-                  Input $ / M tokens
-                </label>
-                <input
-                  id={`${row.key}-input-rate`}
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step={0.05}
-                  value={row.inputPerMillion ?? ''}
-                  placeholder="Not reported"
-                  onChange={e => updateModel(row.key, 'inputPerMillion', e.target.value)}
-                  className={`mt-1 ${fieldInputClass}`}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-output-rate`}>
-                  Output $ / M tokens
-                </label>
-                <input
-                  id={`${row.key}-output-rate`}
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step={0.05}
-                  value={row.outputPerMillion ?? ''}
-                  placeholder="Not reported"
-                  onChange={e => updateModel(row.key, 'outputPerMillion', e.target.value)}
-                  className={`mt-1 ${fieldInputClass}`}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-output-tokens`}>
-                  Your output tokens / task
-                </label>
-                <input
-                  id={`${row.key}-output-tokens`}
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={500}
-                  value={row.outputTokensPerTask}
-                  onChange={e => updateModel(row.key, 'outputTokensPerTask', e.target.value)}
-                  className={`mt-1 ${fieldInputClass}`}
-                />
-              </div>
+            <div className="mt-5 space-y-4">
+              {(
+                [
+                  ['inputRate', 'Input $ / M tokens'],
+                  ['outputRate', 'Output $ / M tokens'],
+                  ['tokens', 'Your output tokens / task'],
+                ] as const
+              ).map(([field, label]) => (
+                <div key={field}>
+                  <label
+                    htmlFor={`${row.key}-${field}`}
+                    className="text-xs text-rose-subtle"
+                  >
+                    {label}
+                  </label>
+                  <input
+                    id={`${row.key}-${field}`}
+                    type="number"
+                    min={0}
+                    max={field === 'tokens' ? Number.MAX_SAFE_INTEGER : 1000000}
+                    step={field === 'tokens' ? 1 : 0.01}
+                    className={inputClass}
+                    value={
+                      row[field] !== null && Number.isFinite(row[field])
+                        ? row[field]!
+                        : ''
+                    }
+                    placeholder="Not reported"
+                    onChange={(e) => update(row.key, field, e.target.value)}
+                  />
+                </div>
+              ))}
             </div>
-
-            <div className="mt-6 border-t border-rose-highlightMed pt-5">
-              <p className="text-xs font-medium text-rose-muted">Cost per task</p>
-              <output className="mt-1 block font-mono text-2xl font-bold text-signal-text tabular-nums">
-                {formatCost(row.taskCost)}
-              </output>
-              <p className="mt-3 text-xs font-medium text-rose-muted">
-                {tasks.toLocaleString()} tasks
+            {(row.inputRate === null || row.outputRate === null) && (
+              <p role="status" className="mt-3 text-xs text-rose-subtle">
+                A price is not reported. Enter both rates to calculate task
+                cost.
               </p>
-              <output className="mt-1 block font-mono text-sm font-bold text-rose-text tabular-nums">
-                {formatCost(row.taskCost === null ? null : row.taskCost * tasks)}
+            )}
+            <div className="mt-5 border-t border-rose-highlightMed pt-4">
+              <p className="text-xs text-rose-muted">Cost per task</p>
+              <output className="mt-1 block font-mono text-2xl font-bold text-signal-text">
+                {formatUsd(row.cost)}
               </output>
-              {row.outputTokensPerSecond !== null && (
-                <p className="mt-3 text-xs text-rose-muted">
-                  AA speed · {row.outputTokensPerSecond.toLocaleString()} output tok/s
-                </p>
-              )}
-              {row.breakEven !== null && (
-                <p className="mt-4 text-xs leading-5 text-rose-muted">
-                  At {row.outputTokensPerTask.toLocaleString()} tokens per task, this model needs an output rate at or
-                  below <span className="font-mono font-bold text-rose-text">{formatCost(row.breakEven)}</span> / M to
-                  tie the cheapest per-task model.
-                </p>
+              {tasks > 1 && (
+                <>
+                  <p className="mt-3 text-xs text-rose-muted">
+                    {tasks.toLocaleString()} tasks
+                  </p>
+                  <output className="font-mono text-lg">
+                    {formatUsd(row.cost === null ? null : row.cost * tasks)}
+                  </output>
+                </>
               )}
             </div>
           </article>
         ))}
       </div>
-
-      <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-muted">
-        Cache reads, cache writes, and multi-turn history re-sends are deliberately out of scope here; this is a simplified rate × token comparison. Conditional price tiers are also excluded. Use the full calculator for an agent budget. A blank AA cost per
-        task means the active catalog source did not publish that metric; Prompt Info does not manufacture it.
+      <p className="mt-5 max-w-3xl text-sm leading-7 text-rose-muted">
+        This compares token rates and volume. Cache pricing, conditional
+        long-context tiers and hosted tools are outside this simple view. Equal
+        token counts do not establish equal quality or equal work.
       </p>
     </section>
   );

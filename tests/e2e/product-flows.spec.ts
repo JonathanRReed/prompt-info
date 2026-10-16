@@ -90,11 +90,15 @@ test('format examples contain the supplied text without invented metadata', asyn
 });
 
 test('output tradeoffs teaches rates times usage with editable values', async ({page}) => {
-  await page.route('**/api/benchmarks',route=>route.fulfill({status:503,body:'offline'}));
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/,route=>route.fulfill({status:503,body:'offline'}));
+  await page.route('**/data/llm-data.json',route=>route.fulfill({status:503,body:'offline'}));
   await page.goto('/token-efficiency/');
   await expect(page.getByRole('heading',{level:1,name:'Output length changes the bill.'})).toBeVisible();
   await expect(page.getByLabel('Tasks in workload')).toHaveValue('1');
   const card=page.locator('#efficiency-lab article').first();
+  await expect(page.getByRole('alert').filter({hasText:'Enter rates manually'})).toBeVisible();
+  await card.getByLabel('Input $ / M tokens').fill('2');
+  await card.getByLabel('Output $ / M tokens').fill('10');
   await expect(card.locator('output').first()).toHaveText('$0.0150');
   await card.getByLabel('Your output tokens / task').fill('1000');
   await expect(card.locator('output').first()).toHaveText('$0.0200');

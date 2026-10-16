@@ -17,7 +17,7 @@ type FormatCard = {
 
 type TokenizerState =
   | { status: 'loading' }
-  | { status: 'ready'; encode: (text: string) => number[] }
+  | { status: 'ready'; source: FormatCard[]; tokenizer: FormatTokenizerKey; counts: Record<string, number> }
   | { status: 'error' };
 
 const FORMAT_TOKENIZERS = [
@@ -29,17 +29,6 @@ const FORMAT_TOKENIZERS = [
 ] as const;
 
 type FormatTokenizerKey = typeof FORMAT_TOKENIZERS[number]['key'];
-
-const FORMAT_TOKENIZER_IMPORTERS: Record<
-  FormatTokenizerKey,
-  () => Promise<{ encode: (text: string) => number[] }>
-> = {
-  o200k_base: () => import('gpt-tokenizer/encoding/o200k_base'),
-  cl100k_base: () => import('gpt-tokenizer/encoding/cl100k_base'),
-  p50k_base: () => import('gpt-tokenizer/encoding/p50k_base'),
-  p50k_edit: () => import('gpt-tokenizer/encoding/p50k_edit'),
-  r50k_base: () => import('gpt-tokenizer/encoding/r50k_base'),
-};
 
 function isFormatTokenizerKey(value: string | undefined): value is FormatTokenizerKey {
   return FORMAT_TOKENIZERS.some(tokenizer => tokenizer.key === value);
@@ -98,28 +87,28 @@ export default function FormatComparisonPageClient() {
   }, [scenario?.prompt, scenario?.tokenizer]);
 
   useEffect(() => {
+    let worker: Worker | undefined;
     let cancelled = false;
-    setTokenizer({ status: 'loading' });
-    FORMAT_TOKENIZER_IMPORTERS[selectedTokenizer]()
-      .then(({ encode }) => {
-        if (!cancelled) setTokenizer({ status: 'ready', encode });
-      })
-      .catch(() => {
-        if (!cancelled) setTokenizer({ status: 'error' });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedTokenizer]);
+    setTokenizer({status:'loading'});
+    const timeout=window.setTimeout(()=>{worker?.terminate();if(!cancelled)setTokenizer({status:'error'});},15000);
+    try {
+      worker=new Worker(new URL('../../workers/tokenizer.worker.ts',import.meta.url),{type:'module'});
+      const counts:Record<string,number>={};
+      worker.onmessage=event=>{
+        if(cancelled)return;
+        const card=cards[event.data.requestId];
+        if(event.data.error || !card || !Number.isInteger(event.data.count) || event.data.count<0){window.clearTimeout(timeout);worker?.terminate();setTokenizer({status:'error'});return;}
+        counts[card.key]=event.data.count;
+        if(Object.keys(counts).length===cards.length){window.clearTimeout(timeout);setTokenizer({status:'ready',source:cards,tokenizer:selectedTokenizer,counts});worker?.terminate();}
+      };
+      worker.onerror=()=>{window.clearTimeout(timeout);worker?.terminate();if(!cancelled)setTokenizer({status:'error'});};
+      cards.forEach((card,requestId)=>worker!.postMessage({requestId,tokenizer:selectedTokenizer,prompt:card.content}));
+    } catch {window.clearTimeout(timeout);setTokenizer({status:'error'});}
+    return ()=>{cancelled=true;window.clearTimeout(timeout);worker?.terminate();};
+  },[cards,selectedTokenizer]);
 
-  // Counts derive in the same render pass as card content, so stats never lag
-  // a keystroke behind what the cards display.
-  const tokenCounts = useMemo(() => {
-    if (tokenizer.status !== 'ready') return null;
-    return Object.fromEntries(cards.map(card => [card.key, tokenizer.encode(card.content).length]));
-  }, [cards, tokenizer]);
-
-  const rawPromptTokens = tokenizer.status === 'ready' ? tokenizer.encode(prompt).length : null;
+  const tokenCounts=tokenizer.status==='ready' && tokenizer.source===cards && tokenizer.tokenizer===selectedTokenizer ? tokenizer.counts : null;
+  const rawPromptTokens=tokenCounts?.plain ?? null;
 
   const minTokens = tokenCounts
     ? Math.min(...cards.map(card => tokenCounts[card.key] ?? Number.POSITIVE_INFINITY))
@@ -214,7 +203,7 @@ export default function FormatComparisonPageClient() {
               ))}
           </div>
         ) : (
-          <p className="chart-empty">Token counts will appear when the selected tokenizer is ready.</p>
+          <p className="chart-empty">{tokenizer.status === 'error' ? 'Token counting was unavailable or took too long. Try a smaller prompt or select another tokenizer.' : 'Counting locally…'}</p>
         )}
       </section>
 
@@ -266,7 +255,7 @@ export default function FormatComparisonPageClient() {
                 {overhead !== null && <span className="text-rose-muted tabular-nums">+{overhead}% vs best</span>}
                 {inputCost && <span className="text-signal-text tabular-nums">{inputCost} uncached input, one request</span>}
               </div>
-              <pre className="min-h-[180px] flex-1 overflow-x-auto whitespace-pre-wrap break-words p-4 font-mono text-[13px] leading-7 text-rose-subtle sm:p-5">
+              <pre className="min-h-[180px] max-h-[320px] flex-1 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-[13px] leading-7 text-rose-subtle sm:p-5">
                 {card.content}
               </pre>
             </article>

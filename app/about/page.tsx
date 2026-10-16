@@ -6,7 +6,7 @@ import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 const highlights = [
   { title: 'Workload planning', body: 'Estimate one chat or agent task, then optionally project repeated tasks into a monthly budget.' },
   { title: 'Format comparison', body: 'Compare plain text with model-visible TOON, JSON, YAML, XML, and CSV representations.' },
-  { title: 'Output tradeoffs', body: 'Compare cost per completed task with Artificial Analysis evidence kept separate from your workload assumptions.' },
+  { title: 'Output tradeoffs', body: 'Explore how model rates and generated-token volume affect a task’s cost.' },
   { title: 'Sourced catalogs', body: 'Every pricing and benchmark response reports its source, retrieval time, freshness, and fallback state.' },
 ];
 
