@@ -160,3 +160,27 @@ test('unknown routes return a noindex 404 with recovery navigation', async ({ pa
   await expect(page.getByRole('heading', { level: 1, name: 'That page is not here.' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Cost calculator/ }).last()).toBeVisible();
 });
+
+test('navigation stays opaque and visible while scrolling every interactive page',async({page})=>{
+  for(const route of ['/','/format-comparison/','/token-efficiency/']){
+    await page.goto(route);
+    await page.getByRole('navigation',{name:'Site',exact:true}).scrollIntoViewIfNeeded();
+    const header=page.locator('.eco-header');
+    const bounds=await header.boundingBox();
+    expect(bounds!.y).toBe(0);
+    const color=await header.evaluate(node=>getComputedStyle(node).backgroundColor);
+    expect(color).not.toMatch(/rgba\([^)]*,\s*0\./);
+  }
+});
+
+test('large format examples stay bounded and count off the main thread',async({page})=>{
+  await page.goto('/format-comparison/');
+  await page.getByLabel('Source prompt').fill('word '.repeat(40000));
+  await expect(page.locator('.format-bar-row')).toHaveCount(7,{timeout:20000});
+  for(const pre of await page.locator('article pre').all()){
+    const bounds=await pre.boundingBox();expect(bounds!.height).toBeLessThanOrEqual(320);
+  }
+  await page.getByLabel('Source prompt').fill('');
+  await expect(page.locator('article').first().locator('pre')).toBeEmpty();
+  await expect(page.locator('.format-bar-row')).toHaveCount(7);
+});

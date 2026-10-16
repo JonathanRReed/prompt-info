@@ -78,7 +78,7 @@ html {
 html,
 body {
   min-height: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   background-color: var(--color-rose-base);
   color: var(--color-rose-text);
   font-family: var(--font-sans);
@@ -2175,7 +2175,6 @@ body:has(.agent-planner) .grid-overlay,body:has(.agent-planner) .page-bg { displ
 .planner-mode-row .planner-presets .planner-button { padding:8px 10px; font-size:.75rem; }
 .planner-panel-title:has(h2:only-child) { margin-bottom:16px; }
 .planner-section-rule { margin:18px 0; }
-body:has(.agent-planner) .overflow-x-hidden:has(.agent-planner) { overflow:clip; }
 .planner-ticket { padding:20px; }
 .ticket-brand { padding-bottom:12px; }
 .ticket-model { padding:12px 0 10px; }
@@ -2185,7 +2184,6 @@ body:has(.agent-planner) .overflow-x-hidden:has(.agent-planner) { overflow:clip;
 .ticket-barcode { height:20px; margin-top:14px; }
 .planner-receipt-actions { margin-top:26px; }
 @media(min-width:1050px) { .agent-model-selectors { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-html:has(.agent-planner),body:has(.agent-planner) { overflow-x:clip; overflow-y:visible; }
 
 .agent-planner .model-picker { scroll-margin-top:76px; }
 .planner-receipt-column { top:76px; scroll-margin-top:76px; }

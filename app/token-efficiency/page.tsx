@@ -61,7 +61,7 @@ export default function TokenEfficiencyPage() {
             A lower token price can still produce a higher total when the response is longer.
           </p>
           <p className="mt-6 text-xs font-medium text-rose-muted">
-            Model rates and benchmark observations are dated in the comparison below.
+            The source and date of the model rates appear below.
           </p>
         </div>
       </section>

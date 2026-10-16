@@ -919,6 +919,7 @@ export default function AgentPlannerClient() {
                       }
                       onChange={(event) => {
                         if (!event.target.value) return;
+                        setPresetId('custom');
                         const effort = event.target.value as ReasoningEffort;
                         const example = REASONING_SCENARIOS[effort];
                         setPlan((current) => ({
@@ -1144,7 +1145,8 @@ export default function AgentPlannerClient() {
                         <input
                           type="checkbox"
                           checked={plan.compactEvery !== undefined}
-                          onChange={(event) =>
+                          onChange={(event) => {
+                            setPresetId('custom');
                             setPlan((current) => ({
                               ...current,
                               keepHistory: true,
@@ -1154,8 +1156,8 @@ export default function AgentPlannerClient() {
                               summaryTokens: event.target.checked
                                 ? 4000
                                 : undefined,
-                            }))
-                          }
+                            }));
+                          }}
                         />
                         Summarize context during long tasks
                       </label>
@@ -1585,6 +1587,7 @@ export default function AgentPlannerClient() {
                 Actual token use varies. These are your low, base and high
                 scenarios, not guaranteed bounds.
               </p>
+              {plan.cacheEnabled && ready && primary?.cold.totalCost != null && <p className="ticket-note">Same workload without caching: {formatUsd(primary.cold.totalCost)}.</p>}
               <p className="ticket-source">
                 {catalog
                   ? catalog.freshness === 'live'
