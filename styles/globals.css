@@ -2185,3 +2185,4 @@ body:has(.agent-planner) .overflow-x-hidden:has(.agent-planner) { overflow:clip;
 .ticket-barcode { height:20px; margin-top:14px; }
 .planner-receipt-actions { margin-top:26px; }
 @media(min-width:1050px) { .agent-model-selectors { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+html:has(.agent-planner),body:has(.agent-planner) { overflow-x:clip; overflow-y:visible; }
