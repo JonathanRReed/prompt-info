@@ -11,3 +11,11 @@ test('rejects malformed, oversized and impossible assumptions', () => {
   for (const bad of [null, {}, { ...value, runs: -1 }, { ...value, plan: { ...value.plan, steps: 201 } }, { ...value, models: ['x'.repeat(257)] }, { ...value, variance: 101 }]) expect(parseAgentPlan(JSON.stringify(bad))).toBeNull();
   expect(readAgentPlanHash('#plan=broken')).toBeNull();
 });
+
+test('preserves mode and explicit reasoning scenarios and rejects misleading ranges', () => {
+  const options = { ...value, mode: 'chat' as const, plan: { ...value.plan, reasoningLow: 100, reasoningHigh: 1000, reasoningEffort: 'low' } };
+  expect(parseAgentPlan(JSON.stringify(options))).toMatchObject(options);
+  expect(parseAgentPlan(JSON.stringify({ ...options, mode: 'unknown' }))).toBeNull();
+  expect(parseAgentPlan(JSON.stringify({ ...options, plan: { ...options.plan, reasoningLow: 600 } }))).toBeNull();
+  expect(parseAgentPlan(JSON.stringify({ ...options, plan: { ...options.plan, reasoningHigh: 400 } }))).toBeNull();
+});

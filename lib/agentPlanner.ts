@@ -6,14 +6,19 @@ export type AgentPlan = {
   toolTokensPerStep: number;
   visibleOutputTokens: number;
   reasoningTokens: number;
+  reasoningLow?: number;
+  reasoningHigh?: number;
+  reasoningEffort?: string;
   steps: number;
   keepHistory: boolean;
   cacheEnabled: boolean;
   cacheHitPct: number;
   replayReasoning?: boolean;
+  retries?: number;
 };
 export type AgentStep = {
   number: number;
+  attempt: number;
   inputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
@@ -60,6 +65,7 @@ export function estimateAgentRun(plan: AgentPlan, model: PricingEntry): AgentEst
   if (![plan.instructionTokens, plan.taskTokens, plan.toolTokensPerStep, plan.visibleOutputTokens, plan.reasoningTokens].every(count)
     || !Number.isInteger(plan.steps) || plan.steps < 1 || plan.steps > 200
     || !rate(plan.cacheHitPct) || plan.cacheHitPct > 100) return invalid('Enter valid token counts, 1–200 steps and a cache-hit percentage from 0 to 100.');
+  if (plan.retries !== undefined && (!Number.isInteger(plan.retries) || plan.retries < 0 || plan.retries > 5)) return invalid('Use 0–5 full-run retries.');
   if (!model?.pricing || !rate(model.pricing.input) || !rate(model.pricing.output)) return invalid('This model does not have usable published input and output rates.');
   if (model.pricing.longContextTiers !== undefined && !Array.isArray(model.pricing.longContextTiers)) return invalid('Conditional pricing data is malformed. Reload the catalog before estimating.');
   const warn = (message: string, blocking = false) => {
@@ -68,6 +74,7 @@ export function estimateAgentRun(plan: AgentPlan, model: PricingEntry): AgentEst
   };
   if (!rate(model.contextWindowTokens) || model.contextWindowTokens <= 0) warn('Context limit is unavailable; plan fit cannot be verified.', true);
   if (!count(model.maxOutputTokens)) warn('Output limit is unavailable; plan fit cannot be verified.', true);
+  if (model.reasoning?.mandatory && plan.reasoningTokens === 0) warn('This model requires reasoning. Budget for thinking before treating this as a complete estimate.', true);
   const outputTokens = plan.visibleOutputTokens + plan.reasoningTokens;
   if (count(model.maxOutputTokens) && outputTokens > model.maxOutputTokens) warn('Planned answer plus thinking exceeds this model’s output limit.', true);
   let previousInput = 0;
@@ -93,7 +100,7 @@ export function estimateAgentRun(plan: AgentPlan, model: PricingEntry): AgentEst
     const reasoningCost = plan.reasoningTokens * prices.output / 1000;
     const totalCost = inputCost + visibleOutputCost + reasoningCost;
     if (!Number.isFinite(totalCost)) return invalid('These rates and assumptions exceed the calculation range.');
-    result.steps.push({ number: i + 1, inputTokens, cacheReadTokens, cacheWriteTokens, inputCost, visibleOutputCost, reasoningCost, totalCost });
+    result.steps.push({ number: i + 1, attempt: 1, inputTokens, cacheReadTokens, cacheWriteTokens, inputCost, visibleOutputCost, reasoningCost, totalCost });
     result.inputTokens += inputTokens;
     result.cacheReadTokens += cacheReadTokens;
     result.cacheWriteTokens += cacheWriteTokens;
@@ -106,5 +113,12 @@ export function estimateAgentRun(plan: AgentPlan, model: PricingEntry): AgentEst
     previousInput = inputTokens;
     history = inputTokens + plan.visibleOutputTokens + (plan.replayReasoning ? plan.reasoningTokens : 0);
   }
+  const attempts = 1 + (plan.retries ?? 0);
+  if (attempts > 1) {
+    const firstSteps = result.steps;
+    result.steps = Array.from({ length: attempts }, (_, index) => firstSteps.map(step => ({ ...step, attempt: index + 1 }))).flat();
+    for (const key of ['inputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'visibleOutputTokens', 'reasoningTokens', 'inputCost', 'visibleOutputCost', 'reasoningCost', 'totalCost'] as const) result[key]! *= attempts;
+  }
+  if (![result.inputCost, result.visibleOutputCost, result.reasoningCost, result.totalCost].every(value => typeof value === 'number' && Number.isFinite(value))) return invalid('The total exceeds the calculation range.');
   return result;
 }

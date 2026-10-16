@@ -2118,3 +2118,6 @@ textarea:focus-visible {
 @media(min-width:901px) { .agent-receipt { max-height:calc(100dvh - 2rem); overflow-y:auto; scrollbar-gutter:stable; } }
 
 @media(max-width:900px) { body:has(.agent-planner) { padding-bottom:64px; } }
+
+.agent-field select { width: 100%; min-width: 0; padding: .7rem; border: 1px solid var(--line-1); background: var(--surface-1); color: var(--ink-0); font: inherit; }
+.agent-receipt .agent-total { font-size: clamp(1.5rem, 2.3vw, 2.2rem); overflow-wrap: anywhere; }

@@ -46,3 +46,15 @@ test('invalid assumptions and malformed pricing fail safely', () => {
   expect(estimateAgentRun({ ...plan, steps: Number.NaN }, model).feasible).toBe(false);
   expect(estimateAgentRun(plan, { ...model, pricing: { input: -1, output: 0.01 } }).feasible).toBe(false);
 });
+test('full-run retries restart cold and retain separate call ledgers', () => {
+  const base = estimateAgentRun({ ...plan, cacheEnabled: true }, model);
+  const retried = estimateAgentRun({ ...plan, cacheEnabled: true, retries: 2 }, model);
+  expect(retried.totalCost).toBeCloseTo(base.totalCost! * 3, 10);
+  expect(retried.steps).toHaveLength(9);
+  expect(retried.steps[3]).toMatchObject({ attempt: 2, number: 1, cacheReadTokens: 0 });
+  expect(estimateAgentRun({ ...plan, retries: 6 }, model).feasible).toBe(false);
+});
+test('mandatory reasoning cannot be presented as a complete zero-thinking plan', () => {
+  const entry = { ...model, reasoning: { mandatory: true, supportsMaxTokens: false } };
+  expect(estimateAgentRun({ ...plan, reasoningTokens: 0 }, entry).feasible).toBe(false);
+});

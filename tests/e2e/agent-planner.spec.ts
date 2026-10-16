@@ -55,3 +55,46 @@ test('the planner has no page-wide overflow at the configured viewport', async (
   await page.getByRole('button', { name: 'Compare current model families', exact: true }).click();
   await expect(page.getByRole('table').first()).toContainText('GPT-6.1 Sol');
 });
+
+test('chat and agent modes keep separate workloads and show a scenario range first', async ({ page }) => {
+  await page.goto('/agent-planner/');
+  await page.getByLabel('Model calls per run', { exact: true }).fill('12');
+  await page.getByRole('button', { name: 'Chat', exact: true }).click();
+  await expect(page.getByLabel('Replies per conversation', { exact: true })).toHaveValue('1');
+  await page.getByLabel('Replies per conversation', { exact: true }).fill('3');
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
+  await expect(page.getByLabel('Model calls per run', { exact: true })).toHaveValue('12');
+  await page.getByRole('button', { name: 'Chat', exact: true }).click();
+  await expect(page.getByLabel('Replies per conversation', { exact: true })).toHaveValue('3');
+  await expect(page.getByTestId('agent-run-range')).toContainText('–');
+  await expect(page.getByText('Central estimate:', { exact: false }).first()).toBeVisible();
+});
+test('custom thinking bounds remain effective at zero size variance', async ({ page }) => {
+  await page.goto('/agent-planner/');
+  await page.getByLabel('Token-size uncertainty (%)', { exact: true }).fill('0');
+  await page.getByLabel('Low thinking scenario per call', { exact: true }).fill('1000');
+  await page.getByLabel('High thinking scenario per call', { exact: true }).fill('3000');
+  await expect(page.getByTestId('agent-run-range')).toHaveText(`${formatUsd(.252)} – ${formatUsd(.412)}`);
+  await page.getByLabel('Low thinking scenario per call', { exact: true }).fill('5000');
+  await expect(page.getByRole('alert')).toContainText('low ≤ base ≤ high');
+  await expect(page.getByTestId('agent-run-total')).toHaveText('Unavailable');
+});
+test('retry budgets repeat the workload and display an unenforced-budget warning', async ({ page }) => {
+  await page.goto('/agent-planner/');
+  await page.getByLabel('Full-run retries to budget for', { exact: true }).fill('2');
+  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(.996));
+  await page.getByLabel('Planning budget per task (USD)', { exact: true }).fill('0.5');
+  await expect(page.getByText(/The modeled range exceeds your/)).toBeVisible();
+});
+test('effort selection uses published choices and explicitly editable example ranges', async ({ page }) => {
+  const withReasoning = structuredClone(catalog);
+  Object.assign(withReasoning.data['OpenAI: GPT-6.1 Sol'], { reasoning: { mandatory: true, supportsMaxTokens: false, supportedEfforts: ['high','low'], defaultEffort: 'low' } });
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(withReasoning) }));
+  await page.goto('/agent-planner/');
+  await page.getByLabel('Reasoning effort for OpenAI: GPT-6.1 Sol', { exact: true }).selectOption('high');
+  await expect(page.getByLabel('Thinking tokens per step', { exact: true })).toHaveValue('8000');
+  await expect(page.getByLabel('Low thinking scenario per call', { exact: true })).toHaveValue('3000');
+  await expect(page.getByLabel('High thinking scenario per call', { exact: true })).toHaveValue('20000');
+  await expect(page.getByText(/illustrative, editable token scenarios/)).toBeVisible();
+  await expect(page.locator('#agent-effort option')).toHaveCount(3);
+});

@@ -1,3 +1,4 @@
+import { readReasoningOptions, type ReasoningOptions } from './reasoningOptions';
 import { resolveModelTokenProfile, TokenLimitConfidence } from './modelTokenLimits';
 
 export type PricingEntry = {
@@ -20,6 +21,7 @@ export type PricingEntry = {
   outputTokenLimitConfidence?: TokenLimitConfidence;
   /** OpenRouter `author/model` slug, the canonical key shared with the sibling sites. */
   openRouterId?: string;
+  reasoning?: ReasoningOptions;
 };
 
 export type LongContextTier = { minPromptTokens: number; input?: number; output?: number; inputCacheRead?: number; inputCacheWrite?: number };
@@ -154,6 +156,7 @@ type RowShape = {
   inputCacheWrite?: number;
   longContextTiers: LongContextTier[];
   openRouterId?: string;
+  reasoning?: ReasoningOptions;
 };
 
 function isPreferredModelRow(a: RowShape, b: RowShape) {
@@ -182,6 +185,7 @@ function hasSameOffering(a: RowShape, b: RowShape) {
   return (
     a.perMillionIn === b.perMillionIn &&
     a.perMillionOut === b.perMillionOut &&
+    JSON.stringify(a.reasoning) === JSON.stringify(b.reasoning) &&
     a.inputCacheRead === b.inputCacheRead &&
     a.inputCacheWrite === b.inputCacheWrite &&
     JSON.stringify(a.longContextTiers) === JSON.stringify(b.longContextTiers) &&
@@ -250,6 +254,7 @@ export function buildPricingMap(data: unknown[]): PricingMap {
     rows.push({
       name,
       openRouterId,
+      reasoning: readReasoningOptions(row.reasoning),
       dedupeKey: dedupeKeyForModel(name),
       hasQualifier: /\([^)]*\)/.test(name),
       perMillionIn,
@@ -326,6 +331,7 @@ export function buildPricingMap(data: unknown[]): PricingMap {
       contextWindowTokens: row.contextWindowTokens,
       outputTokenLimitSource: row.outputTokenLimitSource,
       outputTokenLimitConfidence: row.outputTokenLimitConfidence,
+      ...(row.reasoning ? { reasoning: row.reasoning } : {}),
       ...(row.openRouterId ? { openRouterId: row.openRouterId } : {}),
     };
   }
