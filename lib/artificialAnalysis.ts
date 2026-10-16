@@ -250,7 +250,7 @@ export async function buildArtificialAnalysisCatalogResponse(options: Parameters
       ? catalog.source === 'artificial-analysis-free-api'
         ? 'Artificial Analysis free API data. Per-evaluation token details require the appropriate Artificial Analysis data tier.'
         : 'Artificial Analysis data cached in the existing project database. Benchmark cost per task is shown only when the upstream source provides it.'
-      : 'Dated August 29, 2026 fallback. Configure the Artificial Analysis API or project database for current benchmark data.',
+      : 'Dated August 29, 2026 fallback. Intelligence Index scores are as recorded on that date; current Artificial Analysis scores can be on a different index version, so compare these only with each other. Configure the Artificial Analysis API or project database for current benchmark data.',
   } satisfies ArtificialAnalysisCatalogResponse;
 }
 

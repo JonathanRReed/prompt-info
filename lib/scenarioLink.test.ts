@@ -31,4 +31,14 @@ describe('scenario links', () => {
     expect(parseScenarioLink('?tokens=-5&out=abc&turns=999&mode=turbo&cadence=year&runs=0')).toEqual({});
     expect(parseScenarioLink('?models=a,b,c,d')).toEqual({ models: ['a', 'b', 'c'] });
   });
+
+  test('uses the same output-token range as the calculator field and scenario files', () => {
+    // The output field accepts 64..300,000; a link must not apply 1 or 1,000,000.
+    expect(parseScenarioLink('?out=1')).toEqual({});
+    expect(parseScenarioLink('?out=63')).toEqual({});
+    expect(parseScenarioLink('?out=300001')).toEqual({});
+    expect(parseScenarioLink('?out=1000000')).toEqual({});
+    expect(parseScenarioLink('?out=64')).toEqual({ outputTokens: 64 });
+    expect(parseScenarioLink('?out=300000')).toEqual({ outputTokens: 300_000 });
+  });
 });

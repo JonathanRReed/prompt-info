@@ -224,3 +224,77 @@ describe('scenario mode', () => {
     expect(estimate.freshInputTokens).toBe(1000);
   });
 });
+
+describe('long-context rate tiers', () => {
+  // GPT-6.1 Sol on OpenRouter (2026-10-16): $2/$10 per million, $4/$15 above 272K prompt tokens.
+  const BASE = { inputRatePer1k: 0.002, outputRatePer1k: 0.01 };
+  const TIERS = [{ minPromptTokens: 272_000, inputRatePer1k: 0.004, outputRatePer1k: 0.015 }];
+
+  test('a stateless request above the threshold is billed entirely at the higher tier', () => {
+    const estimate = simulateSessionRunCost({
+      mode: 'baseline', promptTokens: 300_000, referenceOutputTokens: 2_000, turns: 1, outputTokenLimit: 128_000, ...BASE, rateTiers: TIERS,
+    });
+    expect(estimate.inputCost).toBeCloseTo(300_000 / 1000 * 0.004, 10);
+    expect(estimate.outputCost).toBeCloseTo(2_000 / 1000 * 0.015, 10);
+    expect(estimate.longContextRequests).toBe(1);
+  });
+
+  test('a request below the threshold keeps base rates', () => {
+    const estimate = simulateSessionRunCost({
+      mode: 'baseline', promptTokens: 100_000, referenceOutputTokens: 2_000, turns: 3, outputTokenLimit: 128_000, ...BASE, rateTiers: TIERS,
+    });
+    expect(estimate.totalCost).toBeCloseTo(3 * (100 * 0.002 + 2 * 0.01), 10);
+    expect(estimate.longContextRequests).toBe(0);
+  });
+
+  test('a growing conversation switches tier on the turn whose re-sent history crosses the threshold', () => {
+    const input = {
+      mode: 'scenario' as const, promptTokens: 100_000, referenceOutputTokens: 1_000, turns: 3, outputTokenLimit: 128_000,
+      contextWindowTokens: 1_050_000, cachedInputBillablePct: 100, turnOverheadTokens: 0, ...BASE,
+    };
+    const flat = simulateSessionRunCost(input);
+    const tiered = simulateSessionRunCost({ ...input, rateTiers: TIERS });
+    // Turn prompts: 100K, 201K, 302K. Only turn 3 (302K) crosses 272K.
+    expect(tiered.longContextRequests).toBe(1);
+    const turn3Input = 302_000 / 1000;
+    const turn3Output = 1_000 / 1000;
+    expect(tiered.totalCost! - flat.totalCost!).toBeCloseTo(turn3Input * (0.004 - 0.002) + turn3Output * (0.015 - 0.01), 10);
+  });
+
+  test('ignores malformed tiers instead of zeroing the estimate', () => {
+    const estimate = simulateSessionRunCost({
+      mode: 'baseline', promptTokens: 300_000, referenceOutputTokens: 0, turns: 1, outputTokenLimit: 128_000, ...BASE,
+      rateTiers: [{ minPromptTokens: Number.NaN, inputRatePer1k: 0.004, outputRatePer1k: 0.015 }, { minPromptTokens: 1, inputRatePer1k: -1, outputRatePer1k: -1 }],
+    });
+    expect(estimate.inputCost).toBeCloseTo(300 * 0.002, 10);
+    expect(estimate.longContextRequests).toBe(0);
+  });
+});
+
+describe('conditional pricing contract', () => {
+  const base = { mode: 'baseline' as const, promptTokens: 101, referenceOutputTokens: 10, turns: 1, outputTokenLimit: 1000, inputRatePer1k: 2, outputRatePer1k: 10 };
+  test('threshold is exclusive and partial overrides inherit base rates', () => {
+    const rateTiers = [{ minPromptTokens: 100, inputRatePer1k: 4 }];
+    expect(simulateSessionRunCost({ ...base, promptTokens: 100, rateTiers }).totalCost).toBeCloseTo(0.3, 10);
+    expect(simulateSessionRunCost({ ...base, rateTiers }).totalCost).toBeCloseTo(0.504, 10);
+  });
+  test('later matching overrides win per key without threshold sorting', () => {
+    const rateTiers = [{ minPromptTokens: 100, inputRatePer1k: 4, outputRatePer1k: 20 }, { minPromptTokens: 10, outputRatePer1k: 15 }];
+    expect(simulateSessionRunCost({ ...base, rateTiers }).totalCost).toBeCloseTo(0.554, 10);
+  });
+  test('published cache rates are not multiplied by the prompt price change', () => {
+    const result = simulateSessionRunCost({ ...base, mode: 'scenario', turns: 2, promptTokens: 100, referenceOutputTokens: 0, turnOverheadTokens: 0, cachedInputBillablePct: 10,
+      inputCacheReadRatePer1k: 0.2, inputCacheWriteRatePer1k: 2.5,
+      rateTiers: [{ minPromptTokens: 150, inputRatePer1k: 4, inputCacheReadRatePer1k: 0.3, inputCacheWriteRatePer1k: 5 }],
+    });
+    expect(result.inputCost).toBeCloseTo(0.25 + 0.5 + 0.03, 10);
+  });
+});
+
+test('absent tier cache prices inherit published base prices, including free reads', () => {
+  const result = simulateSessionRunCost({ mode: 'scenario', turns: 2, promptTokens: 100, referenceOutputTokens: 0, outputTokenLimit: 1000, turnOverheadTokens: 0,
+    inputRatePer1k: 2, outputRatePer1k: 10, cachedInputBillablePct: 0, inputCacheReadRatePer1k: 0, inputCacheWriteRatePer1k: 2.5,
+    rateTiers: [{ minPromptTokens: 150, inputRatePer1k: 4 }],
+  });
+  expect(result.inputCost).toBeCloseTo(0.5, 10);
+});

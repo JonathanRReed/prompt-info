@@ -1,14 +1,31 @@
+// These are browsing defaults, not a quality ranking. Within a product family,
+// natural version order keeps old hard-coded generations from sticking forever.
 const DEFAULT_MODEL_PREFERENCES = [
-  /openai:\s*gpt-5\.6\s+sol/i,
-  /anthropic:\s*claude\s+sonnet\s+5/i,
-  /google:\s*gemini\s+3\.7\s+flash/i,
-  /openai:\s*gpt-5\.5/i,
-  /anthropic:\s*claude.*sonnet/i,
-  /google:\s*gemini.*flash/i,
-  /moonshot:\s*kimi/i,
-  /xai:\s*grok/i,
+  /openai:\s*gpt-[\d.]+\s+sol(?:\s*\([^)]*\))?$/i,
+  /anthropic:\s*claude\s+(?:[\d.]+\s+)?sonnet/i,
+  /google:\s*gemini\s+[\d.]+\s+flash(?:\s*\([^)]*\))?$/i,
+  /openai:\s*gpt/i,
+  /moonshot(?:ai)?:\s*kimi/i,
+  /(?:spacex)?xai:\s*grok/i,
   /deepseek:/i,
 ];
+
+const naturalModelOrder = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+
+// Plain standard-tier rows first, then moving aliases ("Sonnet Latest"), then
+// qualified variants such as "(batch)" or dated snapshots. Natural descending
+// order alone ranks "GPT-6.1 Sol (batch)" above "GPT-6.1 Sol" (longer string)
+// and "Latest" above "5.5" (letters after digits), so a first-visit estimate
+// silently used half-price batch rates or an unversioned alias.
+function variantRank(model: string) {
+  if (/\([^)]*\)\s*$/.test(model)) return 2;
+  if (/\blatest\b/i.test(model)) return 1;
+  return 0;
+}
+
+function newestFirst(models: string[]) {
+  return [...models].sort((a, b) => variantRank(a) - variantRank(b) || naturalModelOrder.compare(b, a));
+}
 
 import type { PricingMap } from './pricingParser';
 
@@ -28,8 +45,9 @@ function providerOf(model: string) {
 }
 
 export function chooseDefaultModel(models: string[]) {
+  const ordered = newestFirst(models);
   for (const preference of DEFAULT_MODEL_PREFERENCES) {
-    const match = models.find(model => preference.test(model));
+    const match = ordered.find(model => preference.test(model));
     if (match) return match;
   }
 
@@ -40,16 +58,16 @@ export function chooseDefaultModels(models: string[], pricing: PricingMap, reque
   // Keep the default browse cohort useful without turning the menu into a
   // random dump of the provider catalog. Callers can still search every row.
   const count = Math.min(12, Math.max(1, Math.floor(requestedCount)));
-  const usable = models.filter(model => hasUsablePricing(model, pricing));
+  const usable = newestFirst(models.filter(model => hasUsablePricing(model, pricing)));
   const selected: string[] = [];
+  const selectedProviders = new Set<string>();
 
   for (const preference of DEFAULT_MODEL_PREFERENCES) {
-    const match = usable.find(model => !selected.includes(model) && preference.test(model));
-    if (match) selected.push(match);
+    const match = usable.find(model => !selectedProviders.has(providerOf(model)) && preference.test(model));
+    if (match) { selected.push(match); selectedProviders.add(providerOf(match)); }
     if (selected.length === count) return selected;
   }
 
-  const selectedProviders = new Set(selected.map(providerOf));
   for (const model of usable) {
     if (selected.includes(model) || selectedProviders.has(providerOf(model))) continue;
     selected.push(model);

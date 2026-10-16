@@ -19,6 +19,10 @@ export type ScenarioLinkState = {
 
 export type ScenarioLinkParams = Partial<ScenarioLinkState>;
 
+// Keep these in step with the calculator fields and scenario-file parser so a
+// link can never apply a value the visible inputs would refuse.
+export const LINK_OUTPUT_TOKEN_RANGE = { min: 64, max: 300_000 } as const;
+
 const SESSION_MODES = new Set<SessionRunMode>(['baseline', 'scenario']);
 const CADENCES = new Set<WorkloadCadence>(['once', 'day', 'week', 'month']);
 
@@ -43,7 +47,7 @@ export function parseScenarioLink(search: string): ScenarioLinkParams {
   if (tokenizer) out.tokenizer = tokenizer;
   const promptTokens = integer(params.get('tokens'), 1, 10_000_000);
   if (promptTokens !== undefined) out.promptTokens = promptTokens;
-  const outputTokens = integer(params.get('out'), 1, 1_000_000);
+  const outputTokens = integer(params.get('out'), LINK_OUTPUT_TOKEN_RANGE.min, LINK_OUTPUT_TOKEN_RANGE.max);
   if (outputTokens !== undefined) out.outputTokens = outputTokens;
   const turns = integer(params.get('turns'), 1, 200);
   if (turns !== undefined) out.turns = turns;

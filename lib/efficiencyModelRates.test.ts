@@ -1,6 +1,6 @@
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { buildDatedArtificialAnalysisFallback } from './artificialAnalysis';
-import { catalogModelFields, plannerModelFields, rateOrNull } from './efficiencyModelRates';
+import { catalogModelFields, editedRate, plannerModelFields, rateOrNull } from './efficiencyModelRates';
 import { costPerTask } from './tokenEfficiency';
 
 test('changing a model preserves missing rates instead of inheriting the previous model prices', () => {
@@ -26,4 +26,25 @@ test('a planner model with missing prices does not acquire benchmark or previous
   expect(selected.outputPerMillion).toBeNull();
   expect(selected.name).toBe('New provider: New model');
   expect(plannerModelFields({ model: 'Unknown', inputPerMillion: null, outputPerMillion: null }, null).aaModelId).toBeNull();
+});
+
+describe('editedRate', () => {
+  test('keeps absent and free distinct', () => {
+    expect(editedRate('', 10_000)).toBeNull();
+    expect(editedRate('   ', 10_000)).toBeNull();
+    expect(editedRate('0', 10_000)).toBe(0);
+  });
+
+  test('never turns a negative or malformed rate into a free one', () => {
+    expect(editedRate('-3', 10_000)).toBeNull();
+    expect(editedRate('-0.01', 10_000)).toBeNull();
+    expect(editedRate('abc', 10_000)).toBeNull();
+    const negativeTyped = costPerTask({ inputTokensPerTask: 5_000, outputTokensPerTask: 1_000, inputPerMillion: editedRate('-3', 10_000), outputPerMillion: 10 });
+    expect(negativeTyped).toBeNull();
+  });
+
+  test('caps huge rates at the field maximum and keeps decimals', () => {
+    expect(editedRate('1e9', 10_000)).toBe(10_000);
+    expect(editedRate('0.075', 10_000)).toBe(0.075);
+  });
 });

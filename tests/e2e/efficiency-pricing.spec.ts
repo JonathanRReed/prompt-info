@@ -7,9 +7,12 @@ test('missing model rates stay uncalculated and free rates remain usable', async
     json: {
       schemaVersion: 1,
       source: 'artificial-analysis-supabase-cache',
+      // The client now validates the same catalog envelope the API always sends.
+      sourceUrl: 'https://example.supabase.co/rest/v1/aa_models',
       retrievedAt: '2026-09-02T12:00:00.000Z',
       freshness: 'cached',
       isFallback: true,
+      fallbackReason: 'Artificial Analysis API is not configured. Using the project benchmark cache.',
       data: [
         { ...base, id: 'partial', slug: 'partial', name: 'Partial price model', displayName: 'Partial price model', inputPerMillion: null, outputPerMillion: 3 },
         { ...base, id: 'free', slug: 'free', name: 'Free price model', displayName: 'Free price model', inputPerMillion: 0, outputPerMillion: 0 },
@@ -20,7 +23,8 @@ test('missing model rates stay uncalculated and free rates remain usable', async
   const card = page.locator('#efficiency-lab article').first();
   const select = page.getByLabel('Comparison model 1');
   await expect(select).toBeEnabled();
-  await select.selectOption('partial');
+  await select.fill('Partial price');
+  await page.getByRole('option', { name: /Partial price model/ }).click();
   await expect(card.getByRole('heading', { name: 'Partial price model' })).toBeVisible();
   await expect(card.getByLabel('Input $ / M tokens')).toHaveValue('');
   await expect(card.getByLabel('Output $ / M tokens')).toHaveValue('3');
@@ -28,7 +32,8 @@ test('missing model rates stay uncalculated and free rates remain usable', async
   await expect(card.locator('output').first()).toHaveText('N/A');
   await card.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `test-results/efficiency-missing-price-${test.info().project.name}.png` });
-  await select.selectOption('free');
+  await select.fill('Free price');
+  await page.getByRole('option', { name: /Free price model/ }).click();
   await expect(card.getByLabel('Input $ / M tokens')).toHaveValue('0');
   await expect(card.locator('output').first()).toHaveText('$0.00');
   await card.getByLabel('Input $ / M tokens').fill('');

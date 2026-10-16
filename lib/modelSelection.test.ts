@@ -69,3 +69,42 @@ test('findRequestedModel resolves an OpenRouter slug or a normalized name', () =
   expect(findRequestedModel('nobody/nothing', pricing)).toBeNull();
   expect(findRequestedModel(null, pricing)).toBeNull();
 });
+
+test('defaults move to newer base families without accidentally choosing a Pro suffix', () => {
+  const models = ['OpenAI: GPT-5.6 Sol Pro', 'OpenAI: GPT-6 Sol', 'OpenAI: GPT-6.1 Sol', 'Anthropic: Claude Sonnet 5', 'Anthropic: Claude Sonnet 5.5'];
+  const prices = Object.fromEntries(models.map(model => [model, { pricing: { input: 0.001, output: 0.002 }, co2eFactor: 0 }]));
+  expect(chooseDefaultModels(models, prices)).toEqual(['OpenAI: GPT-6.1 Sol', 'Anthropic: Claude Sonnet 5.5']);
+  expect(chooseDefaultModel(models)).toBe('OpenAI: GPT-6.1 Sol');
+});
+
+test('natural version order handles two-digit generations and keeps provider diversity', () => {
+  const models = ['OpenAI: GPT-9 Sol', 'OpenAI: GPT-10 Sol', 'Anthropic: Claude Sonnet 9', 'Anthropic: Claude Sonnet 10', 'Google: Gemini 10 Flash'];
+  const prices = Object.fromEntries(models.map(model => [model, { pricing: { input: 0.001, output: 0.002 }, co2eFactor: 0 }]));
+  expect(chooseDefaultModels(models, prices, 3)).toEqual(['OpenAI: GPT-10 Sol', 'Anthropic: Claude Sonnet 10', 'Google: Gemini 10 Flash']);
+});
+
+describe('default model variants', () => {
+  const rate = (input: number) => ({ pricing: { input, output: input * 5 }, co2eFactor: 0.0002 });
+  const pricing: PricingMap = {
+    'OpenAI: GPT-6.1 Sol': rate(0.002),
+    'OpenAI: GPT-6.1 Sol (batch)': rate(0.001),
+    'OpenAI: GPT-6 Sol': rate(0.002),
+    'Anthropic: Claude Sonnet Latest': rate(0.002),
+    'Anthropic: Claude Sonnet 5.5': rate(0.002),
+    'Anthropic: Claude Sonnet 5.5 (batch)': rate(0.001),
+  };
+
+  test('defaults to the standard tier, not a discounted batch variant of the same model', () => {
+    expect(chooseDefaultModels(Object.keys(pricing), pricing, 2)[0]).toBe('OpenAI: GPT-6.1 Sol');
+    expect(chooseDefaultModel(Object.keys(pricing))).toBe('OpenAI: GPT-6.1 Sol');
+  });
+
+  test('prefers a concrete version over a moving "Latest" alias', () => {
+    expect(chooseDefaultModels(Object.keys(pricing), pricing, 2)[1]).toBe('Anthropic: Claude Sonnet 5.5');
+  });
+
+  test('still falls back to a qualified variant when it is the only priced row in a family', () => {
+    const onlyBatch: PricingMap = { 'OpenAI: GPT-6.1 Sol (batch)': rate(0.001) };
+    expect(chooseDefaultModels(Object.keys(onlyBatch), onlyBatch, 1)).toEqual(['OpenAI: GPT-6.1 Sol (batch)']);
+  });
+});

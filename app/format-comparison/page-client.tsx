@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePromptScenario } from '../../components/ScenarioProvider';
 import { clampPrompt, MAX_PROMPT_CHARACTERS } from '../../lib/promptLimits';
+import { toonScalar } from '../../lib/toonScalar';
+import { yamlScalar } from '../../lib/yamlScalar';
 
 const SAMPLE_PROMPT = 'Summarize the latest product launch in 3 bullet points.';
 
@@ -48,18 +50,6 @@ function formatInputCost(tokenCount: number, ratePerMillion: number) {
   return cost < 0.01 ? `$${cost.toFixed(6)}` : `$${cost.toFixed(4)}`;
 }
 
-function yamlScalar(value: string) {
-  // Quote when YAML would otherwise misparse the scalar: special punctuation,
-  // control whitespace (the textarea allows newlines/tabs), or scalars YAML
-  // would type-coerce (true/no/null/numbers). JSON strings are valid YAML 1.2
-  // double-quoted scalars, so JSON.stringify round-trips safely.
-  if (/[:#?[\]{}&*!|>'"%@`\t\n\r]|^[\s-]|\s$|^$/.test(value)) return JSON.stringify(value);
-  if (/^(?:true|false|null|~|yes|no|on|off|[-+]?(?:\d[\d_]*\.?\d*(?:[eE][-+]?\d+)?|\.\d+))$/i.test(value)) {
-    return JSON.stringify(value);
-  }
-  return value;
-}
-
 function xmlEscape(value: string) {
   return value
     .replace(/&/g, '&amp;')
@@ -86,7 +76,7 @@ function buildFormats(prompt: string): FormatCard[] {
   };
 
   const toon = [
-    `prompt: ${yamlScalar(clean)}`,
+    `prompt: ${toonScalar(clean)}`,
     `messages[${messages.length}]{id,role}:`,
     ...messages.map(m => `  ${m.id},${m.role}`),
     'meta:',

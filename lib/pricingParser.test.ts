@@ -91,3 +91,49 @@ describe('buildPricingMap with OpenRouter rows', () => {
     expect(map5['Anthropic: Claude Opus 4.8 (2026-01-15)']).toBeUndefined();
   });
 });
+
+describe('OpenRouter long-context overrides', () => {
+  test('keeps prompt-size tiers in per-1K units and ignores time-window discounts', () => {
+    const map = buildPricingMap([
+      {
+        id: 'openai/gpt-6.1-sol',
+        name: 'OpenAI: GPT-6.1 Sol',
+        context_length: 1_050_000,
+        pricing: {
+          prompt: '0.000002',
+          completion: '0.00001',
+          overrides: [
+            { min_prompt_tokens: 272000, prompt: '0.000004', completion: '0.000015', input_cache_read: '0.0000002' },
+          ],
+        },
+      },
+      {
+        id: 'lab/off-peak',
+        name: 'Lab: Off Peak',
+        pricing: {
+          prompt: '0.000001',
+          completion: '0.000002',
+          overrides: [{ prompt: '0.0000005', completion: '0.000001', utc_start: '16:30', utc_end: '00:30' }],
+        },
+      },
+    ]);
+    expect(map['OpenAI: GPT-6.1 Sol'].pricing.input).toBeCloseTo(0.002, 12);
+    const tier = map['OpenAI: GPT-6.1 Sol'].pricing.longContextTiers![0];
+    expect(tier.minPromptTokens).toBe(272_000);
+    expect(tier.input).toBeCloseTo(0.004, 12);
+    expect(tier.output).toBeCloseTo(0.015, 12);
+    expect(tier.inputCacheRead).toBeCloseTo(0.0002, 12);
+    expect(map['Lab: Off Peak'].pricing.longContextTiers).toBeUndefined();
+  });
+});
+
+test('preserves partial overrides, cache prices and source ordering', () => {
+  const entry = buildPricingMap([{ name: 'Test: Partial', pricing: { prompt: '0.000002', completion: '0.00001', overrides: [
+    { min_prompt_tokens: 200, completion: '0.00002' },
+    { min_prompt_tokens: 100, prompt: '0.000004', input_cache_read: '0', input_cache_write: '0.000005' },
+  ] } }])['Test: Partial'];
+  expect(entry.pricing.longContextTiers).toEqual([
+    { minPromptTokens: 200, output: 0.02 },
+    { minPromptTokens: 100, input: 0.004, inputCacheRead: 0, inputCacheWrite: 0.005 },
+  ]);
+});

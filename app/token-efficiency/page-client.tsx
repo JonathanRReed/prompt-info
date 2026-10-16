@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import ModelSelect from '../../components/ModelSelect';
+import { fetchBenchmarkCatalog } from '../../lib/fetchBenchmarks';
 import { usePromptScenario } from '../../components/ScenarioProvider';
-import { catalogModelFields, plannerModelFields, rateOrNull } from '../../lib/efficiencyModelRates';
+import { catalogModelFields, editedRate, plannerModelFields, rateOrNull } from '../../lib/efficiencyModelRates';
 import {
   matchArtificialAnalysisModel,
   type ArtificialAnalysisCatalogResponse,
@@ -90,6 +92,9 @@ const fieldInputClass =
 export default function TokenEfficiencyPageClient() {
   const { scenario } = usePromptScenario();
   const [tasks, setTasks] = useState(DEFAULT_TASKS);
+  // Raw text while the tasks field is being edited, so clearing it does not
+  // snap to 1 and turn a typed "500" into "1500".
+  const [tasksDraft, setTasksDraft] = useState<string | null>(null);
   const [inputTokensPerTask, setInputTokensPerTask] = useState(DEFAULT_INPUT_TOKENS_PER_TASK);
   const [models, setModels] = useState<EditableModel[]>(initialModels);
   const [catalog, setCatalog] = useState<ArtificialAnalysisCatalogResponse | null>(null);
@@ -99,11 +104,9 @@ export default function TokenEfficiencyPageClient() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch('/api/benchmarks')
-      .then(async response => {
-        if (!response.ok) throw new Error(`Benchmark catalog failed with ${response.status}`);
-        return await response.json() as ArtificialAnalysisCatalogResponse;
-      })
+    // Validated and time-bounded: a malformed 200 body used to reach render and
+    // crash the whole page; a stalled request left the pickers loading forever.
+    fetchBenchmarkCatalog()
       .then(response => {
         if (cancelled) return;
         setCatalog(response);
@@ -146,10 +149,10 @@ export default function TokenEfficiencyPageClient() {
 
   const updateModel = (key: string, field: EditableRateField, rawValue: string) => {
     const max = field === 'outputTokensPerTask' ? MAX_TOKENS_PER_TASK : MAX_RATE_PER_MILLION;
-    const value = clampNumber(Number(rawValue), max);
+    const value = field === 'outputTokensPerTask' ? clampNumber(Number(rawValue), max) : editedRate(rawValue, max);
     setModels(prev => prev.map(model => (
       model.key === key
-        ? { ...model, [field]: field !== 'outputTokensPerTask' && !rawValue.trim() ? null : value, rateSource: field === 'outputTokensPerTask' ? model.rateSource : 'Edited rate' }
+        ? { ...model, [field]: value, rateSource: field === 'outputTokensPerTask' ? model.rateSource : 'Edited rate' }
         : model
     )));
   };
@@ -259,6 +262,7 @@ export default function TokenEfficiencyPageClient() {
           onClick={() => {
             setModels(initialModels());
             setTasks(DEFAULT_TASKS);
+            setTasksDraft(null);
             setInputTokensPerTask(DEFAULT_INPUT_TOKENS_PER_TASK);
             setPlannerApplied(false);
           }}
@@ -281,7 +285,10 @@ export default function TokenEfficiencyPageClient() {
           <p className="mt-2 text-xs leading-5 text-rose-muted">
             Source: {catalogError ? 'unavailable, editable presets retained' : sourceLabel(catalog?.source)}.
             {catalog?.intelligenceIndexVersion ? ` Intelligence Index v${catalog.intelligenceIndexVersion}.` : ''}
-            {catalog?.retrievedAt ? ` ${catalog.freshness === 'static' ? 'Snapshot dated' : 'Checked'} ${new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
+            {catalog?.retrievedAt ? ` ${catalog.freshness === 'static' ? 'Snapshot dated' : catalog.freshness === 'cached' ? 'Oldest model observation' : 'Checked'} ${catalog.freshness === 'static'
+              // A dated snapshot has a day, not a meaningful clock time.
+              ? new Date(catalog.retrievedAt).toLocaleDateString(undefined, { dateStyle: 'long', timeZone: 'UTC' })
+              : new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
             {latestObservation ? ` Latest model observation ${latestObservation}.` : ''}
           </p>
           {catalog && (
@@ -335,8 +342,14 @@ export default function TokenEfficiencyPageClient() {
             min={1}
             max={MAX_TASKS}
             step={1}
-            value={tasks}
-            onChange={e => setTasks(Math.max(1, Math.floor(clampNumber(Number(e.target.value), MAX_TASKS))))}
+            value={tasksDraft ?? tasks}
+            onChange={e => {
+              const raw = e.target.value;
+              setTasksDraft(raw);
+              const parsed = Number(raw);
+              if (raw.trim() && Number.isFinite(parsed) && parsed >= 1) setTasks(Math.floor(Math.min(parsed, MAX_TASKS)));
+            }}
+            onBlur={() => setTasksDraft(null)}
             className={`mt-2 ${fieldInputClass}`}
           />
         </div>
@@ -416,18 +429,15 @@ export default function TokenEfficiencyPageClient() {
               <label className="text-xs font-medium text-rose-muted" htmlFor={`${row.key}-catalog-model`}>
                 Comparison model {index + 1}
               </label>
-              <select
+              <ModelSelect
                 id={`${row.key}-catalog-model`}
-                value={row.aaModelId ?? ''}
-                onChange={event => selectCatalogModel(row.key, event.target.value)}
-                disabled={catalogModels.length === 0}
-                className="glass-select mt-1 min-h-11 w-full border px-3 font-mono text-xs font-bold text-rose-text focus:border-rose-love focus:outline-none focus:ring-2 focus:ring-rose-love disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">{catalogModels.length ? 'Choose from catalog' : catalog || catalogError ? 'Catalog unavailable' : 'Catalog loading'}</option>
-                {catalogModels.map(model => (
-                  <option key={model.id} value={model.id}>{model.displayName}</option>
-                ))}
-              </select>
+                models={catalogModels.map(model => model.id)}
+                modelLabels={Object.fromEntries(catalogModels.map(model => [model.id, model.displayName]))}
+                value={row.aaModelId ?? undefined}
+                loading={!catalog && !catalogError}
+                autoSelect={false}
+                onChange={id => selectCatalogModel(row.key, id)}
+              />
             </div>
 
             {(row.inputPerMillion === null || row.outputPerMillion === null) && (

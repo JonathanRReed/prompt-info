@@ -51,13 +51,13 @@ export default function FormatComparisonPage() {
   return (
     <main id="main-content" className="w-full max-w-full overflow-x-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
-      <section className="mx-auto grid min-h-[52dvh] w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="border-rose-highlightMed px-4 py-16 sm:px-6 md:border-r md:px-12 md:py-24">
+      <section className="mx-auto grid w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="border-rose-highlightMed px-4 py-8 sm:px-6 md:border-r md:px-12 md:py-10">
           <p className="data-label text-signal-text">Payload format comparison</p>
-          <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
+          <h1 className="macro-heading mt-3 max-w-6xl text-[clamp(2.2rem,4vw,4rem)]">
             One prompt. Six payload shells.
           </h1>
-          <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
+          <p className="mt-4 max-w-3xl text-base leading-7 text-rose-subtle sm:text-lg">
             Wrap one prompt in TOON, JSON, compact JSON, YAML, XML, and CSV, and compare token counts side by side. Every card carries the same payload, so any difference you see is pure format overhead.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">

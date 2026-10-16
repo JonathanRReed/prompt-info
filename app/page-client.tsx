@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CostByModelChart } from '../components/charts/CostByModelChart';
 import { SessionAccumulationChart } from '../components/charts/SessionAccumulationChart';
 import { TokenCompositionChart } from '../components/charts/TokenCompositionChart';
-import { CostReceipt } from '../components/workbench/CostReceipt';
+import { CostReceipt, longContextNote } from '../components/workbench/CostReceipt';
+import { formatUsd } from '../components/charts/chartFormat';
 import { CostWorkbench } from '../components/workbench/CostWorkbench';
 import { ModelComparison } from '../components/workbench/ModelComparison';
 import { ScenarioInputs, type TokenizerChoice } from '../components/workbench/ScenarioInputs';
@@ -340,14 +341,17 @@ export default function HomePageClient() {
       `Model: ${primaryRow?.model ?? 'Unavailable'}`,
       `Prompt tokens: ${effectiveTokenCount.toLocaleString()}`,
       `Output tokens per turn: ${outputTokens.toLocaleString()}`,
-      `Turns: ${turns.toLocaleString()} (${sessionMode})`,
+      `Turns: ${turns.toLocaleString()} (${sessionMode === 'scenario' ? 'growing conversation' : 'stateless requests'})`,
       `Runs: ${workloadRuns.toLocaleString()} per ${workloadCadence}`,
       `Planning range: plus or minus ${volumeVariancePct}% volume, ${retryRatePct}% retry allowance`,
       `Monthly budget: ${monthlyBudget > 0 ? `$${monthlyBudget.toLocaleString()}` : 'not set'}`,
-      `One request: ${primaryRow?.requestCost ?? 'Unavailable'}`,
-      `Session: ${primaryRow?.sessionCost ?? 'Unavailable'}`,
-      `Monthly: ${primaryRow?.monthlyCost ?? 'Unavailable'}`,
-      `Annual: ${primaryRow?.annualCost ?? 'Unavailable'}`,
+      // Format like the on-screen receipt; raw floats such as 0.010274000000000001
+      // with no currency used to land on the clipboard.
+      `One request: ${formatUsd(primaryRow?.requestCost)}`,
+      `Session: ${formatUsd(primaryRow?.sessionCost)}`,
+      `Monthly: ${formatUsd(primaryRow?.monthlyCost)}`,
+      `Annual: ${formatUsd(primaryRow?.annualCost)}`,
+      ...(primaryRow?.estimate?.longContextRequests ? [longContextNote(primaryRow)] : []),
       `Source: ${source}`,
       'Prompt text remained in the browser.',
     ].join('\n');
