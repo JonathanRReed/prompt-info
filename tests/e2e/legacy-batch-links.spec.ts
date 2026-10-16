@@ -167,3 +167,32 @@ test('the batch range sits on its own full-width line below the label and total'
   expect(r.y).toBeGreaterThanOrEqual(t.y + t.height - 1);
   expect(r.width).toBeGreaterThan(block.width * 0.95);
 });
+
+const RUNS_NOTICE = 'This older link had an unsupported runs value (runs=0). It was ignored and the default was used.';
+const CADENCE_NOTICE = 'This older link had an unsupported cadence value (cadence=year). It was ignored and the default was used.';
+
+test('legacy notices survive the receipt anchor and back/forward', async ({ page, isMobile }) => {
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CATALOG) }));
+  await page.goto('/?runs=0&cadence=year');
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toBeVisible();
+  if (isMobile) await page.locator('.agent-mobile-total a[href="#agent-price"]').click();
+  else await page.evaluate(() => { window.location.hash = 'agent-price'; });
+  await expect(page).toHaveURL(/#agent-price$/);
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toBeVisible();
+  await expect(page.getByText(CADENCE_NOTICE, { exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page).not.toHaveURL(/#/);
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(/#agent-price$/);
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toBeVisible();
+});
+
+test('a valid plan in the hash takes precedence over legacy query notices', async ({ page }) => {
+  const shared = { version: 1, plan: { instructionTokens: 300, taskTokens: 200, toolTokensPerStep: 0, visibleOutputTokens: 100, reasoningTokens: 0, steps: 1, keepHistory: false, cacheEnabled: false, cacheHitPct: 0 }, models: ['Test Lab: Flat'], runs: 1, variance: 30 };
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CATALOG) }));
+  await page.goto(`/?runs=0&cadence=year#${new URLSearchParams({ plan: JSON.stringify(shared) })}`);
+  await expect(page.getByTestId('agent-run-total')).toHaveText('$1.00');
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(CADENCE_NOTICE, { exact: true })).toHaveCount(0);
+});
