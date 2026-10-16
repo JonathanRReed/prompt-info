@@ -12,11 +12,12 @@
     "start": "wrangler pages dev out --port 4173 --compatibility-date=2026-08-04",
     "preview:cloudflare": "wrangler pages dev out --port 4173 --compatibility-date=2026-08-04",
     "lint": "eslint .",
-    "test": "bun test lib/*.test.ts components/charts/chartFormat.test.ts && bun test tests/api-adapters.test.ts",
+    "test": "bun test lib/*.test.ts components/charts/chartFormat.test.ts && bun test tests/api-adapters.test.ts && bun test tests/unit/dependency-audit.test.mjs",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "analyze": "next experimental-analyze",
-    "assets:social": "bun scripts/generate-social-card.mjs"
+    "assets:social": "bun scripts/generate-social-card.mjs",
+    "audit": "bun scripts/dependency-audit.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
