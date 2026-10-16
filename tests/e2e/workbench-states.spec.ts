@@ -33,10 +33,11 @@ test('labels a usable static fallback before showing calculated comparisons', as
 
   await page.goto('/');
 
+  await page.getByText('Prices, sources and calculation details', { exact: true }).click();
   const sourceStatus = page.locator('.source-status');
   await expect(sourceStatus.getByText('Bundled dated catalog', { exact: true })).toBeVisible();
   await expect(sourceStatus).toContainText('OpenRouter pricing was unavailable');
-  await expect(page.getByTestId('primary-session-cost')).not.toHaveText('Unavailable');
+  await expect(page.getByTestId('agent-run-total')).not.toHaveText('Unavailable');
 });
 
 test('shows a recoverable error when neither API nor bundled data is usable', async ({ page }) => {
@@ -45,9 +46,10 @@ test('shows a recoverable error when neither API nor bundled data is usable', as
 
   await page.goto('/');
 
+  await page.getByText('Prices, sources and calculation details', { exact: true }).click();
   await expect(page.locator('.source-status[role="alert"]')).toContainText('Pricing source: unavailable');
   await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
-  await expect(page.getByTestId('primary-session-cost')).toHaveText('Unavailable');
+  await expect(page.getByTestId('agent-run-total')).toHaveText('Unavailable');
 });
 
 test('keeps pasted prompt text out of every network request', async ({ page }) => {
@@ -56,8 +58,9 @@ test('keeps pasted prompt text out of every network request', async ({ page }) =
   page.on('request', request => requests.push({ url: request.url(), postData: request.postData() }));
 
   await page.goto('/');
-  await page.getByRole('textbox', { name: 'Prompt' }).fill(sentinel);
-  await expect(page.getByTestId('prompt-token-count')).not.toContainText('counting');
+  await page.getByRole('button', { name: 'Paste your prompt', exact: true }).click();
+  await page.getByLabel('Task prompt', { exact: true }).fill(sentinel);
+  await expect(page.getByText(/tokens using o200k_base/)).toBeVisible();
 
   expect(requests.some(request => /openrouter|artificialanalysis|supabase/i.test(request.url))).toBe(false);
   expect(requests.some(request => request.url.includes(sentinel))).toBe(false);
@@ -67,17 +70,18 @@ test('keeps pasted prompt text out of every network request', async ({ page }) =
 test('supports keyboard access to the model browser and evidence disclosures', async ({ page }) => {
   await page.goto('/');
 
-  const modelInput = page.getByLabel('Comparison model 1');
+  const modelInput = page.getByLabel('Model to price', { exact: true });
   await modelInput.focus();
   await modelInput.press('ArrowDown');
   await expect(page.getByRole('listbox')).toBeVisible();
   await modelInput.press('Escape');
   await expect(page.getByRole('listbox')).toBeHidden();
 
-  const disclosure = page.getByText('Cost estimate detail', { exact: true });
+  const disclosure = page.getByText('Prices, sources and calculation details', { exact: true });
   await disclosure.focus();
   await disclosure.press('Enter');
-  await expect(page.getByRole('table').first()).toBeVisible();
+  await page.getByText('See every request and its input', { exact: true }).click();
+  await expect(page.getByRole('table')).toBeVisible();
 });
 
 for (const viewport of [
@@ -98,10 +102,10 @@ test('mobile keeps the prompt before the planning receipt', async ({ page }) => 
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/');
 
-  const promptTop = await page.getByRole('textbox', { name: 'Prompt' }).evaluate(element => (
+  const promptTop = await page.getByLabel('Material supplied').evaluate(element => (
     element.getBoundingClientRect().top
   ));
-  const receiptTop = await page.locator('.cost-workbench-receipt').evaluate(element => (
+  const receiptTop = await page.locator('.planner-receipt-column').evaluate(element => (
     element.getBoundingClientRect().top
   ));
   expect(promptTop).toBeLessThan(receiptTop);

@@ -4,9 +4,9 @@ import { AUTHOR_REF } from '../../lib/author';
 import { OG_BASE, TWITTER_BASE } from '../../lib/seo';
 
 const highlights = [
-  { title: 'Workload planning', body: 'Compare request, session, monthly, and annual model cost for the prompt and run pattern you actually expect.' },
-  { title: 'Format comparison', body: 'Render the same prompt as TOON, JSON, YAML, XML, and CSV for practical payload review.' },
-  { title: 'Token efficiency', body: 'Compare cost per completed task with Artificial Analysis evidence kept separate from your workload assumptions.' },
+  { title: 'Workload planning', body: 'Estimate one chat or agent task, then optionally project repeated tasks into a monthly budget.' },
+  { title: 'Format comparison', body: 'Compare plain text with model-visible TOON, JSON, YAML, XML, and CSV representations.' },
+  { title: 'Output tradeoffs', body: 'Compare cost per completed task with Artificial Analysis evidence kept separate from your workload assumptions.' },
   { title: 'Sourced catalogs', body: 'Every pricing and benchmark response reports its source, retrieval time, freshness, and fallback state.' },
 ];
 
@@ -76,7 +76,7 @@ export default function AboutPage() {
             Prompt Info is a free calculator for estimating model usage across prompts, multi-turn sessions, and recurring workloads before execution.
           </p>
           <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-            Prompt text stays in browser memory. Same-origin server routes collect public pricing and benchmark catalogs, while every estimate prints its assumptions beside the result. There is nothing to sign up for.
+            Prompt text stays in browser memory. Same-origin server routes collect public pricing and benchmark catalogs, and the calculator exposes its editable assumptions beside the result. There is nothing to sign up for.
           </p>
           <p className="mt-6 text-xs font-medium text-rose-muted">
             <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
@@ -110,8 +110,8 @@ export default function AboutPage() {
         <article className="bg-rose-base p-5 sm:p-8 md:p-10">
           <p className="data-label">Operational notes</p>
           <ul className="mt-6 space-y-4 text-sm leading-7 text-rose-subtle">
-            <li>Token counts use gpt-tokenizer, with selectable OpenAI BPE tokenizers: o200k, cl100k, p50k, p50k edit, and r50k. OpenAI counts are exact.</li>
-            <li>Non-OpenAI vendors bill with their own tokenizers, which typically produce more tokens than OpenAI BPE for the same text. Cost math applies a per-provider calibration multiplier so estimates do not undercount.</li>
+            <li>Pasted prompts are counted locally with o200k_base. The format lab also offers older BPE tokenizers. These count the supplied text, not every hidden message wrapper or provider-specific input.</li>
+            <li>Models can use different tokenizers. No universal conversion multiplier is assumed. Import actual API usage to work from the provider’s reported counts.</li>
             <li>Agent scenario estimates re-send conversation history each turn, bill cached context at the provider&apos;s cache read rate, apply cache write premiums where charged, and simulate compaction summarization calls.</li>
             <li>Pricing first uses the live OpenRouter text-model catalog, then the project database cache, then a dated bundled catalog. The active source and fallback reason remain visible.</li>
             <li>Artificial Analysis supplies the attributed benchmark catalog for intelligence, coding, agentic, speed, and cost-per-task evidence when the active source provides each field.</li>

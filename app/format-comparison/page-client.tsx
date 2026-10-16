@@ -21,7 +21,7 @@ type TokenizerState =
   | { status: 'error' };
 
 const FORMAT_TOKENIZERS = [
-  { key: 'o200k_base', label: 'o200k_base', description: 'GPT-4o, o-series, and GPT-5 style models' },
+  { key: 'o200k_base', label: 'o200k_base', description: 'OpenAI-style estimate; newer models may differ' },
   { key: 'cl100k_base', label: 'cl100k_base', description: 'GPT-4, GPT-3.5, and compatible estimates' },
   { key: 'p50k_base', label: 'p50k_base', description: 'Codex and older code models' },
   { key: 'p50k_edit', label: 'p50k_edit', description: 'Legacy edit models' },
@@ -57,69 +57,18 @@ function xmlEscape(value: string) {
     .replace(/>/g, '&gt;');
 }
 
-// Each format starts from the same source values. JSON, YAML, and TOON preserve
-// the typed nested structure most directly. XML and CSV are structural
-// approximations because those formats require different type/container rules.
+// Compare only text that is actually placed inside model-visible content.
 function buildFormats(prompt: string): FormatCard[] {
-  const clean = prompt.trim() || SAMPLE_PROMPT;
-  const messages = [
-    { id: 1, role: 'system' },
-    { id: 2, role: 'user' },
-  ];
-  const data = {
-    prompt: clean,
-    messages,
-    meta: {
-      source: 'prompt-info',
-      format: 'comparison',
-    },
-  };
-
-  const toon = [
-    `prompt: ${toonScalar(clean)}`,
-    `messages[${messages.length}]{id,role}:`,
-    ...messages.map(m => `  ${m.id},${m.role}`),
-    'meta:',
-    '  source: prompt-info',
-    '  format: comparison',
-  ].join('\n');
-  const jsonPretty = JSON.stringify(data, null, 2);
-  const jsonCompact = JSON.stringify(data);
-  const yaml = [
-    `prompt: ${yamlScalar(clean)}`,
-    'messages:',
-    ...messages.flatMap(m => [`  - id: ${m.id}`, `    role: ${m.role}`]),
-    'meta:',
-    '  source: prompt-info',
-    '  format: comparison',
-  ].join('\n');
-  const xml = [
-    '<root>',
-    `  <prompt>${xmlEscape(clean)}</prompt>`,
-    '  <messages>',
-    ...messages.map(m => `    <message id="${m.id}" role="${m.role}" />`),
-    '  </messages>',
-    '  <meta>',
-    '    <source>prompt-info</source>',
-    '    <format>comparison</format>',
-    '  </meta>',
-    '</root>',
-  ].join('\n');
-  const csv = [
-    'field,value',
-    `prompt,"${clean.replace(/"/g, '""')}"`,
-    ...messages.map(m => `message_${m.id}_role,${m.role}`),
-    'meta_source,prompt-info',
-    'meta_format,comparison',
-  ].join('\n');
-
+  const clean = prompt;
+  const data = { prompt: clean };
   return [
-    { key: 'toon', label: 'TOON', description: 'Token-oriented notation, tabular arrays', content: toon },
-    { key: 'json', label: 'JSON', description: 'Readable JSON', content: jsonPretty },
-    { key: 'json-compact', label: 'JSON compact', description: 'Minified JSON', content: jsonCompact },
-    { key: 'yaml', label: 'YAML', description: 'Common config format', content: yaml },
-    { key: 'xml', label: 'XML', description: 'Tagged structural approximation', content: xml },
-    { key: 'csv', label: 'CSV', description: 'Flattened structural approximation', content: csv },
+    { key: 'plain', label: 'Plain text', description: 'The prompt with no wrapper', content: clean },
+    { key: 'toon', label: 'TOON', description: 'One text field', content: `prompt: ${toonScalar(clean)}` },
+    { key: 'json', label: 'JSON', description: 'Readable JSON text', content: JSON.stringify(data, null, 2) },
+    { key: 'json-compact', label: 'JSON compact', description: 'The same JSON without indentation', content: JSON.stringify(data) },
+    { key: 'yaml', label: 'YAML', description: 'One text field', content: `prompt: ${yamlScalar(clean)}` },
+    { key: 'xml', label: 'XML', description: 'One text element', content: `<prompt>${xmlEscape(clean)}</prompt>` },
+    { key: 'csv', label: 'CSV', description: 'One column and one record', content: `prompt\n"${clean.replace(/"/g, '""')}"` },
   ];
 }
 
@@ -170,7 +119,7 @@ export default function FormatComparisonPageClient() {
     return Object.fromEntries(cards.map(card => [card.key, tokenizer.encode(card.content).length]));
   }, [cards, tokenizer]);
 
-  const rawPromptTokens = tokenizer.status === 'ready' ? tokenizer.encode(prompt.trim() || SAMPLE_PROMPT).length : null;
+  const rawPromptTokens = tokenizer.status === 'ready' ? tokenizer.encode(prompt).length : null;
 
   const minTokens = tokenCounts
     ? Math.min(...cards.map(card => tokenCounts[card.key] ?? Number.POSITIVE_INFINITY))
@@ -232,7 +181,7 @@ export default function FormatComparisonPageClient() {
           </div>
         </div>
         <p className="mt-3 text-sm leading-6 text-rose-muted">
-          Every card starts with the same values. JSON, YAML, and TOON preserve the nested structure directly; XML and CSV are structural approximations. Pick the tokenizer that best approximates your target model.
+          These are strings you could include inside a prompt. The HTTP JSON envelope used to call an API is not billed as literal prompt text. This small text example does not predict savings for tables or nested datasets.
         </p>
       </section>
 
@@ -315,7 +264,7 @@ export default function FormatComparisonPageClient() {
                 {netTokenDifference !== null && <span className="text-rose-muted tabular-nums">{netTokenDifference > 0 ? '+' : ''}{netTokenDifference.toLocaleString()} net tokens vs raw</span>}
                 {isSmallest && <span className="text-signal-text">Fewest tokens</span>}
                 {overhead !== null && <span className="text-rose-muted tabular-nums">+{overhead}% vs best</span>}
-                {inputCost && <span className="text-signal-text tabular-nums">{inputCost} input</span>}
+                {inputCost && <span className="text-signal-text tabular-nums">{inputCost} uncached input, one request</span>}
               </div>
               <pre className="min-h-[180px] flex-1 overflow-x-auto whitespace-pre-wrap break-words p-4 font-mono text-[13px] leading-7 text-rose-subtle sm:p-5">
                 {card.content}

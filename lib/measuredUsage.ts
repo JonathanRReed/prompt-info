@@ -1,5 +1,5 @@
 import type { PricingEntry } from './pricingParser';
-import { requestRates } from './agentPlanner';
+import { requestRates, usesImplicitGeminiCache } from './agentPlanner';
 
 /** Inclusive provider-normalized totals for one request; cache buckets do not overlap. */
 export type MeasuredRequest = { input: number; cached: number; written: number; output: number; reasoning: number };
@@ -14,6 +14,7 @@ export function priceMeasuredUsage(rows: MeasuredRequest[], model: PricingEntry)
   if (model.pricing.longContextTiers !== undefined && !Array.isArray(model.pricing.longContextTiers)) return invalid('Conditional pricing data is malformed.');
   for (const row of rows) {
     if (![row.input,row.cached,row.written,row.output,row.reasoning].every(valid) || row.cached + row.written > row.input || row.reasoning > row.output) return invalid('Use whole non-negative token counts. Cache tokens must fit within input; thinking must fit within total output.');
+    if (row.written > 0 && usesImplicitGeminiCache(model)) return invalid('Explicit Gemini cache storage needs a duration and storage rate. Use zero cache writes for implicit caching; its new input pays the normal input rate.');
     const prices = requestRates(model, row.input);
     if ((row.cached > 0 && !rate(prices.inputCacheRead)) || (row.written > 0 && !rate(prices.inputCacheWrite))) return invalid('A required cache rate is unavailable for this model. No cache price has been guessed.');
     inputCost += ((row.input - row.cached - row.written) * prices.input + row.cached * (prices.inputCacheRead ?? 0) + row.written * (prices.inputCacheWrite ?? 0)) / 1000;

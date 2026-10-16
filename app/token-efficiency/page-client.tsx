@@ -13,11 +13,9 @@ import {
 import {
   breakEvenOutputRate,
   costPerTask,
-  EFFICIENCY_PRESETS,
-  scaleOutputTokensByEfficiency,
 } from '../../lib/tokenEfficiency';
 
-const DEFAULT_TASKS = 1000;
+const DEFAULT_TASKS = 1;
 const DEFAULT_INPUT_TOKENS_PER_TASK = 5000;
 const MAX_TASKS = 1_000_000;
 const MAX_TOKENS_PER_TASK = 10_000_000;
@@ -40,18 +38,11 @@ type EditableModel = {
 type EditableRateField = 'inputPerMillion' | 'outputPerMillion' | 'outputTokensPerTask';
 
 function initialModels(): EditableModel[] {
-  return EFFICIENCY_PRESETS.map(({ key, name, provider, inputPerMillion, outputPerMillion, outputTokensPerTask, intelligenceIndex }) => ({
-    key,
-    name,
-    provider,
-    inputPerMillion,
-    outputPerMillion,
-    outputTokensPerTask,
-    intelligenceIndex,
-    benchmarkCostPerTask: null,
-    outputTokensPerSecond: null,
-    aaModelId: null,
-    rateSource: 'Dated benchmark preset',
+  return ['a', 'b', 'c'].map(key => ({
+    key, name: `Example ${key.toUpperCase()}`, provider: 'Illustrative rates',
+    inputPerMillion: 2, outputPerMillion: 10, outputTokensPerTask: 500,
+    intelligenceIndex: null, benchmarkCostPerTask: null, outputTokensPerSecond: null,
+    aaModelId: null, rateSource: 'Editable example, not a model quote',
   }));
 }
 
@@ -115,10 +106,11 @@ export default function TokenEfficiencyPageClient() {
           : response.freshness === 'cached'
             ? 'Artificial Analysis cache'
             : 'Artificial Analysis';
-        setModels(current => current.map(model => {
-          const match = response.data.find(candidate => candidate.slug === model.key);
-          return match ? withCatalogModel(model, match, rateSource) : model;
-        }));
+        const candidates = [...response.data].filter(model => rateOrNull(model.inputPerMillion) !== null && rateOrNull(model.outputPerMillion) !== null)
+          .sort((a,b) => (b.intelligenceIndex ?? -1) - (a.intelligenceIndex ?? -1));
+        const creators = new Set<string>();
+        const defaults = candidates.filter(model => { if(creators.has(model.creator)) return false; creators.add(model.creator); return true; }).slice(0,3);
+        setModels(current => current.map((model,index) => defaults[index] ? withCatalogModel(model, defaults[index], rateSource) : model));
       })
       .catch(() => {
         if (!cancelled) setCatalogError(true);
@@ -177,16 +169,8 @@ export default function TokenEfficiencyPageClient() {
       const referenceIndex = benchmarkMatch
         ? Math.max(0, current.findIndex(model => model.aaModelId === benchmarkMatch.id))
         : 0;
-      const referenceAssumption = current[referenceIndex]?.outputTokensPerTask ?? scenario.outputTokensPerRun;
-
       return current.map((model, index) => {
-        const scaledOutputTokens = clampNumber(scaleOutputTokensByEfficiency({
-          measuredOutputTokens: scenario.outputTokensPerRun,
-          referenceOutputTokens: referenceAssumption,
-          comparisonOutputTokens: model.outputTokensPerTask,
-        }), MAX_TOKENS_PER_TASK);
-
-        if (index !== referenceIndex) return { ...model, outputTokensPerTask: scaledOutputTokens };
+        if (index !== referenceIndex) return { ...model, outputTokensPerTask: clampNumber(scenario.outputTokensPerRun, MAX_TOKENS_PER_TASK) };
 
         return {
           ...model,
@@ -254,13 +238,13 @@ export default function TokenEfficiencyPageClient() {
         <div>
           <p className="data-label">Editable comparison</p>
           <h2 className="mt-4 max-w-4xl text-[clamp(2.2rem,5vw,4.6rem)] font-bold leading-[0.95] tracking-tight text-rose-text">
-            Use your own task measurements.
+            How much does a longer answer cost?
           </h2>
         </div>
         <button
           type="button"
           onClick={() => {
-            setModels(initialModels());
+            setModels(current => current.map(model => ({...model,outputTokensPerTask:500})));
             setTasks(DEFAULT_TASKS);
             setTasksDraft(null);
             setInputTokensPerTask(DEFAULT_INPUT_TOKENS_PER_TASK);
@@ -268,13 +252,12 @@ export default function TokenEfficiencyPageClient() {
           }}
           className="self-start border border-rose-highlightMed bg-rose-base px-4 py-3 text-xs font-medium text-rose-subtle transition duration-200 hover:border-rose-love hover:text-rose-text focus:outline-none focus:ring-2 focus:ring-rose-love motion-reduce:transition-none sm:self-end"
         >
-          Reset example
+          Reset token assumptions
         </button>
       </div>
 
       <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-subtle sm:text-base">
-        Every field is editable. Pick benchmarked models, then use your own measured token counts. The comparison
-        keeps published evidence separate from your workload assumptions.
+        Start with equal output lengths, then change them to test a hypothesis or enter measured usage. Generated output includes thinking where it is billed. These token counts are examples, not model-specific predictions.
       </p>
 
       <div className="mt-6 flex flex-col gap-3 border border-rose-highlightMed bg-rose-overlay p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -318,14 +301,14 @@ export default function TokenEfficiencyPageClient() {
             <p className="mt-2 text-sm text-rose-subtle">
               {scenario.model || 'Selected model'} · {scenario.inputTokensPerRun.toLocaleString()} input · {scenario.outputTokensPerRun.toLocaleString()} output · {scenario.workloadRuns.toLocaleString()} runs / {scenario.workloadCadence}
             </p>
-            {plannerApplied && <p className="mt-2 text-xs font-medium text-signal-text">Planner scenario applied</p>}
+            {plannerApplied && <p className="mt-2 text-xs font-medium text-signal-text">Planner token totals applied equally. This simplified comparison excludes caching and conditional price tiers, so totals can differ from the full receipt.</p>}
           </div>
           <button
             type="button"
             onClick={usePlannerWorkload}
             className="action-secondary justify-center"
           >
-            Use planner workload
+            Use planner token totals
           </button>
         </div>
       )}
@@ -534,8 +517,7 @@ export default function TokenEfficiencyPageClient() {
       </div>
 
       <p className="mt-6 max-w-3xl text-sm leading-7 text-rose-muted">
-        Cache reads, cache writes, and multi-turn history re-sends are deliberately out of scope here; they change the
-        input side, not the verbosity story. Model a full session on the planner when those matter. A blank AA cost per
+        Cache reads, cache writes, and multi-turn history re-sends are deliberately out of scope here; this is a simplified rate × token comparison. Conditional price tiers are also excluded. Use the full calculator for an agent budget. A blank AA cost per
         task means the active catalog source did not publish that metric; Prompt Info does not manufacture it.
       </p>
     </section>

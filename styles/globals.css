@@ -2191,3 +2191,11 @@ html:has(.agent-planner),body:has(.agent-planner) { overflow-x:clip; overflow-y:
 .planner-receipt-column { top:76px; scroll-margin-top:76px; }
 
 .planner-tabs button { scroll-margin-top:76px; scroll-margin-bottom:90px; }
+
+.planner-task-presets { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; width:100%; }
+.planner-preset-card { text-align:left; padding:12px; border:1px solid var(--planner-border); border-radius:6px; background:var(--surface-1); color:var(--ink-0); cursor:pointer; }
+.planner-preset-card strong { display:block; font-size:.85rem; line-height:1.35; }
+.planner-preset-card span { display:block; margin-top:7px; font-size:.75rem; line-height:1.5; color:var(--planner-muted); }
+.planner-preset-card[aria-pressed=true] { border-color:var(--signal); box-shadow:inset 0 0 0 1px var(--signal); }
+.planner-assumption-note,.planner-rate-source { color:var(--planner-muted); font-size:.75rem; line-height:1.5; margin-top:12px; }
+@media(max-width:560px) { .planner-task-presets { grid-template-columns:minmax(0,1fr); }.planner-preset-card { padding:10px 12px; }.planner-preset-card span { margin-top:4px; } }

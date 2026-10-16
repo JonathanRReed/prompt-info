@@ -63,3 +63,83 @@ test('known non-reasoning models cannot fit a hidden-thinking workload', () => {
   expect(estimateAgentRun(plan, { ...model, supportsReasoning: false }).feasible).toBe(false);
   expect(estimateAgentRun({ ...plan, reasoningTokens: 0 }, { ...model, supportsReasoning: false }).feasible).toBe(true);
 });
+
+test('long tasks compact history and bill summary generation instead of overflowing forever', () => {
+  const p = {...plan, instructionTokens:100,taskTokens:200,toolTokensPerStep:50,visibleOutputTokens:20,reasoningTokens:30,steps:5,compactEvery:2,summaryTokens:100};
+  const result = estimateAgentRun(p,model);
+  // Normal inputs:300,370; after summary:250,320; after summary:250.
+  // Summary inputs include the last visible output:390 and340.
+  expect(result.inputTokens).toBe(2220);
+  expect(result.visibleOutputTokens).toBe(100);
+  expect(result.reasoningTokens).toBe(150);
+  expect(result.summaryOutputTokens).toBe(200);
+  expect(result.compactions).toBe(2);
+  expect(result.totalCost).toBeCloseTo(2220*.002/1000 + 450*.01/1000,10);
+});
+test('does not charge an unused final summary and scales independent agents explicitly', () => {
+  const p = {...plan,steps:4,compactEvery:2,summaryTokens:100};
+  const one = estimateAgentRun(p,model);
+  expect(one.compactions).toBe(1);
+  expect(estimateAgentRun({...p,workers:4},model).totalCost).toBeCloseTo(one.totalCost!*4,10);
+});
+test('very large compacted workloads keep a bounded ledger and finite cost', () => {
+  const result = estimateAgentRun({...plan,steps:100000,compactEvery:10,summaryTokens:100,workers:4},model);
+  expect(result.totalCost).not.toBeNull();
+  expect(result.compactions).toBe(9999*4);
+  expect(result.steps.length).toBeLessThanOrEqual(200);
+});
+
+test('compacted block aggregation matches an independent request-by-request calculation', () => {
+  for (const steps of [1,2,3,4,5,19,20,21,51]) for (const every of [1,2,7,20]) for (const cached of [false,true]) for (const replay of [false,true]) {
+    const p = {...plan,steps,compactEvery:every,summaryTokens:100,cacheEnabled:cached,cacheHitPct:80,replayReasoning:replay};
+    let history=p.instructionTokens+p.taskTokens, previous=0, cost=0, inputs=0, summaries=0;
+    for(let i=0;i<steps;i++) {
+      if(i>0 && i%every===0) {
+        inputs+=history;
+        cost+=(history*model.pricing.input + p.summaryTokens*model.pricing.output)/1000;
+        history=p.instructionTokens+p.summaryTokens; previous=0; summaries++;
+      }
+      const input=history+(i>0?p.toolTokensPerStep:0);
+      const hit=cached?previous*.8:0;
+      inputs+=input;
+      cost+=(cached ? hit*model.pricing.inputCacheRead!+(input-hit)*model.pricing.inputCacheWrite! : input*model.pricing.input)/1000;
+      cost+=(p.visibleOutputTokens+p.reasoningTokens)*model.pricing.output/1000;
+      previous=input;history=input+p.visibleOutputTokens+(replay?p.reasoningTokens:0);
+    }
+    const result=estimateAgentRun(p,model);
+    expect(result.totalCost).toBeCloseTo(cost,10);
+    expect(result.inputTokens).toBe(inputs);
+    expect(result.compactions).toBe(summaries);
+  }
+});
+test('rejects invalid compaction and stream assumptions rather than silently clipping work', () => {
+  for(const patch of [{compactEvery:0},{compactEvery:201},{compactEvery:2,summaryTokens:0},{compactEvery:2,summaryTokens:100,keepHistory:false},{workers:0},{workers:101},{steps:1000001}]) {
+    expect(estimateAgentRun({...plan,...patch},model).totalCost).toBeNull();
+  }
+});
+
+test('Gemini implicit cache misses pay normal input rather than a storage-only write rate', () => {
+  const gemini = {...model,openRouterId:'google/gemini-3.8-flash',pricing:{...model.pricing,inputCacheWrite:0.00004}};
+  const result=estimateAgentRun({...plan,steps:1,cacheEnabled:true},gemini);
+  expect(result.inputCost).toBeCloseTo(2000*.002/1000,10);
+  expect(result.cacheWriteTokens).toBe(0);
+});
+
+test('provider cache minimums prevent imaginary discounts on short prompts', () => {
+  const tiny = {...plan,instructionTokens:100,taskTokens:100,toolTokensPerStep:20,visibleOutputTokens:10,reasoningTokens:10,cacheEnabled:true};
+  const google = {...model,openRouterId:'google/gemini-3.8-flash'};
+  const actual = estimateAgentRun(tiny,google);
+  expect(actual.cacheReadTokens).toBe(0);
+  expect(actual.cacheWriteTokens).toBe(0);
+  expect(actual.totalCost).toBe(estimateAgentRun({...tiny,cacheEnabled:false},google).totalCost);
+  expect(estimateAgentRun(tiny,{...model,openRouterId:'openai/gpt-6.1-sol'}).cacheWriteTokens).toBe(0);
+});
+test('large independent-request workloads do not require context summaries', () => {
+  const independent = {...plan,keepHistory:false,cacheEnabled:true,steps:100000};
+  const a=estimateAgentRun({...independent,steps:1},model);
+  const b=estimateAgentRun({...independent,steps:2},model);
+  const total=estimateAgentRun(independent,model);
+  expect(total.totalCost).toBeCloseTo(a.totalCost!+(b.totalCost!-a.totalCost!)*99999,8);
+  expect(total.feasible).toBe(true);
+  expect(total.steps.length).toBe(2);
+});

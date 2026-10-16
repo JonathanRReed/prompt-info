@@ -8,24 +8,29 @@ const catalog = { schemaVersion: 1, source: 'openrouter-live', sourceUrl: 'https
 test.beforeEach(async ({ page }) => { await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(catalog) })); });
 test('agent assumptions change billed output and cache costs visibly', async ({ page }) => {
   await page.goto('/agent-planner/');
-  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(0.332));
+  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(0.0068));
   await page.getByRole('tab', { name: 'Thinking', exact: true }).click();
-  await page.getByLabel('Thinking tokens per step', { exact: true }).fill('4000');
-  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(0.492));
+  await page.getByLabel('Thinking tokens per step', { exact: true }).fill('1000');
+  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(0.0138));
   await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
+  await page.getByLabel('Replies per conversation', { exact: true }).fill('3');
+  const beforeCache = await page.getByTestId('agent-run-total').textContent();
   await page.getByLabel('Assume prompt caching is enabled', { exact: true }).check();
   await expect(page.getByLabel('Cache hits on repeated input (%)', { exact: true })).toBeVisible();
-  await expect(page.getByTestId('agent-run-total')).not.toHaveText(formatUsd(0.492));
+  await expect(page.getByTestId('agent-run-total')).not.toHaveText(beforeCache!);
   await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
-  await page.getByLabel('Runs per month', { exact: true }).fill('');
+  await page.getByText('Optional budget planning', { exact: true }).click();
+  await page.getByLabel('Estimate a monthly budget', { exact: true }).check();
+  await page.getByLabel('Completed tasks per month', { exact: true }).fill('');
   await expect(page.getByTestId('agent-monthly-total')).toHaveText('Unavailable');
   await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
-  await page.getByLabel('Runs per month', { exact: true }).fill('200');
+  await page.getByLabel('Completed tasks per month', { exact: true }).fill('200');
   await expect(page.getByTestId('agent-monthly-total')).not.toHaveText('Unavailable');
 });
 test('a model cannot hide input plus output context overflow', async ({ page }) => {
   await page.goto('/agent-planner/');
-  await page.getByRole('button', { name: 'One response', exact: true }).click();
+  await page.getByRole('button', { name: 'Quick answer', exact: true }).click();
+  await page.getByText('Customize context assumptions', { exact: true }).click();
   await page.getByLabel('Shared instruction tokens', { exact: true }).fill('0');
   await page.getByLabel('Task and document tokens', { exact: true }).fill('7000');
   await page.getByRole('tab', { name: 'Thinking', exact: true }).click();
@@ -40,7 +45,7 @@ test('a plan link restores assumptions without including the draft prompt', asyn
   const transmitted: string[] = [];
   page.on('request', request => transmitted.push(request.url() + (request.postData() ?? '')));
   await page.goto('/agent-planner/');
-  await page.getByRole('button', { name: 'Count a draft prompt', exact: true }).click();
+  await page.getByRole('button', { name: 'Paste your prompt', exact: true }).click();
   await page.getByLabel('Task prompt', { exact: true }).fill('PRIVATE_DRAFT_DO_NOT_SEND');
   await expect(page.getByText(/tokens using o200k_base/)).toBeVisible();
   await page.getByRole('button', { name: 'Copy a link to this plan', exact: true }).click();
@@ -49,8 +54,8 @@ test('a plan link restores assumptions without including the draft prompt', asyn
   expect(new URL(link).search).toBe('');
   expect(transmitted.join(' ')).not.toContain('PRIVATE_DRAFT');
   await page.goto(link);
-  await expect(page.getByLabel('Model requests within one task', { exact: true })).toHaveValue('8');
-  await expect(page.getByLabel('Task and document tokens', { exact: true })).not.toHaveValue('2000');
+  await expect(page.getByLabel('Replies per conversation', { exact: true })).toHaveValue('1');
+  await expect(page.getByLabel('Task and document tokens', { exact: true })).not.toHaveValue('500');
   await expect(page.getByTestId('agent-run-total')).not.toHaveText('Unavailable');
 });
 test('the planner has no page-wide overflow at the configured viewport', async ({ page }) => {
@@ -67,6 +72,7 @@ test('the planner has no page-wide overflow at the configured viewport', async (
 
 test('chat and agent modes keep separate workloads and show a scenario range first', async ({ page }) => {
   await page.goto('/agent-planner/');
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
   await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
   await page.getByLabel('Model requests within one task', { exact: true }).fill('12');
   await page.getByRole('tab', { name: 'Task', exact: true }).click();
@@ -87,11 +93,13 @@ test('custom thinking bounds remain effective at zero size variance', async ({ p
   await page.goto('/agent-planner/');
   await page.getByRole('tab', { name: 'Thinking', exact: true }).click();
   await page.getByLabel('Token-size uncertainty (%)', { exact: true }).fill('0');
+  await page.getByLabel('High thinking scenario per call', { exact: true }).fill('3000');
+  await page.getByLabel('Thinking tokens per step', { exact: true }).fill('2000');
   await page.getByRole('tab', { name: 'Thinking', exact: true }).click();
   await page.getByLabel('Low thinking scenario per call', { exact: true }).fill('1000');
   await page.getByRole('tab', { name: 'Thinking', exact: true }).click();
   await page.getByLabel('High thinking scenario per call', { exact: true }).fill('3000');
-  await expect(page.getByTestId('agent-run-range')).toHaveText(`${formatUsd(.252)} – ${formatUsd(.412)}`);
+  await expect(page.getByTestId('agent-run-range')).toHaveText(`${formatUsd(.0138)} – ${formatUsd(.0338)}`);
   await page.getByRole('tab', { name: 'Thinking', exact: true }).click();
   await page.getByLabel('Low thinking scenario per call', { exact: true }).fill('5000');
   await expect(page.getByRole('main').getByRole('alert')).toContainText('low ≤ base ≤ high');
@@ -101,9 +109,11 @@ test('retry budgets repeat the workload and display an unenforced-budget warning
   await page.goto('/agent-planner/');
   await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
   await page.getByLabel('Full-task reruns to budget for', { exact: true }).fill('2');
-  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(.996));
+  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(.0204));
   await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
-  await page.getByLabel('Planning budget per task (USD)', { exact: true }).fill('0.5');
+  await page.getByText('Optional budget planning', { exact: true }).click();
+  await page.getByLabel('Show a warning above my task budget', { exact: true }).check();
+  await page.getByLabel('Planning budget per task (USD)', { exact: true }).fill('0.001');
   await expect(page.getByText(/The modeled range exceeds your/)).toBeVisible();
 });
 test('effort selection uses published choices and explicitly editable example ranges', async ({ page }) => {
@@ -144,7 +154,7 @@ test('section tabs support keyboard navigation and keep only one editor visible'
 test('the receipt copies useful text and downloads a PNG without the draft prompt', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/agent-planner/');
-  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(.332));
+  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(.0068));
   await page.getByRole('button', { name: 'Copy receipt', exact: true }).click();
   const receipt = await page.evaluate(() => navigator.clipboard.readText());
   expect(receipt).toContain('Estimated range:');
@@ -194,7 +204,7 @@ test('the mobile receipt shortcut clears the sticky navigation', async ({ page }
 
 test('next-section controls return the section navigation to view', async ({ page }) => {
   await page.goto('/agent-planner/');
-  await page.getByRole('button', { name: 'Set answer and thinking sizes →', exact: true }).click();
+  await page.getByRole('button', { name: 'Adjust answer and thinking →', exact: true }).click();
   const tab = page.getByRole('tab', { name: 'Thinking', exact: true });
   await expect(tab).toHaveAttribute('aria-selected', 'true');
   const box = await tab.boundingBox();
@@ -216,7 +226,7 @@ test('actual usage is token-first, variable per request, and survives switching 
   await expect(page.getByTestId('measured-total')).toHaveText(formatUsd(.014));
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Plan a task', exact: true }).click();
-  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(.332));
+  await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(.0068));
   await page.getByRole('button', { name: 'Use actual token usage', exact: true }).click();
   await expect(page.getByTestId('measured-total')).toHaveText(formatUsd(.014));
   await page.getByLabel('Of that, thinking (if known)', { exact: true }).first().fill('501');

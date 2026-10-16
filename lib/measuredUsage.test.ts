@@ -25,3 +25,7 @@ test('does not interpret aggregate workload as fitting one request', () => {
   expect(result.warnings.join(' ')).toContain('context');
   expect(result.total).not.toBeNull();
 });
+
+test('does not pretend explicit Gemini cache storage can be priced from write tokens alone', () => {
+  expect(priceMeasuredUsage([row],{...model,openRouterId:'google/gemini-3.8-flash'}).total).toBeNull();
+});
