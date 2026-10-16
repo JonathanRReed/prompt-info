@@ -165,3 +165,13 @@ test('comparison carries partial tier and exact cache rates into session billing
   const result = buildCostComparison({ models: [{ model: 'Test: Tiered', entry }], scenario: { ...scenario, mode: 'scenario', promptTokens: 100, referenceOutputTokens: 0, turnOverheadTokens: 0 }, workload: { runs: 1, cadence: 'once' } });
   expect(result.rows[0].sessionCost).toBeCloseTo(0.78, 10);
 });
+
+test('legacy comparison excludes input-plus-output overflow and oversized output plans', () => {
+  const small = { ...ECONOMY, contextWindowTokens: 8192, maxOutputTokens: 4096 };
+  const combined = buildCostComparison({ models: [{ model: 'Small', entry: small }, { model: 'Large', entry: PREMIUM }], scenario: { ...scenario, promptTokens: 7000, referenceOutputTokens: 2048 }, workload: { runs: 1, cadence: 'once' } });
+  expect(combined.rows[0].contextWarning).toContain('input plus planned output');
+  expect(combined.recommendation?.model).toBe('Large');
+  const output = buildCostComparison({ models: [{ model: 'Small', entry: small }], scenario: { ...scenario, promptTokens: 100, referenceOutputTokens: 5000 }, workload: { runs: 1, cadence: 'once' } });
+  expect(output.rows[0].contextWarning).toContain('output limit');
+  expect(output.recommendation).toBeNull();
+});
