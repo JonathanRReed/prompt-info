@@ -170,11 +170,10 @@ export default function AgentPlannerClient() {
         readAgentPlanHash(window.location.hash) ??
         readLegacyAgentPlan(window.location.search);
       if (!shared) {
-        setImportNotices(
-          window.location.hash
-            ? []
-            : readLegacyNotices(window.location.search),
-        );
+        // Only a valid encoded plan in the hash replaces the query. Any other
+        // hash (such as the #agent-price receipt anchor) leaves the legacy
+        // query's notices in place.
+        setImportNotices(readLegacyNotices(window.location.search));
         return;
       }
       setPresetId('custom');
