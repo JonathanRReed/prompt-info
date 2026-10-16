@@ -120,6 +120,12 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
   }, [isOpen]);
 
   useEffect(() => {
+    if (isOpen && window.matchMedia('(max-width: 900px)').matches) {
+      containerRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isOpen) listRef.current?.querySelector(`[id="${inputId}-option-${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
   }, [activeIndex, inputId, isOpen]);
 
@@ -143,8 +149,8 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
   }
 
   return (
-    <div ref={containerRef} className="relative">
-      <div className="grid gap-px bg-rose-highlightMed border border-rose-highlightMed sm:grid-cols-[minmax(0,1fr)_auto]">
+    <div ref={containerRef} className="model-picker relative">
+      <div className="grid gap-px bg-rose-highlightMed border border-rose-highlightMed grid-cols-[minmax(0,1fr)_auto]">
         <input
           ref={inputRef}
           id={inputId}
@@ -185,7 +191,7 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
               setIsOpen(false);
             }
           }}
-          placeholder="Search models or providers"
+          placeholder="Search models"
           className="min-h-12 w-full bg-rose-surface px-4 py-3 font-mono text-sm text-rose-text placeholder:text-rose-muted transition duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-love motion-reduce:transition-none"
         />
         <button

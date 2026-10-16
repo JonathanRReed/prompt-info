@@ -1,44 +1,26 @@
-import { expect, test } from '@playwright/test';
-import { buildDatedArtificialAnalysisFallback } from '../../lib/artificialAnalysis';
-
-test('missing model rates stay uncalculated and free rates remain usable', async ({ page }) => {
-  const base = buildDatedArtificialAnalysisFallback()[0];
-  await page.route('**/api/benchmarks', route => route.fulfill({
-    json: {
-      schemaVersion: 1,
-      source: 'artificial-analysis-supabase-cache',
-      // The client now validates the same catalog envelope the API always sends.
-      sourceUrl: 'https://example.supabase.co/rest/v1/aa_models',
-      retrievedAt: '2026-09-02T12:00:00.000Z',
-      freshness: 'cached',
-      isFallback: true,
-      fallbackReason: 'Artificial Analysis API is not configured. Using the project benchmark cache.',
-      data: [
-        { ...base, id: 'partial', slug: 'partial', name: 'Partial price model', displayName: 'Partial price model', inputPerMillion: null, outputPerMillion: 3 },
-        { ...base, id: 'free', slug: 'free', name: 'Free price model', displayName: 'Free price model', inputPerMillion: 0, outputPerMillion: 0 },
-      ],
-    },
-  }));
+import {expect,test} from '@playwright/test';
+const catalog={schemaVersion:1,source:'openrouter-live',sourceUrl:'https://openrouter.ai/api/v1/models',retrievedAt:'2026-10-16T00:00:00Z',freshness:'live',isFallback:false,fallbackReason:null,data:{'Lab: Current model':{pricing:{input:.002,output:.01},co2eFactor:0,contextWindowTokens:1000000,maxOutputTokens:128000}}};
+test('output comparison uses current pricing and distinguishes missing and deliberately free rates',async({page})=>{
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/,r=>r.fulfill({json:catalog}));
   await page.goto('/token-efficiency/');
-  const card = page.locator('#efficiency-lab article').first();
-  const select = page.getByLabel('Comparison model 1');
-  await expect(select).toBeEnabled();
-  await select.fill('Partial price');
-  await page.getByRole('option', { name: /Partial price model/ }).click();
-  await expect(card.getByRole('heading', { name: 'Partial price model' })).toBeVisible();
-  await expect(card.getByLabel('Input $ / M tokens')).toHaveValue('');
-  await expect(card.getByLabel('Output $ / M tokens')).toHaveValue('3');
-  await expect(card.getByRole('status').filter({ hasText: 'A price is not reported' })).toBeVisible();
-  await expect(card.locator('output').first()).toHaveText('N/A');
-  await card.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `test-results/efficiency-missing-price-${test.info().project.name}.png` });
-  await select.fill('Free price');
-  await page.getByRole('option', { name: /Free price model/ }).click();
-  await expect(card.getByLabel('Input $ / M tokens')).toHaveValue('0');
-  await expect(card.locator('output').first()).toHaveText('$0.00');
+  const card=page.locator('#efficiency-lab article').first();
+  await expect(card.getByRole('heading')).toHaveText('Lab: Current model');
+  await expect(card.locator('output').first()).toHaveText('$0.0150');
   await card.getByLabel('Input $ / M tokens').fill('');
-  await expect(card.locator('output').first()).toHaveText('N/A');
+  await expect(card.getByRole('status').filter({hasText:'A price is not reported'})).toBeVisible();
+  await expect(card.locator('output').first()).toHaveText('Unavailable');
+  await card.getByLabel('Input $ / M tokens').fill('0');
+  await card.getByLabel('Output $ / M tokens').fill('0');
+  await expect(card.locator('output').first()).toHaveText('$0.00');
   await card.getByLabel('Input $ / M tokens').fill('2');
   await expect(card.locator('output').first()).toHaveText('$0.0100');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test('per-million rates hide binary floating-point display noise',async({page})=>{
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/,r=>r.fulfill({json:{...catalog,data:{'Google: Gemini 3.8 Flash':{...catalog.data['Lab: Current model'],pricing:{input:.000825,output:.004125}}}}}));
+  await page.goto('/token-efficiency/');
+  const card=page.locator('#efficiency-lab article').first();
+  await expect(card.getByLabel('Input $ / M tokens')).toHaveValue('0.825');
+  await expect(card.getByLabel('Output $ / M tokens')).toHaveValue('4.125');
 });

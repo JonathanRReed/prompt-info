@@ -1,3 +1,4 @@
+import { EFFORTS } from './reasoningOptions';
 import bundledPricing from '../public/data/llm-data.json';
 import {
   CATALOG_SCHEMA_VERSION,
@@ -34,8 +35,23 @@ export function isPricingMap(value: unknown): value is PricingMap {
 
   return Object.values(value).every(entry => {
     if (!isRecord(entry) || !isRecord(entry.pricing)) return false;
+    if (entry.supportsReasoning !== undefined && typeof entry.supportsReasoning !== 'boolean') return false;
+    if (entry.reasoning !== undefined) {
+      if (!isRecord(entry.reasoning) || typeof entry.reasoning.mandatory !== 'boolean' || typeof entry.reasoning.supportsMaxTokens !== 'boolean') return false;
+      if (entry.reasoning.supportedEfforts !== undefined && (!Array.isArray(entry.reasoning.supportedEfforts) || !entry.reasoning.supportedEfforts.every(value => typeof value === 'string' && EFFORTS.some(e => e === value)))) return false;
+      if (entry.reasoning.defaultEffort !== undefined && !EFFORTS.includes(entry.reasoning.defaultEffort as typeof EFFORTS[number])) return false;
+    }
     const input = entry.pricing.input;
     const output = entry.pricing.output;
+    for (const key of ['inputCacheRead', 'inputCacheWrite']) {
+      const value = entry.pricing[key];
+      if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) return false;
+    }
+    const tiers = entry.pricing.longContextTiers;
+    if (tiers !== undefined && (!Array.isArray(tiers) || !tiers.every(tier => {
+      if (!isRecord(tier) || typeof tier.minPromptTokens !== 'number' || !Number.isFinite(tier.minPromptTokens) || tier.minPromptTokens < 0) return false;
+      return ['input', 'output', 'inputCacheRead', 'inputCacheWrite'].every(key => tier[key] === undefined || (typeof tier[key] === 'number' && Number.isFinite(tier[key]) && tier[key] >= 0));
+    }))) return false;
     return (
       typeof input === 'number'
       && Number.isFinite(input)

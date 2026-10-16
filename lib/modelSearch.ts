@@ -15,8 +15,8 @@ function normalize(value: string) {
 
 /**
  * Token search over model labels. Every space-separated part must appear in the
- * label, so "gpt 4o" and "gpt-4o" find the same rows. Prefix matches sort
- * first, then shorter labels. The render cap is applied after counting so the
+ * label, so "gpt 4o" and "gpt-4o" find the same rows. Exact and prefix matches sort
+ * first, then standard variants in descending natural version order. The render cap is applied after counting so the
  * picker can say "showing 80 of 386" instead of claiming 80 matches.
  */
 export function searchModels(
@@ -40,9 +40,15 @@ export function searchModels(
       return parts.every(part => normalizedModel.includes(part));
     })
     .sort((a, b) => {
-      const aStarts = normalize(label(a)).startsWith(normalizedQuery) ? 0 : 1;
-      const bStarts = normalize(label(b)).startsWith(normalizedQuery) ? 0 : 1;
-      return aStarts - bStarts || label(a).length - label(b).length || label(a).localeCompare(label(b));
+      const score = (name: string) => {
+        const full = normalize(name);
+        const bare = normalize(name.includes(':') ? name.slice(name.indexOf(':') + 1).trim() : name);
+        return full === normalizedQuery || bare === normalizedQuery ? 0 : full.startsWith(normalizedQuery) || bare.startsWith(normalizedQuery) ? 1 : 2;
+      };
+      const variant = (name: string) => /\([^)]*\)\s*$/.test(name) ? 1 : 0;
+      return score(label(a)) - score(label(b))
+        || variant(label(a)) - variant(label(b))
+        || label(b).localeCompare(label(a), 'en', { numeric: true, sensitivity: 'base' });
     });
   const results = matches.slice(0, limit);
   return { results, total: matches.length, truncated: matches.length > results.length };

@@ -36,3 +36,9 @@ describe('describeModelSearch', () => {
       .toBe('Provider-diverse browse set · 12 of 435');
   });
 });
+
+test('family searches show current version numbers before shorter legacy names', () => {
+  const result = searchModels(['Anthropic: Claude Opus 3', 'Anthropic: Claude Opus 5.5', 'Anthropic: Claude Opus 4.5', 'Anthropic: Claude Opus 5.5 (batch)'], 'opus');
+  expect(result.results[0]).toBe('Anthropic: Claude Opus 5.5');
+  expect(result.results.indexOf('Anthropic: Claude Opus 4.5')).toBeLessThan(result.results.indexOf('Anthropic: Claude Opus 3'));
+});

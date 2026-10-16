@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { AUTHOR_REF } from '../lib/author';
 import { OG_BASE, TWITTER_BASE } from '../lib/seo';
-import HomePageClient from './page-client';
+import AgentPlannerClient from './agent-planner/planner-client';
 
 const pageJsonLd = {
   '@context': 'https://schema.org',
@@ -11,7 +11,7 @@ const pageJsonLd = {
   url: 'https://prompt-info.helloworldfirm.com/',
   isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
   datePublished: '2026-04-21',
-  dateModified: '2026-09-05',
+  dateModified: '2026-10-16',
   author: AUTHOR_REF,
   publisher: {
     '@type': 'Organization',
@@ -49,28 +49,9 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <main id="main-content" className="w-full max-w-full overflow-x-hidden">
+    <main id="main-content" className="w-full min-w-0">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
-      <section className="prompt-hero prompt-hero-compact mx-auto flex w-full max-w-[1500px] border-x border-b border-rose-highlightMed">
-        <div className="grid w-full gap-5 px-4 py-8 sm:px-6 md:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)] md:items-end md:px-10 md:py-10">
-          <div>
-            <p className="data-label text-signal-text">Prompt cost calculator</p>
-            <h1 className="macro-heading mt-4 max-w-6xl text-[clamp(2.6rem,5.6vw,5.8rem)]">
-              See what a prompt or AI session could cost.
-            </h1>
-          </div>
-          <div>
-            <p className="hero-deck max-w-xl text-sm leading-7 text-rose-subtle sm:text-base">
-              Paste a prompt, choose models, and estimate request, session, monthly, and annual model usage before anything runs.
-            </p>
-            <p className="hero-proof mt-4 text-xs font-medium text-rose-muted">
-              No account. No payment. Prompt text stays in your browser.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <HomePageClient />
+      <AgentPlannerClient />
     </main>
   );
 }

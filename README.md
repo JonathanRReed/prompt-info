@@ -6,7 +6,7 @@ Built by Jonathan R. Reed for [Hello.World Consulting](https://helloworldfirm.co
 
 ## Calculations
 
-The calculator uses OpenRouter pricing with database and static fallbacks. It separates input and output costs and displays rates per million tokens. BPE tokenizers include `o200k_base`, `cl100k_base`, `p50k_base`, `p50k_edit`, and `r50k_base`; other providers use calibration where needed.
+The calculator uses OpenRouter pricing with database and static fallbacks. It separates input and output costs and displays rates per million tokens. The planner counts pasted text locally with `o200k_base`; the format lab offers additional BPE tokenizers. Provider counts can differ. Actual usage JSON can be imported locally. See [workload accounting](docs/workload-model.md) for assumptions and limitations.
 
 Session estimates can model stateless calls or conversations that resend history each turn, with provider-specific cache reads, cache writes, and compaction calls. Recurring projections scale one request or session by daily, weekly, monthly, or batch volume. They cover model usage only, not infrastructure or other operating costs.
 

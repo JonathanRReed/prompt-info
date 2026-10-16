@@ -18,5 +18,5 @@ test('mobile menu exposes every primary route without horizontal overflow', asyn
 
   await dialog.getByRole('link', { name: 'Format Comparison' }).click();
   await expect(page).toHaveURL(/\/format-comparison\/$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'One prompt. Six payload shells.' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'What does formatting add?' })).toBeVisible();
 });

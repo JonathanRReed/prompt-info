@@ -1,214 +1,119 @@
 import { expect, test } from '@playwright/test';
 
-test('cost workbench loads sourced models and tokenizes a prompt', async ({ page }) => {
+async function navigate(page: import('@playwright/test').Page, name: string) {
+  if (await page.getByRole('button', { name: 'Open navigation menu' }).isVisible()) {
+    await page.getByRole('button', { name: 'Open navigation menu' }).click();
+    await page.getByRole('dialog').getByRole('link', { name: new RegExp(name, 'i') }).click();
+  } else await page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name: new RegExp(name, 'i') }).click();
+}
+
+test('home is the primary calculator and tokenizes locally', async ({ page }) => {
   await page.goto('/');
-
   await expect(page).toHaveTitle(/AI Workload Cost Calculator/);
-  await expect(page.getByRole('heading', { level: 1, name: 'See what a prompt or AI session could cost.' })).toBeVisible();
-  await expect(page.getByText(/\d[\d,]* priced models/)).toBeVisible();
-  await expect(page.getByText(/Pricing source:/)).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Compare selected models' })).toBeVisible();
-
-  await page.getByRole('textbox', { name: 'Prompt' }).fill('hello');
-  await expect(page.getByTestId('prompt-token-count')).toContainText(/^1 token/);
-  await expect(page.getByText('Paste a prompt to inspect token fragments.')).toBeHidden();
-  await expect(page.getByText(/Stateless mode prices each turn independently/)).toBeVisible();
-  await expect(page.getByTestId('primary-session-cost')).not.toHaveText('Unavailable');
+  await expect(page.getByRole('heading', { level: 1, name: 'What will your AI task cost?' })).toBeVisible();
+  await expect(page.getByTestId('agent-run-total')).not.toHaveText('Unavailable');
+  await expect(page.locator('.planner-rate-source')).toContainText(/catalog/);
+  await page.getByRole('button', { name: 'Paste your prompt', exact: true }).click();
+  await page.getByLabel('Task prompt', { exact: true }).fill('hello');
+  await expect(page.getByText('1 tokens using o200k_base. Other tokenizers may differ.')).toBeVisible();
+  await expect(page.getByTestId('agent-monthly-total')).toHaveCount(0);
 });
 
-test('the primary workbench and result fit inside the first desktop viewport', async ({ page }) => {
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }]) {
-    await page.setViewportSize(viewport);
-    await page.goto('/');
-
-    const plannerBox = await page.locator('#planner').boundingBox();
-    const resultBox = await page.getByTestId('primary-session-cost').boundingBox();
-    expect(plannerBox?.y).toBeLessThan(480);
-    expect(resultBox?.y).toBeLessThan(viewport.height);
+test('the primary calculator and result fit in the first desktop viewport', async ({ page }) => {
+  for (const viewport of [{width:1440,height:900},{width:1024,height:768}]) {
+    await page.setViewportSize(viewport); await page.goto('/');
+    const result = await page.getByTestId('agent-run-total').boundingBox();
+    expect(result!.y).toBeLessThan(viewport.height);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
 });
 
-test('model comparison supports two or three credible priced models', async ({ page }) => {
+test('comparison permits adding, removing and selecting priced models', async ({ page }) => {
   await page.goto('/');
-
-  const rows = page.getByTestId('comparison-model-row');
-  await expect(rows).toHaveCount(2);
-  await page.getByRole('button', { name: 'Add comparison model' }).click();
-  await expect(rows).toHaveCount(3);
-  await expect(page.locator('.comparison-observation').getByText(/Lowest estimated cost in this selection/)).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Cost by model' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Billable work' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Cost by turn' })).toBeVisible();
-  await page.getByRole('button', { name: 'Annual', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Annual', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: /^Remove / }).first().click();
-  await expect(rows).toHaveCount(2);
+  await expect(page.getByTestId('agent-run-total')).not.toHaveText('Unavailable');
+  await page.getByRole('tab', {name:'Compare models',exact:true}).click();
+  const count = await page.locator('.agent-model-selectors .planner-model-label').count();
+  await page.getByRole('button',{name:'Add model',exact:true}).click();
+  await expect(page.locator('.agent-model-selectors .planner-model-label')).toHaveCount(count+1);
+  await page.getByRole('button',{name:/^Remove /}).first().click();
+  await expect(page.locator('.agent-model-selectors .planner-model-label')).toHaveCount(count);
+  await expect(page.getByRole('table').first()).toContainText('All scenarios fit');
 });
 
-test('cost receipt exports as a PNG without uploading the prompt', async ({ page }) => {
+test('model browser shows prices and context before selection', async ({ page }) => {
   await page.goto('/');
-  await page.evaluate(() => {
-    const originalClick = HTMLAnchorElement.prototype.click;
-    HTMLAnchorElement.prototype.click = function captureReceiptExport() {
-      if (this.download === 'prompt-info-cost-receipt.png') {
-        (window as unknown as { __receiptExport?: { download: string; href: string } }).__receiptExport = {
-          download: this.download,
-          href: this.href,
-        };
-        return;
-      }
-      originalClick.call(this);
-    };
-  });
-  await page.getByRole('textbox', { name: 'Prompt' }).fill('PRIVATE_EXPORT_PROMPT');
-  await expect(page.getByTestId('primary-session-cost')).not.toHaveText('Unavailable');
-  await expect(page.getByRole('button', { name: 'Save receipt image' })).toBeEnabled();
-
-  await page.getByRole('button', { name: 'Save receipt image' }).click();
-  await expect.poll(() => page.evaluate(() => (
-    window as unknown as { __receiptExport?: { download: string; href: string } }
-  ).__receiptExport)).toMatchObject({
-    download: 'prompt-info-cost-receipt.png',
-    href: expect.stringMatching(/^data:image\/png;base64,/),
-  });
-  const exportedHref = await page.evaluate(() => (
-    window as unknown as { __receiptExport: { href: string } }
-  ).__receiptExport.href);
-  expect(exportedHref.includes('PRIVATE_EXPORT_PROMPT')).toBe(false);
+  await page.getByRole('button',{name:'Open model results'}).first().click();
+  const option = page.getByRole('listbox').getByRole('option').first();
+  await expect(option).toContainText(/\$.*in.*\$.*out/i);
+  await expect(option).toContainText(/context/i);
 });
 
-test('scenario export downloads prompt-free reproducible assumptions', async ({ page }) => {
+test('copied assumptions exclude the private prompt', async ({page,context}) => {
+  await context.grantPermissions(['clipboard-read','clipboard-write']);
   await page.goto('/');
-  await page.getByRole('textbox', { name: 'Prompt' }).fill('PRIVATE_SCENARIO_PROMPT');
-  await expect(page.getByTestId('prompt-token-count')).toContainText(/^[1-9]\d* tokens?/);
-  await expect(page.getByRole('button', { name: 'Export scenario JSON' })).toBeEnabled();
-
-  const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export scenario JSON' }).click();
-  const download = await downloadPromise;
-  await expect(page.getByText('Scenario exported without prompt text.')).toBeVisible();
-  expect(download.suggestedFilename()).toMatch(/^prompt-info-scenario-\d{4}-\d{2}-\d{2}\.json$/);
-  const stream = await download.createReadStream();
-  let exportedText = '';
-  for await (const chunk of stream) exportedText += chunk.toString();
-  expect(exportedText).not.toContain('PRIVATE_SCENARIO_PROMPT');
-  const recipe = JSON.parse(exportedText);
-  expect(recipe.privacy).toEqual({ promptIncluded: false });
-  expect(recipe.promptTokens).toBeGreaterThan(0);
-  expect(recipe.selectedModels.length).toBeGreaterThan(0);
+  await page.getByRole('button',{name:'Paste your prompt',exact:true}).click();
+  await page.getByLabel('Task prompt',{exact:true}).fill('PRIVATE_SCENARIO_PROMPT');
+  await expect(page.getByText(/tokens using o200k_base/)).toBeVisible();
+  await page.getByText('Prices, sources and calculation details',{exact:true}).click();
+  await page.getByRole('button',{name:'Copy plan assumptions',exact:true}).click();
+  const text=await page.evaluate(()=>navigator.clipboard.readText());
+  expect(text).not.toContain('PRIVATE_SCENARIO_PROMPT');
+  expect(JSON.parse(text).assumptions.taskTokens).toBeGreaterThan(0);
 });
 
-test('model browser shows rates and context before selection', async ({ page }) => {
+test('format exploration preserves the planner without overwriting its prompt', async ({page}) => {
   await page.goto('/');
-
-  await page.getByRole('button', { name: 'Open model results' }).first().click();
-  const options = page.getByRole('listbox').getByRole('option');
-  await expect(options).toHaveCount(12);
-  const firstOption = options.first();
-  await expect(firstOption).toContainText(/\$.*in.*\$.*out/i);
-  await expect(firstOption).toContainText(/context/i);
-});
-
-test('session chart follows the latest turn until the user inspects a point', async ({ page }) => {
-  await page.goto('/');
-
-  await page.getByLabel(/Turns per run/).fill('12');
-  await page.getByLabel(/Turns per run/).blur();
-  const selectedDetail = page.locator('.session-selected-detail');
-  await expect(selectedDetail).toContainText('Selected turn');
-  await expect(selectedDetail.locator('strong').first()).toHaveText('12');
-
-  const activePoint = page.locator('.session-point-group[tabindex="0"]');
-  await expect(activePoint).toHaveAttribute('aria-label', /^Turn 12,/);
-  await activePoint.press('ArrowLeft');
-  await expect(selectedDetail.locator('strong').first()).toHaveText('11');
-});
-
-test('cost workbench scales one AI session into a recurring workload', async ({ page }) => {
-  await page.goto('/');
-
-  await page.getByRole('textbox', { name: 'Prompt' }).fill('Summarize this support ticket and draft a reply.');
-  await page.getByLabel(/Turns per run/).fill('3');
-  await page.getByLabel(/Turns per run/).blur();
-  await page.getByLabel(/Session behavior/).selectOption('scenario');
-  await page.getByLabel(/Runs per period/).fill('40');
-  await page.getByLabel(/Runs per period/).blur();
-  await page.getByLabel(/Workload cadence/).selectOption('week');
-
-  await expect(page.locator('.receipt-total-grid').getByText('Monthly', { exact: true })).toBeVisible();
-  await expect(page.locator('.receipt-total-grid').getByText('Annual', { exact: true })).toBeVisible();
-  await expect(page.locator('.receipt-total-grid dd').nth(1)).not.toHaveText('Unavailable');
-  await expect(page.getByTestId('primary-session-cost')).not.toHaveText('Unavailable');
-});
-
-test('format lab reuses the in-memory prompt scenario from the planner', async ({ page }) => {
-  await page.goto('/');
-
-  const prompt = 'Compare the two migration plans and return a risk table.';
-  await page.getByRole('textbox', { name: 'Prompt' }).fill(prompt);
-  await page.getByRole('link', { name: 'Compare formats' }).click();
-
-  await expect(page).toHaveURL(/\/format-comparison\/$/);
+  await page.getByRole('button',{name:'Paste your prompt',exact:true}).click();
+  const prompt='Compare the two migration plans and return a risk table.';
+  await page.getByLabel('Task prompt',{exact:true}).fill(prompt);
+  await expect(page.getByText(/tokens using o200k_base/)).toBeVisible();
+  await navigate(page,'Formats|Format comparison');
   await expect(page.getByLabel('Source prompt')).toHaveValue(prompt);
   await expect(page.getByText('Planner scenario loaded')).toBeVisible();
+  await page.getByLabel('Source prompt').fill('An independent format experiment');
+  await navigate(page,'Calculator');
+  await expect(page.getByLabel('Task prompt',{exact:true})).toHaveValue(prompt);
 });
 
-test('format comparison updates the shared payload', async ({ page }) => {
+test('format examples contain the supplied text without invented metadata', async ({page}) => {
   await page.goto('/format-comparison/');
-
   await page.getByLabel('Source prompt').fill('Hello world');
   await expect(page.getByText('11 / 200,000 chars')).toBeVisible();
-  await expect(page.getByText('tokens unavailable')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Copy TOON snippet' })).toBeVisible();
-});
-
-test('format comparison can switch tokenizers and exposes signed token differences', async ({ page }) => {
-  await page.goto('/format-comparison/');
-
+  const json=page.locator('article').filter({has:page.getByRole('heading',{name:'JSON',exact:true})});
+  await expect(json.locator('pre')).toHaveText('{\n  "prompt": "Hello world"\n}');
+  await expect(page.getByText(/HTTP JSON envelope/)).toBeVisible();
   await page.getByLabel('Tokenizer').selectOption('cl100k_base');
   await expect(page.getByText('Tokenized with cl100k_base')).toBeVisible();
-  await expect(page.getByText('Raw prompt baseline')).toBeVisible();
-  await expect(page.getByText(/net token difference/).first()).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Token overhead at a glance' })).toBeVisible();
+  await expect(page.locator('.format-bar-row')).toHaveCount(7);
+  await page.getByLabel('Source prompt').fill('');
+  await expect(page.locator('article').first().locator('pre')).toBeEmpty();
 });
 
-test('token efficiency lab recomputes cost per task from edited inputs', async ({ page }) => {
+test('output tradeoffs teaches rates times usage with editable values', async ({page}) => {
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/,route=>route.fulfill({status:503,body:'offline'}));
+  await page.route('**/data/llm-data.json',route=>route.fulfill({status:503,body:'offline'}));
   await page.goto('/token-efficiency/');
-
-  await expect(page).toHaveTitle(/LLM Token Efficiency Comparison/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Token price is only half the cost.' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Cost per task', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Output tokens per task', exact: true })).toBeVisible();
-
-  const solCard = page.locator('#efficiency-lab article').first();
-  await expect(solCard.locator('output').first()).toHaveText('$0.3200');
-
-  await page.locator('#gpt-5-6-sol-output-tokens').fill('30000');
-  await expect(solCard.locator('output').first()).toHaveText('$0.6200');
+  await expect(page.getByRole('heading',{level:1,name:'Output length changes the bill.'})).toBeVisible();
+  await expect(page.getByLabel('Tasks in workload')).toHaveValue('1');
+  const card=page.locator('#efficiency-lab article').first();
+  await expect(page.getByRole('alert').filter({hasText:'Enter rates manually'})).toBeVisible();
+  await card.getByLabel('Input $ / M tokens').fill('2');
+  await card.getByLabel('Output $ / M tokens').fill('10');
+  await expect(card.locator('output').first()).toHaveText('$0.0150');
+  await card.getByLabel('Your output tokens / task').fill('1000');
+  await expect(card.locator('output').first()).toHaveText('$0.0200');
+  await card.getByLabel('Output $ / M tokens').fill('20');
+  await expect(card.locator('output').first()).toHaveText('$0.0300');
 });
 
-test('token efficiency lab loads an attributed model catalog', async ({ page }) => {
-  await page.goto('/token-efficiency/');
-
-  await expect(page.getByText(/Artificial Analysis catalog/)).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Artificial Analysis', exact: true })).toHaveAttribute(
-    'href',
-    'https://artificialanalysis.ai/',
-  );
-  await expect(page.getByLabel('Comparison model 1')).toBeVisible();
-});
-
-test('token efficiency lab can reuse the active planner workload', async ({ page }) => {
+test('output comparison imports equal planner token totals without fabricated efficiency ratios', async ({page}) => {
   await page.goto('/');
-  await page.getByRole('textbox', { name: 'Prompt' }).fill('Audit this pull request for regressions.');
-  await page.getByLabel('Runs per period').fill('25');
-  await page.getByLabel('Runs per period').blur();
-  await page.getByLabel('Workload cadence').selectOption('month');
-  await page.getByRole('link', { name: 'Compare cost per task' }).click();
-
-  await page.getByRole('button', { name: 'Use planner workload' }).click();
-  await expect(page.getByLabel('Tasks in workload')).toHaveValue('25');
-  await expect(page.getByText('Planner scenario applied')).toBeVisible();
+  await expect(page.getByTestId('agent-run-total')).not.toHaveText('Unavailable');
+  await navigate(page,'Output');
+  await page.getByRole('button',{name:'Use planner token totals',exact:true}).click();
+  await expect(page.getByLabel('Tasks in workload')).toHaveValue('1');
+  for(const field of await page.getByLabel('Your output tokens / task').all()) await expect(field).toHaveValue('500');
+  await expect(page.getByText(/Planner token totals applied equally/)).toBeVisible();
 });
 
 test('theme selection persists across reloads', async ({ page }) => {
@@ -254,4 +159,43 @@ test('unknown routes return a noindex 404 with recovery navigation', async ({ pa
   await expect(robotsMeta).toHaveAttribute('content', /noindex/);
   await expect(page.getByRole('heading', { level: 1, name: 'That page is not here.' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Cost calculator/ }).last()).toBeVisible();
+});
+
+test('navigation stays opaque and visible while scrolling every interactive page',async({page})=>{
+  for(const route of ['/','/format-comparison/','/token-efficiency/']){
+    await page.goto(route);
+    await page.getByRole('navigation',{name:'Site',exact:true}).scrollIntoViewIfNeeded();
+    const header=page.locator('.eco-header');
+    const bounds=await header.boundingBox();
+    expect(bounds!.y).toBe(0);
+    const color=await header.evaluate(node=>getComputedStyle(node).backgroundColor);
+    expect(color).not.toMatch(/rgba\([^)]*,\s*0\./);
+  }
+});
+
+test('large format examples stay bounded and count off the main thread',async({page})=>{
+  await page.goto('/format-comparison/');
+  await page.getByLabel('Source prompt').fill('word '.repeat(40000));
+  await expect(page.locator('.format-bar-row')).toHaveCount(7,{timeout:20000});
+  for(const pre of await page.locator('article pre').all()){
+    const bounds=await pre.boundingBox();expect(bounds!.height).toBeLessThanOrEqual(320);
+  }
+  await page.getByLabel('Source prompt').fill('');
+  await expect(page.locator('article').first().locator('pre')).toBeEmpty();
+  await expect(page.locator('.format-bar-row')).toHaveCount(7);
+});
+
+test('secondary pages remain readable in both themes and viewport sizes',async({page},info)=>{
+  test.setTimeout(90000);
+  for(const route of ['/format-comparison/','/token-efficiency/','/about/','/contact/','/privacy/']){
+    await page.goto(route);
+    if(route==='/format-comparison/')await expect(page.locator('.format-bar-row')).toHaveCount(7);
+    if(route==='/token-efficiency/')await expect(page.getByRole('combobox',{name:'Comparison model 1',exact:true})).toBeVisible();
+    for(const theme of ['dark','light']){
+      const current=await page.locator('html').getAttribute('data-theme');
+      if(current!==theme)await page.getByRole('button',{name:'Toggle light and dark theme'}).click();
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+      await page.screenshot({animations:'disabled',path:`test-results/page-${info.project.name}-${route.replaceAll('/','')}-${theme}.png`,fullPage:true});
+    }
+  }
 });

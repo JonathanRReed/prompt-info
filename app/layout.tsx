@@ -137,7 +137,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <ScenarioProvider>
             <a href="#main-content" className="eco-skip">Skip to content</a>
-            <div className="relative m-0 flex min-h-screen flex-col overflow-x-hidden p-0">
+            <div className="relative m-0 flex min-h-screen flex-col overflow-x-clip p-0">
             <div className="page-bg" aria-hidden="true" />
             <div className="grid-overlay" aria-hidden="true" />
             <header className="eco-header">
@@ -187,7 +187,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     <ul>
                       <li><Link href="/">Cost calculator</Link></li>
                       <li><Link href="/format-comparison/">Format comparison</Link></li>
-                      <li><Link href="/token-efficiency/">Cost per task</Link></li>
+                      <li><Link href="/token-efficiency/">Output tradeoffs</Link></li>
                     </ul>
                   </nav>
                   <nav className="eco-footer-group" aria-labelledby="footer-data-heading">

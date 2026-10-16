@@ -1,3 +1,4 @@
+import { readReasoningOptions, type ReasoningOptions } from './reasoningOptions';
 import { resolveModelTokenProfile, TokenLimitConfidence } from './modelTokenLimits';
 
 export type PricingEntry = {
@@ -20,6 +21,8 @@ export type PricingEntry = {
   outputTokenLimitConfidence?: TokenLimitConfidence;
   /** OpenRouter `author/model` slug, the canonical key shared with the sibling sites. */
   openRouterId?: string;
+  reasoning?: ReasoningOptions;
+  supportsReasoning?: boolean;
 };
 
 export type LongContextTier = { minPromptTokens: number; input?: number; output?: number; inputCacheRead?: number; inputCacheWrite?: number };
@@ -154,6 +157,8 @@ type RowShape = {
   inputCacheWrite?: number;
   longContextTiers: LongContextTier[];
   openRouterId?: string;
+  reasoning?: ReasoningOptions;
+  supportsReasoning?: boolean;
 };
 
 function isPreferredModelRow(a: RowShape, b: RowShape) {
@@ -182,6 +187,11 @@ function hasSameOffering(a: RowShape, b: RowShape) {
   return (
     a.perMillionIn === b.perMillionIn &&
     a.perMillionOut === b.perMillionOut &&
+    a.supportsReasoning === b.supportsReasoning &&
+    JSON.stringify(a.reasoning) === JSON.stringify(b.reasoning) &&
+    a.inputCacheRead === b.inputCacheRead &&
+    a.inputCacheWrite === b.inputCacheWrite &&
+    JSON.stringify(a.longContextTiers) === JSON.stringify(b.longContextTiers) &&
     (a.contextWindowTokens ?? 0) === (b.contextWindowTokens ?? 0)
   );
 }
@@ -247,6 +257,8 @@ export function buildPricingMap(data: unknown[]): PricingMap {
     rows.push({
       name,
       openRouterId,
+      reasoning: readReasoningOptions(row.reasoning),
+      supportsReasoning: Array.isArray(row.supported_parameters) ? row.supported_parameters.some(parameter => parameter === 'reasoning' || parameter === 'reasoning_effort' || parameter === 'include_reasoning') : undefined,
       dedupeKey: dedupeKeyForModel(name),
       hasQualifier: /\([^)]*\)/.test(name),
       perMillionIn,
@@ -323,6 +335,8 @@ export function buildPricingMap(data: unknown[]): PricingMap {
       contextWindowTokens: row.contextWindowTokens,
       outputTokenLimitSource: row.outputTokenLimitSource,
       outputTokenLimitConfidence: row.outputTokenLimitConfidence,
+      ...(typeof row.supportsReasoning === 'boolean' ? { supportsReasoning: row.supportsReasoning } : {}),
+      ...(row.reasoning ? { reasoning: row.reasoning } : {}),
       ...(row.openRouterId ? { openRouterId: row.openRouterId } : {}),
     };
   }

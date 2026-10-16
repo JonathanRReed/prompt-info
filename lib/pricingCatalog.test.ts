@@ -81,3 +81,11 @@ describe('buildPricingCatalogResponse', () => {
     expect(Object.keys(response.data)).toEqual(['OpenAI: GPT-5.6 Sol']);
   });
 });
+
+test('rejects malformed conditional and cache prices before consumers can map them', async () => {
+  const { isPricingMap } = await import('./pricingCatalog');
+  const base = { pricing: { input: 0.002, output: 0.01 }, co2eFactor: 0 };
+  expect(isPricingMap({ Model: { ...base, pricing: { ...base.pricing, longContextTiers: {} } } })).toBe(false);
+  expect(isPricingMap({ Model: { ...base, pricing: { ...base.pricing, inputCacheRead: -1 } } })).toBe(false);
+  expect(isPricingMap({ Model: { ...base, pricing: { ...base.pricing, longContextTiers: [{ minPromptTokens: 100, output: 0.02 }] } } })).toBe(true);
+});

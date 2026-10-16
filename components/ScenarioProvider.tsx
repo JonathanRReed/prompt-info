@@ -2,9 +2,11 @@
 
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
 import type { SessionRunMode } from '../lib/sessionMath';
+import type { SharedAgentPlan } from '../lib/agentPlanLink';
 import type { WorkloadCadence } from '../lib/workloadMath';
 
 export type PromptScenario = {
+  planner?: SharedAgentPlan;
   prompt: string;
   model: string;
   tokenizer: string;

@@ -90,11 +90,15 @@ function estimateFor(
   });
 }
 
-function contextWarningFor(entry: PricingEntry, promptTokens: number, promptTokenMultiplier = 1) {
+function contextWarningFor(entry: PricingEntry, promptTokens: number, promptTokenMultiplier = 1, outputTokens = 0) {
   const window = entry.contextWindowTokens;
   if (typeof window !== 'number' || !Number.isFinite(window) || window <= 0) return null;
   const billedPrompt = Math.max(0, Math.round(promptTokens * promptTokenMultiplier));
-  if (billedPrompt <= window) return null;
+  if (billedPrompt <= window) {
+    if (typeof entry.maxOutputTokens === 'number' && outputTokens > entry.maxOutputTokens) return `The planned response exceeds this model's ${entry.maxOutputTokens.toLocaleString('en-US')}-token output limit.`;
+    if (billedPrompt + outputTokens > window) return `The input plus planned output exceeds this model's ${window.toLocaleString('en-US')}-token context window.`;
+    return null;
+  }
   return `The prompt (about ${billedPrompt.toLocaleString('en-US')} tokens for this model) is larger than its ${window.toLocaleString('en-US')}-token context window, so a provider would reject the request.`;
 }
 
@@ -169,7 +173,7 @@ export function buildCostComparison({
       annualCost: projection?.annualCost ?? null,
       isUsable: true,
       unavailableReason: null,
-      contextWarning: contextWarningFor(entry, scenario.promptTokens, promptTokenMultiplier),
+      contextWarning: contextWarningFor(entry, scenario.promptTokens, promptTokenMultiplier, scenario.referenceOutputTokens),
     };
   });
 
