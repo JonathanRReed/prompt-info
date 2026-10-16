@@ -180,7 +180,7 @@ test('desktop keeps the receipt heading visible while editing thinking scenarios
   await page.goto('/agent-planner/');
   await page.getByRole('tab', { name: 'Thinking', exact: true }).click();
   await page.getByLabel('Thinking tokens per step', { exact: true }).click();
-  const heading = await page.locator('.ticket-brand').boundingBox();
+  const heading = await page.getByRole('complementary', { name: 'Run cost estimate' }).locator('.ticket-brand').boundingBox();
   expect(heading!.y).toBeGreaterThanOrEqual(56);
   expect(heading!.y).toBeLessThan(page.viewportSize()!.height);
 });
@@ -189,7 +189,7 @@ test('the mobile receipt shortcut clears the sticky navigation', async ({ page }
   test.skip(page.viewportSize()!.width > 760, 'The shortcut is mobile-only.');
   await page.goto('/agent-planner/');
   await page.getByRole('link', { name: /View receipt/ }).click();
-  await expect.poll(async () => { const box = await page.locator('.ticket-brand').boundingBox(); return Boolean(box && box.y >= 56 && box.y < 160); }).toBe(true);
+  await expect.poll(async () => { const box = await page.getByRole('complementary', { name: 'Run cost estimate' }).locator('.ticket-brand').boundingBox(); return Boolean(box && box.y >= 56 && box.y < 160); }).toBe(true);
 });
 
 test('next-section controls return the section navigation to view', async ({ page }) => {
@@ -222,4 +222,16 @@ test('actual usage is token-first, variable per request, and survives switching 
   await page.getByLabel('Of that, thinking (if known)', { exact: true }).first().fill('501');
   await expect(page.getByTestId('measured-total')).toHaveText('Unavailable');
   await expect(page.getByRole('button', { name: 'Copy usage receipt' })).toBeDisabled();
+});
+
+
+test('measured usage receipt stays accessible on mobile', async ({ page }) => {
+  test.skip(page.viewportSize()!.width > 760, 'Mobile shortcut only.');
+  await page.goto('/agent-planner/');
+  await page.getByRole('button', { name: 'Use actual token usage', exact: true }).click();
+  await page.getByRole('link', { name: /View usage receipt/ }).click();
+  await expect.poll(async () => {
+    const box = await page.getByRole('complementary', { name: 'Measured token cost' }).locator('.ticket-brand').boundingBox();
+    return Boolean(box && box.y >= 56 && box.y < 160);
+  }).toBe(true);
 });
