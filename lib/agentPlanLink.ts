@@ -11,6 +11,10 @@ export type SharedAgentPlan = {
   budget?: number;
   recurring?: boolean;
   budgetEnabled?: boolean;
+  /** Tasks in a one-time batch. Only meaningful when `recurring` is false. */
+  batchRuns?: number;
+  /** Import notes for values an old link carried that this plan cannot hold. */
+  notices?: string[];
 };
 const tokenKeys = [
   'instructionTokens',
@@ -65,7 +69,11 @@ export function parseAgentPlan(value: string): SharedAgentPlan | null {
       data.runs > 1000000 ||
       !Number.isFinite(data.variance) ||
       data.variance < 0 ||
-      data.variance > 100
+      data.variance > 100 ||
+      (data.batchRuns !== undefined &&
+        (!Number.isInteger(data.batchRuns) ||
+          data.batchRuns < 1 ||
+          data.batchRuns > 1000000))
     )
       return null;
     if (
@@ -119,6 +127,9 @@ export function parseAgentPlan(value: string): SharedAgentPlan | null {
       version: 1,
       recurring: data.recurring === true,
       budgetEnabled: data.budgetEnabled === true,
+      ...(data.recurring !== true && data.batchRuns > 1
+        ? { batchRuns: data.batchRuns }
+        : {}),
       mode: data.mode ?? 'agent',
       ...(data.budget !== undefined ? { budget: data.budget } : {}),
       plan: {
@@ -176,21 +187,58 @@ export function buildAgentPlanLink(
     : null;
 }
 
-/** Preserve numeric assumptions in links from the retired session calculator. */
+const LEGACY_KEYS: [string, keyof ReturnType<typeof parseScenarioLink>, string][] = [
+  ['models', 'models', 'models'],
+  ['tokens', 'promptTokens', 'prompt tokens'],
+  ['out', 'outputTokens', 'output tokens'],
+  ['turns', 'turns', 'turns'],
+  ['mode', 'sessionMode', 'session mode'],
+  ['runs', 'workloadRuns', 'runs'],
+  ['cadence', 'workloadCadence', 'cadence'],
+];
+const PER_MONTH = { day: 365 / 12, week: 52 / 12, month: 1 } as const;
+
+/**
+ * Preserve numeric assumptions in links from the retired session calculator.
+ * A one-time batch keeps its run count as `batchRuns`; it is never turned into
+ * a monthly volume or a worker count. Values the plan cannot hold are listed
+ * in `notices` so the planner can show them instead of changing them silently.
+ */
 export function readLegacyAgentPlan(search: string): SharedAgentPlan | null {
   const old = parseScenarioLink(search);
   if (!Object.keys(old).length) return null;
+  const raw = new URLSearchParams(search);
+  const notices: string[] = [];
+  for (const [param, key, label] of LEGACY_KEYS) {
+    const value = raw.get(param);
+    if (value !== null && value.trim() !== '' && old[key] === undefined)
+      notices.push(
+        `This older link had an unsupported ${label} value (${param}=${value.slice(0, 40)}). It was ignored and the default was used.`,
+      );
+  }
   const cadence = old.workloadCadence ?? 'once';
-  const monthly =
-    (old.workloadRuns ?? 1) *
-    (cadence === 'day' ? 365 / 12 : cadence === 'week' ? 52 / 12 : 1);
+  const count = old.workloadRuns ?? 1;
+  let runs = 1;
+  let batchRuns: number | undefined;
+  if (cadence === 'once') {
+    if (count > 1) batchRuns = count;
+  } else {
+    const monthly = count * PER_MONTH[cadence];
+    runs = Math.min(1000000, Math.max(1, Math.round(monthly)));
+    if (runs !== monthly)
+      notices.push(
+        `This older link priced ${count.toLocaleString('en-US')} runs per ${cadence}. The planner counts tasks per month, so it uses ${runs.toLocaleString('en-US')} tasks/month${monthly > 1000000 ? ' (the maximum)' : ' (rounded)'}.`,
+      );
+  }
   return {
     version: 1,
     mode: 'chat',
     models: old.models ?? [],
     variance: 0,
-    runs: Math.min(1000000, Math.round(monthly)),
+    runs,
     recurring: cadence !== 'once',
+    ...(batchRuns ? { batchRuns } : {}),
+    ...(notices.length ? { notices } : {}),
     budgetEnabled: false,
     plan: {
       instructionTokens: 0,
