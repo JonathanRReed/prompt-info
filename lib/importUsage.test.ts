@@ -84,3 +84,48 @@ test('imports arrays and drops all text and metadata', () => {
   expect(JSON.stringify(result)).not.toContain('PRIVATE');
   expect(result[1].reasoning).toBe(20);
 });
+
+test('Gemini includes tool-provided input and preserves prompt cache as a subset', () => {
+  const usageMetadata = {
+    promptTokenCount: 27, toolUsePromptTokenCount: 10309,
+    candidatesTokenCount: 45, thoughtsTokenCount: 31,
+    cachedContentTokenCount: 20, totalTokenCount: 10412,
+  };
+  expect(importUsage(JSON.stringify({ usageMetadata }))[0]).toEqual({
+    input: 10336, cached: 20, written: 0, output: 76, reasoning: 31,
+  });
+});
+
+test('Gemini validates tool counts, combined bounds, and cache against original prompt', () => {
+  for (const patch of [
+    { toolUsePromptTokenCount: -1 }, { toolUsePromptTokenCount: 1.5 },
+    { toolUsePromptTokenCount: '100' }, { toolUsePromptTokenCount: 10000001 },
+    { promptTokenCount: 10000000, toolUsePromptTokenCount: 1 },
+    { cachedContentTokenCount: 28, toolUsePromptTokenCount: 100 },
+  ]) expect(() => importUsage(JSON.stringify({
+    promptTokenCount: 27, candidatesTokenCount: 45, ...patch,
+  }))).toThrow();
+});
+
+test('Gemini supplied totals must reconcile without inferring missing categories', () => {
+  for (const totalTokenCount of [100, -1, 1.5, '10412', null]) {
+    expect(() => importUsage(JSON.stringify({
+      promptTokenCount: 27, toolUsePromptTokenCount: 10309,
+      candidatesTokenCount: 45, thoughtsTokenCount: 31, totalTokenCount,
+    }))).toThrow(/total/i);
+  }
+  expect(importUsage(JSON.stringify({
+    promptTokenCount: 10000000, candidatesTokenCount: 10000000,
+    totalTokenCount: 20000000,
+  }))[0].input).toBe(10000000);
+});
+
+test('recognizable Gemini Interactions records fail explicitly rather than lose tokens', () => {
+  for (const extra of [{ tool_use_input_tokens: 10309 }, { thoughts_tokens: 31 }]) {
+    for (const wrapped of [false, true]) {
+      const usage = { input_tokens: 27, output_tokens: 45, ...extra };
+      expect(() => importUsage(JSON.stringify(wrapped ? { usage } : usage)))
+        .toThrow(/Gemini Interactions/);
+    }
+  }
+});

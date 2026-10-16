@@ -199,3 +199,23 @@ test('large planner token totals are not clipped when exploring output tradeoffs
   await expect(page.getByLabel('Input tokens per task')).toHaveValue('1689866000');
   for(const field of await page.getByLabel('Your output tokens / task').all()) await expect(field).toHaveValue('301968000');
 });
+
+test('Gemini tool input is priced and unsupported Interactions cannot replace valid rows', async ({ page }) => {
+  await page.goto('/?model=openai/gpt-6.1-sol');
+  await page.getByRole('button', { name: 'Use actual token usage', exact: true }).click();
+  await page.getByText('Import API usage JSON', { exact: true }).click();
+  const input = page.getByLabel('Usage object or array of requests');
+  const apply = page.getByRole('button', { name: 'Replace rows with imported usage', exact: true });
+  await input.fill(JSON.stringify({ usageMetadata: {
+    promptTokenCount: 27, toolUsePromptTokenCount: 10309,
+    candidatesTokenCount: 45, thoughtsTokenCount: 31, totalTokenCount: 10412,
+  }}));
+  await apply.click();
+  await expect(page.getByTestId('measured-total')).toHaveText('$0.0214');
+  await input.fill(JSON.stringify({ usage: {
+    input_tokens: 27, tool_use_input_tokens: 10309, output_tokens: 45, thoughts_tokens: 31,
+  }}));
+  await apply.click();
+  await expect(page.getByText(/Gemini Interactions usage is not supported/)).toBeVisible();
+  await expect(page.getByTestId('measured-total')).toHaveText('$0.0214');
+});

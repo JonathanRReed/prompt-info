@@ -35,15 +35,33 @@ export function importUsage(text: string): MeasuredRequest[] {
     const row = object(envelope.usage ?? envelope.usageMetadata ?? entry);
     let value: MeasuredRequest;
     try {
+      if ('tool_use_input_tokens' in row || 'thoughts_tokens' in row) {
+        throw new Error(
+          'Gemini Interactions usage is not supported yet. Use generateContent usageMetadata or normalized input/output totals, including tool input and thinking.',
+        );
+      }
       if ('promptTokenCount' in row) {
+        const prompt = count(row.promptTokenCount, true);
+        const toolInput = count(row.toolUsePromptTokenCount);
+        const cached = count(row.cachedContentTokenCount);
         const thinking = count(row.thoughtsTokenCount);
+        if (cached > prompt)
+          throw new Error('Gemini cached content must fit within the original prompt.');
         value = {
-          input: count(row.promptTokenCount, true),
-          cached: count(row.cachedContentTokenCount),
+          input: prompt + toolInput,
+          cached,
           written: 0,
           output: count(row.candidatesTokenCount, true) + thinking,
           reasoning: thinking,
         };
+        if (
+          'totalTokenCount' in row &&
+          (!Number.isSafeInteger(row.totalTokenCount) ||
+            row.totalTokenCount !== value.input + value.output)
+        )
+          throw new Error(
+            'Gemini totalTokenCount must equal prompt, tool input, candidates and thinking combined.',
+          );
       } else if ('prompt_tokens' in row) {
         const details = object(row.prompt_tokens_details),
           output = object(row.completion_tokens_details);
