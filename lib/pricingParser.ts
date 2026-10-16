@@ -182,6 +182,9 @@ function hasSameOffering(a: RowShape, b: RowShape) {
   return (
     a.perMillionIn === b.perMillionIn &&
     a.perMillionOut === b.perMillionOut &&
+    a.inputCacheRead === b.inputCacheRead &&
+    a.inputCacheWrite === b.inputCacheWrite &&
+    JSON.stringify(a.longContextTiers) === JSON.stringify(b.longContextTiers) &&
     (a.contextWindowTokens ?? 0) === (b.contextWindowTokens ?? 0)
   );
 }

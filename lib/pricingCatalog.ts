@@ -36,6 +36,15 @@ export function isPricingMap(value: unknown): value is PricingMap {
     if (!isRecord(entry) || !isRecord(entry.pricing)) return false;
     const input = entry.pricing.input;
     const output = entry.pricing.output;
+    for (const key of ['inputCacheRead', 'inputCacheWrite']) {
+      const value = entry.pricing[key];
+      if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) return false;
+    }
+    const tiers = entry.pricing.longContextTiers;
+    if (tiers !== undefined && (!Array.isArray(tiers) || !tiers.every(tier => {
+      if (!isRecord(tier) || typeof tier.minPromptTokens !== 'number' || !Number.isFinite(tier.minPromptTokens) || tier.minPromptTokens < 0) return false;
+      return ['input', 'output', 'inputCacheRead', 'inputCacheWrite'].every(key => tier[key] === undefined || (typeof tier[key] === 'number' && Number.isFinite(tier[key]) && tier[key] >= 0));
+    }))) return false;
     return (
       typeof input === 'number'
       && Number.isFinite(input)

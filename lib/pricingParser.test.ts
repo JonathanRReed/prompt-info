@@ -137,3 +137,9 @@ test('preserves partial overrides, cache prices and source ordering', () => {
     { minPromptTokens: 100, input: 0.004, inputCacheRead: 0, inputCacheWrite: 0.005 },
   ]);
 });
+
+test('same base rates with different conditional tiers remain distinct offerings', () => {
+  const row = { name: 'Lab: Model', context_length: 1000000, pricing: { prompt: '0.000002', completion: '0.00001' } };
+  const map = buildPricingMap([row, { ...row, name: 'Lab: Model (special)', pricing: { ...row.pricing, overrides: [{ min_prompt_tokens: 100000, prompt: '0.000004' }] } }]);
+  expect(Object.keys(map)).toHaveLength(2);
+});
