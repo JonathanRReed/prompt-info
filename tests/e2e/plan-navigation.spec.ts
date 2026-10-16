@@ -1,0 +1,147 @@
+import { expect, test, type Page } from '@playwright/test';
+
+// The planner imports state from a valid #plan= hash or, failing that, from an
+// old calculator query. Section anchors such as #agent-price only scroll: they
+// must keep the active plan, edits and notices. A different encoded plan, or
+// returning through history to an entry that held one, imports that state.
+
+const model = (input: number, output: number, id: string) => ({
+  pricing: { input, output },
+  co2eFactor: 0.0002, maxOutputTokens: 64000, contextWindowTokens: 200000, openRouterId: id,
+});
+const CATALOG = {
+  schemaVersion: 1,
+  data: {
+    // $1 per 1K input and $5 per 1K output.
+    'Test Lab: Flat': model(1, 5, 'test/flat'),
+    'Test Lab: Other': model(2, 10, 'test/other'),
+  },
+  source: 'openrouter-live',
+  sourceUrl: 'https://openrouter.ai/api/v1/models',
+  retrievedAt: '2026-10-15T00:00:00.000Z',
+  freshness: 'live',
+  isFallback: false,
+  fallbackReason: null,
+};
+
+function planHash(taskTokens: number, models = ['Test Lab: Flat']) {
+  const shared = {
+    version: 1,
+    plan: { instructionTokens: 300, taskTokens, toolTokensPerStep: 0, visibleOutputTokens: 100, reasoningTokens: 0, steps: 1, keepHistory: false, cacheEnabled: false, cacheHitPct: 0 },
+    models, runs: 1, variance: 30,
+  };
+  return `#${new URLSearchParams({ plan: JSON.stringify(shared) })}`;
+}
+const PLAN_A = planHash(200); // 500 in + 100 out on Flat = $1.00
+const PLAN_B = planHash(1200); // 1500 in + 100 out on Flat = $2.00
+const SUPPORTED = '?models=test/flat&tokens=500&out=900&turns=1&mode=baseline';
+const UNSUPPORTED = '?runs=0&cadence=year';
+const RUNS_NOTICE = 'This older link had an unsupported runs value (runs=0). It was ignored and the default was used.';
+const CADENCE_NOTICE = 'This older link had an unsupported cadence value (cadence=year). It was ignored and the default was used.';
+
+const total = (page: Page) => page.getByTestId('agent-run-total');
+
+async function mockPricing(page: Page) {
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CATALOG) }));
+}
+
+async function openReceiptAnchor(page: Page, isMobile: boolean) {
+  // The receipt link lives in the mobile-only total bar; desktop fires the same hashchange.
+  if (isMobile) await page.locator('.agent-mobile-total a[href="#agent-price"]').click();
+  else await page.evaluate(() => { window.location.hash = 'agent-price'; });
+  await expect(page).toHaveURL(/#agent-price$/);
+}
+
+async function navigateHash(page: Page, hash: string) {
+  await page.evaluate((value) => { window.location.hash = value; }, hash);
+}
+
+test('a valid plan keeps precedence over a supported old query after the receipt anchor', async ({ page, isMobile }) => {
+  await mockPricing(page);
+  await page.goto(`/${SUPPORTED}${PLAN_A}`);
+  await expect(total(page)).toHaveText('$1.00');
+  await openReceiptAnchor(page, isMobile);
+  await expect(total(page)).toHaveText('$1.00');
+  await page.goBack();
+  await expect(total(page)).toHaveText('$1.00');
+  await page.goForward();
+  await expect(page).toHaveURL(/#agent-price$/);
+  await expect(total(page)).toHaveText('$1.00');
+});
+
+test('a valid plan does not gain unsupported old-query notices after the receipt anchor', async ({ page, isMobile }) => {
+  await mockPricing(page);
+  await page.goto(`/${UNSUPPORTED}${PLAN_A}`);
+  await expect(total(page)).toHaveText('$1.00');
+  await openReceiptAnchor(page, isMobile);
+  await expect(total(page)).toHaveText('$1.00');
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(CADENCE_NOTICE, { exact: true })).toHaveCount(0);
+});
+
+test('an unreadable plan hash falls back to the old query and keeps its notices', async ({ page, isMobile }) => {
+  await mockPricing(page);
+  await page.goto(`/${UNSUPPORTED}#plan=broken`);
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toBeVisible();
+  await openReceiptAnchor(page, isMobile);
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toBeVisible();
+  await expect(page.getByText(CADENCE_NOTICE, { exact: true })).toBeVisible();
+});
+
+for (const [name, path] of [['an old query link', `/${SUPPORTED}`], ['an encoded plan link', `/${PLAN_A}`]] as const) {
+  test(`manual edits on ${name} survive the receipt anchor and back/forward`, async ({ page, isMobile }) => {
+    await mockPricing(page);
+    await page.goto(path);
+    await expect(total(page)).not.toHaveText('');
+    const before = await total(page).textContent();
+    await page.getByText('Customize context assumptions', { exact: true }).click();
+    await page.getByLabel('Task and document tokens', { exact: true }).fill('5200');
+    await expect(total(page)).not.toHaveText(before!);
+    const edited = (await total(page).textContent())!;
+    await openReceiptAnchor(page, isMobile);
+    await expect(total(page)).toHaveText(edited);
+    await page.goBack();
+    await expect(total(page)).toHaveText(edited);
+    await page.goForward();
+    await expect(total(page)).toHaveText(edited);
+  });
+}
+
+test('a new encoded link imports its plan and back/forward import each plan', async ({ page }) => {
+  await mockPricing(page);
+  await page.goto(`/${UNSUPPORTED}${PLAN_A}`);
+  await expect(total(page)).toHaveText('$1.00');
+  await navigateHash(page, PLAN_B);
+  await expect(total(page)).toHaveText('$2.00');
+  await page.goBack();
+  await expect(total(page)).toHaveText('$1.00');
+  await page.goForward();
+  await expect(total(page)).toHaveText('$2.00');
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toHaveCount(0);
+});
+
+test('going back from an encoded link to the old-query entry re-imports the old query and its notices', async ({ page }) => {
+  await mockPricing(page);
+  await page.goto(`/${SUPPORTED}&runs=0`);
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toBeVisible();
+  const imported = (await total(page).textContent())!;
+  expect(imported).not.toBe('$2.00');
+  await navigateHash(page, PLAN_B);
+  await expect(total(page)).toHaveText('$2.00');
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toHaveCount(0);
+  await page.goBack();
+  await expect(total(page)).toHaveText(imported);
+  await expect(page.getByText(RUNS_NOTICE, { exact: true })).toBeVisible();
+});
+
+test('refreshing prices after the receipt anchor keeps the encoded plan models', async ({ page, isMobile }) => {
+  await mockPricing(page);
+  await page.goto(`/${SUPPORTED}${planHash(200, ['Test Lab: Other'])}`);
+  // 500 in at $2/1K + 100 out at $10/1K on Other; the old query on Flat would be $5.00.
+  await expect(total(page)).toHaveText('$2.00');
+  await openReceiptAnchor(page, isMobile);
+  await page.getByText('Prices, sources and calculation details', { exact: true }).click();
+  await page.getByRole('button', { name: 'Refresh prices', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Refresh prices', exact: true })).toBeEnabled();
+  await expect(total(page)).toHaveText('$2.00');
+});
