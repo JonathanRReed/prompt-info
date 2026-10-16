@@ -191,3 +191,13 @@ test('the mobile receipt shortcut clears the sticky navigation', async ({ page }
   await page.getByRole('link', { name: /View receipt/ }).click();
   await expect.poll(async () => { const box = await page.locator('.ticket-brand').boundingBox(); return Boolean(box && box.y >= 56 && box.y < 160); }).toBe(true);
 });
+
+test('next-section controls return the section navigation to view', async ({ page }) => {
+  await page.goto('/agent-planner/');
+  await page.getByRole('button', { name: 'Set answer and thinking sizes →', exact: true }).click();
+  const tab = page.getByRole('tab', { name: 'Thinking', exact: true });
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+  const box = await tab.boundingBox();
+  expect(box!.y).toBeGreaterThanOrEqual(56);
+  expect(box!.y + box!.height).toBeLessThan(page.viewportSize()!.height - 60);
+});

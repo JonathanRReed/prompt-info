@@ -175,7 +175,7 @@ export default function AgentPlannerClient() {
     setCopied(saved ? 'Receipt image download started.' : 'Image export is unavailable. You can copy the receipt instead.');
     } catch { setCopied('Image export is unavailable. You can copy the receipt instead.'); }
   }
-  function selectPanel(index: number) { setPanel(index); }
+  function selectPanel(index: number) { setPanel(index); document.getElementById(`planner-tab-${index}`)?.scrollIntoView({ block: 'nearest', behavior: 'instant' }); }
 
   return <div className="agent-planner">
     <header className="planner-heading"><div><h1>What will your AI task cost?</h1><p>Set up a chat or an agent run. Compare the estimate before you build.</p></div><span className="planner-private">Calculated on your device</span></header>
@@ -238,6 +238,6 @@ export default function AgentPlannerClient() {
         <p className="planner-exclusions">Model usage only. Tool services and platform fees are extra.</p>
       </aside>
     </div>
-    <div className="agent-mobile-total"><a href="#agent-price">{rangeLabel}<span>View receipt</span></a><button type="button" onClick={() => { selectPanel(3); document.getElementById('planner-tab-3')?.scrollIntoView({ block: 'start' }); }}>Compare</button></div>
+    <div className="agent-mobile-total"><a href="#agent-price">{rangeLabel}<span>View receipt</span></a><button type="button" onClick={() => selectPanel(3)}>Compare</button></div>
   </div>;
 }
