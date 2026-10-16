@@ -2168,3 +2168,20 @@ body:has(.agent-planner) .grid-overlay,body:has(.agent-planner) .page-bg { displ
 [data-theme='light'] .agent-planner .agent-field input,[data-theme='light'] .agent-planner .agent-field select,[data-theme='light'] .agent-planner .agent-field textarea,[data-theme='light'] .agent-planner .planner-segment { background:#fff; }
 
 .ticket-source { margin-top:10px; font-size:.65rem; color:#555751; }
+
+.ticket-model h2 { color:#202126; }
+.planner-mode-row .planner-presets { margin:0; }
+.planner-mode-row { gap:10px; }
+.planner-mode-row .planner-presets .planner-button { padding:8px 10px; font-size:.75rem; }
+.planner-panel-title:has(h2:only-child) { margin-bottom:16px; }
+.planner-section-rule { margin:18px 0; }
+body:has(.agent-planner) .overflow-x-hidden:has(.agent-planner) { overflow:clip; }
+.planner-ticket { padding:20px; }
+.ticket-brand { padding-bottom:12px; }
+.ticket-model { padding:12px 0 10px; }
+.ticket-range { padding:12px 0; }
+.ticket-items { gap:8px; padding:14px 0; }
+.ticket-monthly { padding:12px 0; }
+.ticket-barcode { height:20px; margin-top:14px; }
+.planner-receipt-actions { margin-top:26px; }
+@media(min-width:1050px) { .agent-model-selectors { grid-template-columns:repeat(2,minmax(0,1fr)); } }

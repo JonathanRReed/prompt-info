@@ -167,7 +167,7 @@ test('receipt and field guidance meet text contrast in both themes', async ({ pa
         const rgb = value.match(/[\d.]+/g)!.slice(0,3).map(Number).map(channel => { const normalized = channel / 255; return normalized <= .04045 ? normalized / 12.92 : ((normalized + .055) / 1.055) ** 2.4; });
         return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
       };
-      return [['.agent-field small','.planner-editor'],['.ticket-note','.planner-ticket'],['.ticket-range output','.planner-ticket']].map(([text,background]) => {
+      return [['.agent-field small','.planner-editor'],['.ticket-note','.planner-ticket'],['.ticket-range output','.planner-ticket'],['.ticket-model h2','.planner-ticket']].map(([text,background]) => {
         const a = luminance(getComputedStyle(document.querySelector(text)!).color);
         const b = luminance(getComputedStyle(document.querySelector(background)!).backgroundColor);
         return (Math.max(a,b) + .05) / (Math.min(a,b) + .05);
@@ -175,4 +175,13 @@ test('receipt and field guidance meet text contrast in both themes', async ({ pa
     });
     for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(4.5);
   }
+});
+test('desktop keeps the receipt heading visible while editing thinking scenarios', async ({ page }) => {
+  test.skip(page.viewportSize()!.width <= 760, 'Small screens use the receipt shortcut.');
+  await page.goto('/agent-planner/');
+  await page.getByRole('tab', { name: 'Thinking', exact: true }).click();
+  await page.getByLabel('Thinking tokens per step', { exact: true }).click();
+  const heading = await page.locator('.ticket-brand').boundingBox();
+  expect(heading!.y).toBeGreaterThanOrEqual(0);
+  expect(heading!.y).toBeLessThan(page.viewportSize()!.height);
 });
