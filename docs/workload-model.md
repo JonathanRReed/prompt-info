@@ -33,3 +33,16 @@ Reviewed October 16, 2026:
 - [Anthropic compaction](https://platform.claude.com/docs/en/build-with-claude/compaction-on-demand): compaction is real work that needs to be accounted for.
 
 The presets are independent hypothetical scenarios, not reproductions of that compiler experiment. A large bill does not establish quality. Tokenizer estimates, cache behavior, changing rates, task complexity and stopping conditions all introduce uncertainty. Hosted tools, infrastructure, explicit Gemini cache storage, batch/service-tier discounts, taxes and platform fees require separate accounting.
+
+## Gemini usage imports
+
+For generateContent, input is `promptTokenCount + toolUsePromptTokenCount`;
+output is `candidatesTokenCount + thoughtsTokenCount`. Cached content is already
+inside the original prompt count. If supplied, `totalTokenCount` must reconcile
+with those four categories. See Google's [UsageMetadata reference](https://ai.google.dev/api/generate-content#UsageMetadata).
+
+Gemini Interactions has a different schema. Recognizable Interactions records
+are rejected with an explanation rather than treated as OpenAI records, which
+would drop tool input and thinking. Use generateContent usage or explicitly
+normalized totals instead. Google's [URL context example](https://ai.google.dev/gemini-api/docs/url-context#token-count)
+illustrates the separate tool-input and thinking fields.
