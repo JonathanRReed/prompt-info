@@ -18,10 +18,12 @@ import {
   usesImplicitGeminiCache,
   type AgentPlan,
 } from '../../lib/agentPlanner';
+import { plannerVolume } from '../../lib/plannerVolume';
 import {
   buildAgentPlanLink,
   readAgentPlanHash,
   readLegacyAgentPlan,
+  readLegacyNotices,
 } from '../../lib/agentPlanLink';
 import {
   REASONING_SCENARIOS,
@@ -142,6 +144,10 @@ export default function AgentPlannerClient() {
   const [recurring, setRecurring] = useState(
     persisted?.planner?.recurring ?? false,
   );
+  const [batchRuns, setBatchRuns] = useState(
+    persisted?.planner?.batchRuns ?? 1,
+  );
+  const [importNotices, setImportNotices] = useState<string[]>([]);
   const [budgetEnabled, setBudgetEnabled] = useState(
     persisted?.planner?.budgetEnabled ?? false,
   );
@@ -163,13 +169,22 @@ export default function AgentPlannerClient() {
       const shared =
         readAgentPlanHash(window.location.hash) ??
         readLegacyAgentPlan(window.location.search);
-      if (!shared) return;
+      if (!shared) {
+        setImportNotices(
+          window.location.hash
+            ? []
+            : readLegacyNotices(window.location.search),
+        );
+        return;
+      }
       setPresetId('custom');
       setPlan(shared.plan);
       setMode(shared.mode ?? 'agent');
       setUsageMode('plan');
       setRuns(shared.runs);
       setRecurring(shared.recurring === true);
+      setBatchRuns(shared.batchRuns ?? 1);
+      setImportNotices(shared.notices ?? []);
       setBudgetEnabled(shared.budgetEnabled === true);
       setVariance(shared.variance);
       setBudget(shared.budget ?? 1);
@@ -332,12 +347,14 @@ export default function AgentPlannerClient() {
       budget: budgetEnabled ? budget : undefined,
       recurring,
       budgetEnabled,
+      ...(!recurring && batchRuns > 1 ? { batchRuns } : {}),
     }),
     [
       mode,
       effectivePlan,
       selected,
       runs,
+      batchRuns,
       variance,
       budget,
       recurring,
@@ -410,6 +427,17 @@ export default function AgentPlannerClient() {
   const ready = arithmeticReady && thinkingRangeValid && responseRangeValid;
   const cost = primary?.expected.totalCost ?? 0;
   const total = ready && recurring && validRuns ? cost * runs : null;
+  const validBatch =
+    Number.isInteger(batchRuns) && batchRuns > 0 && batchRuns <= 1000000;
+  const volume = plannerVolume({
+    cost: ready ? cost : null,
+    scenarioCosts: ready ? scenarioCosts : [],
+    recurring,
+    runs,
+    batchRuns,
+  });
+  const volumeValid = volume.kind === 'single' || volume.valid;
+  const canExport = ready && volumeValid;
   const breakdown = primary
     ? [
         {
@@ -439,7 +467,7 @@ export default function AgentPlannerClient() {
       ]
     : [];
   useEffect(() => {
-    if (!primary || !ready || (recurring && !validRuns) || (budgetEnabled && !validBudget)) return;
+    if (!primary || !ready || (recurring && !validRuns) || (!recurring && !validBatch) || (budgetEnabled && !validBudget)) return;
     setScenario({
       planner: sharedState,
       prompt: inputMode === 'paste' ? prompt : '',
@@ -459,7 +487,7 @@ export default function AgentPlannerClient() {
         ? primary.entry.pricing.output * 1000
         : null,
       costPerRun: primary.expected.totalCost,
-      workloadRuns: recurring ? runs : 1,
+      workloadRuns: recurring ? runs : batchRuns,
       workloadCadence: recurring ? 'month' : 'once',
     });
   }, [
@@ -472,12 +500,15 @@ export default function AgentPlannerClient() {
     plan.keepHistory,
     recurring,
     runs,
+    batchRuns,
     setScenario,
     validRuns,
+    validBatch,
     validBudget,
     budgetEnabled,
   ]);
   async function copyShareLink() {
+    if (!canExport) return;
     const link = buildAgentPlanLink(window.location.origin, {
       version: 1,
       mode,
@@ -488,6 +519,7 @@ export default function AgentPlannerClient() {
       ...(budgetEnabled ? { budget } : {}),
       recurring,
       budgetEnabled,
+      ...(!recurring && batchRuns > 1 ? { batchRuns } : {}),
     });
     if (!link) {
       setCopied('Complete the assumptions first.');
@@ -501,6 +533,7 @@ export default function AgentPlannerClient() {
     }
   }
   async function copyPlan() {
+    if (!volumeValid) return;
     try {
       await navigator.clipboard.writeText(
         JSON.stringify(
@@ -510,6 +543,8 @@ export default function AgentPlannerClient() {
             assumptions: effectivePlan,
             models: selected,
             runsPerMonth: recurring ? runs : undefined,
+            oneTimeBatchTasks:
+              !recurring && batchRuns > 1 ? batchRuns : undefined,
             tokenVariancePct: variance,
             budgetUsd: budgetEnabled ? budget : undefined,
           },
@@ -548,10 +583,11 @@ export default function AgentPlannerClient() {
         `${part.name}: ${ready ? formatUsd(part.value) : 'Unavailable'}`,
     ),
     workloadLabel,
-    ...(recurring ? [`${number(runs)} tasks/month: ${formatUsd(total)}`] : []),
+    ...(volume.kind !== 'single' ? [volume.line] : []),
     'Editable workload scenarios, not guaranteed bounds. API model usage only.',
   ].join('\n');
   async function copyReceipt() {
+    if (!canExport) return;
     try {
       await navigator.clipboard.writeText(receiptText);
       setCopied('Receipt copied.');
@@ -560,6 +596,7 @@ export default function AgentPlannerClient() {
     }
   }
   async function saveReceipt() {
+    if (!canExport) return;
     try {
       const { downloadPlannerReceipt } =
         await import('../../lib/plannerReceipt');
@@ -571,9 +608,7 @@ export default function AgentPlannerClient() {
           part.name,
           ready ? formatUsd(part.value) : 'Unavailable',
         ]),
-        monthly: recurring
-          ? `${number(runs)} tasks/month: ${formatUsd(total)}`
-          : undefined,
+        monthly: volume.kind !== 'single' ? volume.line : undefined,
         workload: workloadLabel,
       });
       setCopied(
@@ -1229,10 +1264,21 @@ export default function AgentPlannerClient() {
                     />
                     Estimate a monthly budget
                   </label>
-                  <p>
-                    Repeat this entire conversation or task throughout a month.
-                    This does not change the cost of doing it once.
-                  </p>
+                  {!recurring && (
+                    <Field
+                      label="Tasks in this one-time batch"
+                      value={batchRuns}
+                      min={1}
+                      onChange={setBatchRuns}
+                      hint="Each task runs once. Set 1 to price a single task."
+                    />
+                  )}
+                  {recurring && (
+                    <p>
+                      Repeat this entire conversation or task throughout a
+                      month. This does not change the cost of doing it once.
+                    </p>
+                  )}
                   {recurring && (
                     <Field
                       label="Completed tasks per month"
@@ -1508,7 +1554,7 @@ export default function AgentPlannerClient() {
                 className="planner-button"
                 type="button"
                 onClick={copyPlan}
-                disabled={!ready}
+                disabled={!canExport}
               >
                 Copy plan assumptions
               </button>
@@ -1572,6 +1618,22 @@ export default function AgentPlannerClient() {
                   </div>
                 ))}
               </dl>
+              {volume.kind === 'batch' && (
+                <div className="ticket-monthly ticket-batch">
+                  <span>{volume.label}</span>
+                  <strong data-testid="agent-batch-total">
+                    {formatUsd(volume.total)}
+                  </strong>
+                  <small
+                    className="ticket-batch-range"
+                    data-testid="agent-batch-range"
+                  >
+                    {volume.range
+                      ? `Range ${formatUsd(volume.range[0])} – ${formatUsd(volume.range[1])}`
+                      : 'Range unavailable'}
+                  </small>
+                </div>
+              )}
               {recurring && (
                 <div className="ticket-monthly">
                   <span>{number(runs)} tasks / month</span>
@@ -1605,7 +1667,7 @@ export default function AgentPlannerClient() {
                 className="planner-button"
                 type="button"
                 onClick={copyReceipt}
-                disabled={!ready}
+                disabled={!canExport}
               >
                 Copy receipt
               </button>
@@ -1613,7 +1675,7 @@ export default function AgentPlannerClient() {
                 className="planner-button"
                 type="button"
                 onClick={saveReceipt}
-                disabled={!ready}
+                disabled={!canExport}
               >
                 Save image
               </button>
@@ -1622,7 +1684,7 @@ export default function AgentPlannerClient() {
               className="planner-text-button planner-share"
               type="button"
               onClick={copyShareLink}
-              disabled={!ready}
+              disabled={!canExport}
             >
               Copy a link to this plan
             </button>
@@ -1643,6 +1705,12 @@ export default function AgentPlannerClient() {
                 . Review the replacement selection.
               </p>
             )}
+            {importNotices.map((notice) => (
+              <p role="note" className="agent-warning" key={notice}>
+                {notice}
+              </p>
+            ))}
+            {!recurring && !validBatch && <p role="alert" className="agent-warning">Enter 1–1,000,000 tasks for the one-time batch. The per-task estimate is unchanged.</p>}
             {recurring && !validRuns && <p role="alert" className="agent-warning">Enter 1–1,000,000 completed tasks for the monthly projection. The per-task estimate is unchanged.</p>}
             {budgetEnabled && !validBudget && <p role="alert" className="agent-warning">Enter a valid task budget to enable the warning.</p>}
             {ready && scenarioCosts.length !== 3 && <p role="alert" className="agent-warning">The central estimate is available, but one range scenario could not be calculated. Review its response and token assumptions.</p>}
