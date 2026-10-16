@@ -285,7 +285,10 @@ export default function TokenEfficiencyPageClient() {
           <p className="mt-2 text-xs leading-5 text-rose-muted">
             Source: {catalogError ? 'unavailable, editable presets retained' : sourceLabel(catalog?.source)}.
             {catalog?.intelligenceIndexVersion ? ` Intelligence Index v${catalog.intelligenceIndexVersion}.` : ''}
-            {catalog?.retrievedAt ? ` ${catalog.freshness === 'static' ? 'Snapshot dated' : catalog.freshness === 'cached' ? 'Oldest model observation' : 'Checked'} ${new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
+            {catalog?.retrievedAt ? ` ${catalog.freshness === 'static' ? 'Snapshot dated' : catalog.freshness === 'cached' ? 'Oldest model observation' : 'Checked'} ${catalog.freshness === 'static'
+              // A dated snapshot has a day, not a meaningful clock time.
+              ? new Date(catalog.retrievedAt).toLocaleDateString(undefined, { dateStyle: 'long', timeZone: 'UTC' })
+              : new Date(catalog.retrievedAt).toLocaleString()}.` : ''}
             {latestObservation ? ` Latest model observation ${latestObservation}.` : ''}
           </p>
           {catalog && (

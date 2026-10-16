@@ -138,3 +138,17 @@ test('a prompt larger than a model context window is flagged and not recommended
   await expect(page.getByTestId('context-warning')).toHaveCount(1);
   await expect(page.locator('.receipt-criterion').filter({ hasText: 'Lowest estimated cost' })).toContainText('Big Lab: Wide 1M');
 });
+
+test('the dated benchmark fallback shows a date, not an invented clock time, and a version caveat', async ({ page }) => {
+  await page.route(/\/api\/benchmarks\/?(?:\?.*)?$/, async route => {
+    const response = await route.fetch();
+    const body = await response.json();
+    // Pin the no-API-key path so the assertion does not depend on deployment secrets.
+    if (body.source !== 'dated-fallback') test.skip(true, 'live benchmark catalog configured');
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto('/token-efficiency/');
+  await expect(page.getByText(/Snapshot dated August 29, 2026\./)).toBeVisible();
+  await expect(page.getByText(/compare these only with each other/)).toBeVisible();
+  await expect(page.getByText(/Snapshot dated .*\d:\d\d/)).toHaveCount(0);
+});
