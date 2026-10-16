@@ -128,7 +128,7 @@ test('opening a narrow-screen model search brings results into view', async ({ p
   const input = await page.getByRole('combobox', { name: 'Comparison model 1', exact: true }).boundingBox();
   const result = await page.getByRole('option', { name: /GPT-6.1 Sol/ }).first().boundingBox();
   if (page.viewportSize()!.width <= 900) {
-    expect(input!.y).toBeGreaterThanOrEqual(0);
+    expect(input!.y).toBeGreaterThanOrEqual(56);
     expect(result!.y + result!.height).toBeLessThan(page.viewportSize()!.height - 60);
   }
 });
@@ -182,6 +182,13 @@ test('desktop keeps the receipt heading visible while editing thinking scenarios
   await page.getByRole('tab', { name: 'Thinking', exact: true }).click();
   await page.getByLabel('Thinking tokens per step', { exact: true }).click();
   const heading = await page.locator('.ticket-brand').boundingBox();
-  expect(heading!.y).toBeGreaterThanOrEqual(0);
+  expect(heading!.y).toBeGreaterThanOrEqual(56);
   expect(heading!.y).toBeLessThan(page.viewportSize()!.height);
+});
+
+test('the mobile receipt shortcut clears the sticky navigation', async ({ page }) => {
+  test.skip(page.viewportSize()!.width > 760, 'The shortcut is mobile-only.');
+  await page.goto('/agent-planner/');
+  await page.getByRole('link', { name: /View receipt/ }).click();
+  await expect.poll(async () => { const box = await page.locator('.ticket-brand').boundingBox(); return Boolean(box && box.y >= 56 && box.y < 160); }).toBe(true);
 });

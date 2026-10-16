@@ -235,7 +235,7 @@ export default function AgentPlannerClient() {
         {ready && Math.max(...scenarioCosts) > budget && <p role="note" className="agent-warning">The modeled range exceeds your {formatUsd(budget)} task budget.</p>}
         {!counting && primary?.expected.warnings.map(warning => <p role="note" className="agent-warning" key={warning}>{warning}</p>)}
         {primary && !counting && !primary.expected.feasible && <strong className="agent-warning">This plan does not fit this model. The figures are illustrative.</strong>}
-        <p className="planner-exclusions">Tool services, storage, subscriptions, taxes and credit fees are extra. This calculator does not run a model or enforce a spend cap.</p>
+        <p className="planner-exclusions">Model usage only. Tool services and platform fees are extra.</p>
       </aside>
     </div>
     <div className="agent-mobile-total"><a href="#agent-price">{rangeLabel}<span>View receipt</span></a><button type="button" onClick={() => { selectPanel(3); document.getElementById('planner-tab-3')?.scrollIntoView({ block: 'start' }); }}>Compare</button></div>
