@@ -86,3 +86,40 @@ test('a negative typed rate is not reported rather than priced as free', async (
   await expect(card.locator('p[role="status"]')).toHaveCount(0);
   await expect(card.locator('output').first()).not.toHaveText('N/A');
 });
+
+const TIERED_CATALOG = {
+  ...MANY_MODELS,
+  data: {
+    'OpenAI: GPT-6.1 Sol': {
+      pricing: { input: 0.002, output: 0.01, longContextTiers: [{ minPromptTokens: 272_000, input: 0.004, output: 0.015 }] },
+      co2eFactor: 0.0002, maxOutputTokens: 128000, contextWindowTokens: 1050000, openRouterId: 'openai/gpt-6.1-sol',
+    },
+    'Anthropic: Claude Sonnet 5.5': {
+      pricing: { input: 0.002, output: 0.01 },
+      co2eFactor: 0.0002, maxOutputTokens: 128000, contextWindowTokens: 1000000, openRouterId: 'anthropic/claude-sonnet-5.5',
+    },
+  },
+};
+
+test('a prompt above a published long-context threshold is priced and labelled at that tier', async ({ page }) => {
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TIERED_CATALOG) }));
+  await page.goto('/?models=openai/gpt-6.1-sol,anthropic/claude-sonnet-5.5&tokens=300000&out=2048&turns=1&mode=baseline&runs=1&cadence=once');
+  // 300,000 x $4/M + 2,048 x $15/M = $1.23 (base rates would give $0.62).
+  await expect(page.getByTestId('primary-session-cost')).toHaveText('$1.23');
+  await expect(page.getByTestId('long-context-note')).toContainText('1 request is priced at this model\'s published long-context rate above 272,000 prompt tokens');
+});
+
+test('copied receipt uses formatted currency and rates show their per-million unit', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-specific here');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  await expect(page.getByTestId('primary-session-cost')).not.toHaveText('Unavailable');
+  await page.getByRole('button', { name: 'Copy receipt' }).click();
+  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();
+  const text = await page.evaluate(() => navigator.clipboard.readText());
+  expect(text).toMatch(/^One request: \$\d/m);
+  expect(text).toMatch(/^Annual: \$[\d,]+(\.\d+)?$/m);
+  expect(text).not.toMatch(/\d\.\d{9,}/);
+  await page.getByRole('button', { name: 'Open model results' }).first().click();
+  await expect(page.locator('[role="listbox"] [role="option"]').first()).toContainText(/\$[\d.,]+\/M in/);
+});
