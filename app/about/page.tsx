@@ -31,7 +31,7 @@ const pageJsonLd = {
   url: 'https://prompt-info.helloworldfirm.com/about/',
   isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
   datePublished: '2026-04-21',
-  dateModified: '2026-09-01',
+  dateModified: '2026-10-16',
   author: AUTHOR_REF,
   publisher: {
     '@type': 'Organization',
@@ -66,11 +66,11 @@ export default function AboutPage() {
   return (
     <main id="main-content" className="w-full max-w-full overflow-x-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
-      <section className="mx-auto grid min-h-[54dvh] w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="border-rose-highlightMed px-4 py-16 sm:px-6 md:border-r md:px-12 md:py-24">
+      <section className="mx-auto grid w-full max-w-[1500px] border-b border-rose-highlightMed md:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="border-rose-highlightMed px-4 py-8 sm:px-6 md:border-r md:px-12 md:py-10">
           <p className="data-label text-signal-text">About the utility</p>
-          <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
-            Prompt inspection for model operators.
+          <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(2.2rem,4vw,4rem)]">
+            About Prompt Info
           </h1>
           <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
             Prompt Info is a free calculator for estimating model usage across prompts, multi-turn sessions, and recurring workloads before execution.
@@ -80,7 +80,7 @@ export default function AboutPage() {
           </p>
           <p className="mt-6 text-xs font-medium text-rose-muted">
             <time dateTime="2026-04-21">Published April 21, 2026</time>.{' '}
-            <time dateTime="2026-09-01">Updated September 1, 2026</time>.
+            <time dateTime="2026-10-16">Updated October 16, 2026</time>.
           </p>
         </div>
         <aside className="grid gap-px bg-rose-highlightMed">

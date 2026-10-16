@@ -10,7 +10,7 @@ const pageJsonLd = {
   url: 'https://prompt-info.helloworldfirm.com/privacy/',
   isPartOf: { '@id': 'https://prompt-info.helloworldfirm.com/#website' },
   datePublished: '2026-04-21',
-  dateModified: '2026-06-19',
+  dateModified: '2026-10-16',
   author: AUTHOR_REF,
   publisher: {
     '@type': 'Organization',
@@ -45,16 +45,16 @@ export default function PrivacyPage() {
   return (
     <main id="main-content" className="w-full max-w-full overflow-x-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }} />
-      <section className="mx-auto min-h-[54dvh] w-full max-w-[1500px] border-b border-rose-highlightMed px-4 py-16 sm:px-6 md:px-12 md:py-24">
+      <section className="mx-auto w-full max-w-[1500px] border-b border-rose-highlightMed px-4 py-8 sm:px-6 md:px-12 md:py-10">
         <p className="data-label text-signal-text">Privacy policy</p>
-        <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(3rem,7vw,6.6rem)]">
-          Prompt Info is built for preflight prompt checks.
+        <h1 className="macro-heading mt-6 max-w-6xl text-[clamp(2.2rem,4vw,4rem)]">
+          Privacy
         </h1>
         <p className="mt-8 max-w-3xl text-base leading-8 text-rose-subtle sm:text-lg">
           This page explains the practical data boundaries for Prompt Info. The utility is designed for browser-based estimation, public model metadata, and support conversations.
         </p>
         <p className="mt-6 text-xs font-medium text-rose-muted">
-          <time dateTime="2026-06-19">Updated June 19, 2026</time>.
+          <time dateTime="2026-10-16">Updated October 16, 2026</time>.
         </p>
         <div className="mt-10 grid gap-px bg-rose-highlightMed md:grid-cols-3">
           {[
