@@ -214,6 +214,7 @@ test('actual usage is token-first, variable per request, and survives switching 
   await page.getByLabel('Total input', { exact: true }).nth(1).fill('3000');
   await page.getByLabel('Total output, including thinking', { exact: true }).nth(1).fill('100');
   await expect(page.getByTestId('measured-total')).toHaveText(formatUsd(.014));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Plan a task', exact: true }).click();
   await expect(page.getByTestId('agent-run-total')).toHaveText(formatUsd(.332));
   await page.getByRole('button', { name: 'Use actual token usage', exact: true }).click();

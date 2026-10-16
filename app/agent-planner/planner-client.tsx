@@ -182,7 +182,7 @@ export default function AgentPlannerClient() {
   return <div className="agent-planner">
     <header className="planner-heading"><div><h1>What will your AI task cost?</h1><p>Set up a chat or an agent run. Compare the estimate before you build.</p></div><span className="planner-private">Calculated on your device</span></header>
     <div className="planner-segment" role="group" aria-label="Estimate method"><button type="button" aria-pressed={usageMode === 'plan'} onClick={() => setUsageMode('plan')}>Plan a task</button><button type="button" aria-pressed={usageMode === 'measured'} onClick={() => setUsageMode('measured')}>Use actual token usage</button></div>
-    <div hidden={usageMode !== 'measured'}><MeasuredUsage catalog={catalog} initialModel={primary?.name ?? ''} /></div>
+    <div hidden={usageMode !== 'measured'}>{error && <p className="agent-warning" role="alert">{error} <button className="planner-button" type="button" onClick={() => setRequest(value => value + 1)}>Retry prices</button></p>}<MeasuredUsage catalog={catalog} initialModel={primary?.name ?? ''} /></div>
     <div hidden={usageMode !== 'plan'}>
     <div className="agent-workbench">
       <div className="agent-inputs">
