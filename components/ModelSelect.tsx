@@ -3,6 +3,7 @@
 import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { fetchPricing, type PricingMap } from '../lib/fetchPricing';
 import { chooseDefaultModels } from '../lib/modelSelection';
+import { describeModelSearch, searchModels } from '../lib/modelSearch';
 
 type ModelSelectProps = {
   onChange: (model: string) => void;
@@ -14,31 +15,6 @@ type ModelSelectProps = {
   autoSelect?: boolean;
   modelLabels?: Record<string, string>;
 };
-
-const MAX_VISIBLE_MODELS = 80;
-
-function normalize(value: string) {
-  return value.toLowerCase().replace(/[-_:./]/g, ' ');
-}
-
-function filterModels(models: string[], query: string, labels?: Record<string, string>) {
-  const label = (model: string) => labels?.[model] ?? model;
-  const cleaned = query.trim();
-  if (!cleaned) return models.slice(0, MAX_VISIBLE_MODELS);
-
-  const parts = normalize(cleaned).split(/\s+/).filter(Boolean);
-  return models
-    .filter(model => {
-      const normalizedModel = normalize(label(model));
-      return parts.every(part => normalizedModel.includes(part));
-    })
-    .sort((a, b) => {
-      const aStarts = normalize(label(a)).startsWith(normalize(cleaned)) ? 0 : 1;
-      const bStarts = normalize(label(b)).startsWith(normalize(cleaned)) ? 0 : 1;
-      return aStarts - bStarts || label(a).length - label(b).length || label(a).localeCompare(label(b));
-    })
-    .slice(0, MAX_VISIBLE_MODELS);
-}
 
 function formatRate(ratePerThousand: number | undefined) {
   if (typeof ratePerThousand !== 'number' || !Number.isFinite(ratePerThousand)) return 'N/A';
@@ -69,12 +45,16 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
   const optionList = externalModels ?? models;
   const isLoading = externalLoading ?? (shouldFetch && loading);
   const selectedModel = value && optionList.includes(value) ? value : '';
-  const filteredModels = useMemo(() => {
-    if (query.trim()) return filterModels(optionList, query, modelLabels);
+  const { filteredModels, totalMatches } = useMemo(() => {
+    if (query.trim()) {
+      const search = searchModels(optionList, query, modelLabels);
+      return { filteredModels: search.results, totalMatches: search.total };
+    }
     const curated = pricing
       ? chooseDefaultModels(optionList, pricing, 12)
       : optionList.slice(0, 12);
-    return curated.length > 0 ? curated : optionList.slice(0, 12);
+    const browse = curated.length > 0 ? curated : optionList.slice(0, 12);
+    return { filteredModels: browse, totalMatches: optionList.length };
   }, [optionList, pricing, query, modelLabels]);
   const label = (model: string) => modelLabels?.[model] ?? model;
   const listRef = useRef<HTMLDivElement>(null);
@@ -227,7 +207,7 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-rose-muted">
         <span>Selected: <span className="text-rose-text">{label(selectedModel || (autoSelect ? optionList[0] : "Custom inputs"))}</span></span>
-        <span>{query.trim() ? `${filteredModels.length.toLocaleString()} matches` : `${pricing ? "Provider-diverse browse set" : "Browse set"} · ${filteredModels.length.toLocaleString()} of ${optionList.length.toLocaleString()}`}</span>
+        <span data-testid="model-search-status" aria-live="polite">{describeModelSearch({ query, shown: filteredModels.length, total: totalMatches, catalogSize: optionList.length, curated: Boolean(pricing) })}</span>
       </div>
       {selectedEntry && (
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-rose-muted">
@@ -246,7 +226,10 @@ function ModelSelect({ onChange, value, id, models: externalModels, loading: ext
           className="mt-3 max-h-72 overflow-y-auto overscroll-contain border border-rose-highlightMed bg-rose-base"
         >
           {filteredModels.length === 0 ? (
-            <div className="p-4 text-sm text-rose-muted">No matching models. Try a shorter search.</div>
+            <div className="p-4 text-sm text-rose-muted">
+              No matching models. Try a shorter search.
+              {pricing ? ' Free and unpriced variants are left out because they cannot be costed.' : ''}
+            </div>
           ) : (
             filteredModels.map((model, index) => {
               const isSelected = model === selectedModel;

@@ -11,8 +11,20 @@ const DEFAULT_MODEL_PREFERENCES = [
 ];
 
 const naturalModelOrder = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+
+// Plain standard-tier rows first, then moving aliases ("Sonnet Latest"), then
+// qualified variants such as "(batch)" or dated snapshots. Natural descending
+// order alone ranks "GPT-6.1 Sol (batch)" above "GPT-6.1 Sol" (longer string)
+// and "Latest" above "5.5" (letters after digits), so a first-visit estimate
+// silently used half-price batch rates or an unversioned alias.
+function variantRank(model: string) {
+  if (/\([^)]*\)\s*$/.test(model)) return 2;
+  if (/\blatest\b/i.test(model)) return 1;
+  return 0;
+}
+
 function newestFirst(models: string[]) {
-  return [...models].sort((a, b) => naturalModelOrder.compare(b, a));
+  return [...models].sort((a, b) => variantRank(a) - variantRank(b) || naturalModelOrder.compare(b, a));
 }
 
 import type { PricingMap } from './pricingParser';
