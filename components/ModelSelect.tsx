@@ -19,7 +19,8 @@ type ModelSelectProps = {
 function formatRate(ratePerThousand: number | undefined) {
   if (typeof ratePerThousand !== 'number' || !Number.isFinite(ratePerThousand)) return 'N/A';
   const ratePerMillion = ratePerThousand * 1000;
-  return `$${ratePerMillion.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
+  // Always say the unit: "$2" alone reads as per request or per 1K tokens.
+  return `$${ratePerMillion.toLocaleString(undefined, { maximumFractionDigits: 4 })}/M`;
 }
 
 function formatContext(tokens: number | undefined) {
