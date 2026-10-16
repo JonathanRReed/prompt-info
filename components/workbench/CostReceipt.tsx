@@ -14,7 +14,8 @@ const FRESHNESS_LABELS: Record<PricingCatalogResponse['freshness'], string> = {
 
 export function longContextNote(row: CostComparisonRow) {
   const count = row.estimate?.longContextRequests ?? 0;
-  const threshold = row.entry?.pricing.longContextTiers?.[0]?.minPromptTokens;
+  const thresholds = row.entry?.pricing.longContextTiers?.map(tier => tier.minPromptTokens) ?? [];
+  const threshold = thresholds.length ? Math.min(...thresholds) : undefined;
   const thresholdLabel = threshold ? ` above ${threshold.toLocaleString()} prompt tokens` : '';
   return `${count.toLocaleString()} ${count === 1 ? 'request is' : 'requests are'} priced at this model's published long-context rate${thresholdLabel}.`;
 }

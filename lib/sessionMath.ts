@@ -14,17 +14,13 @@ export const DEFAULT_SESSION_COMPACTION_SUMMARY_FLOOR_TOKENS = 128; // minimum s
 
 export type SessionRunMode = 'baseline' | 'scenario';
 
-/**
- * A higher rate that applies to a whole request once its prompt (including
- * cached history) reaches `minPromptTokens`, as published in OpenRouter's
- * `pricing.overrides` (for example GPT-6.1 Sol: $4/$15 per million above
- * 272K prompt tokens instead of $2/$10). Cache discounts keep the base
- * tier's read/write ratios.
- */
+/** Ordered, per-key price overrides for requests strictly above a prompt threshold. */
 export type PromptRateTier = {
   minPromptTokens: number;
-  inputRatePer1k: number;
-  outputRatePer1k: number;
+  inputRatePer1k?: number;
+  outputRatePer1k?: number;
+  inputCacheReadRatePer1k?: number;
+  inputCacheWriteRatePer1k?: number;
 };
 export type SessionOutputSizing = 'planned' | 'costShare';
 
@@ -38,6 +34,8 @@ export type SessionRunEstimateInput = {
   outputTokenLimit: number;
   contextWindowTokens?: number;
   rateTiers?: PromptRateTier[];
+  inputCacheReadRatePer1k?: number;
+  inputCacheWriteRatePer1k?: number;
   outputSizing?: SessionOutputSizing;
   targetOutputCostSharePct?: number;
   cachedInputBillablePct?: number;
@@ -135,23 +133,21 @@ function costForTokens(tokens: number, ratePer1k: number | null) {
 }
 
 function usableTiers(tiers: PromptRateTier[] | undefined) {
-  return (tiers ?? [])
-    .filter(tier => isFiniteNumber(tier.minPromptTokens) && tier.minPromptTokens > 0
-      && isFiniteNumber(tier.inputRatePer1k) && tier.inputRatePer1k > 0
-      && isFiniteNumber(tier.outputRatePer1k) && tier.outputRatePer1k > 0)
-    .sort((a, b) => a.minPromptTokens - b.minPromptTokens);
+  return (tiers ?? []).filter(tier => isFiniteNumber(tier.minPromptTokens) && tier.minPromptTokens >= 0);
 }
 
-function ratesForRequest(
-  promptTokens: number,
-  base: { input: number | null; output: number | null },
-  tiers: PromptRateTier[],
-) {
-  let rates = { input: base.input, output: base.output, tiered: false };
-  if (!isFiniteNumber(base.input) || !isFiniteNumber(base.output)) return rates;
+type RequestRates = { input: number | null; output: number | null; cacheRead?: number; cacheWrite?: number };
+function ratesForRequest(promptTokens: number, base: RequestRates, tiers: PromptRateTier[]) {
+  const rates = { ...base, tiered: false };
+  const keys = { inputRatePer1k: 'input', outputRatePer1k: 'output', inputCacheReadRatePer1k: 'cacheRead', inputCacheWriteRatePer1k: 'cacheWrite' } as const;
   for (const tier of tiers) {
-    if (promptTokens >= tier.minPromptTokens) {
-      rates = { input: tier.inputRatePer1k, output: tier.outputRatePer1k, tiered: true };
+    if (promptTokens <= tier.minPromptTokens) continue;
+    for (const [source, target] of Object.entries(keys)) {
+      const value = tier[source as keyof PromptRateTier];
+      if (isFiniteNumber(value) && value >= 0) {
+        rates[target] = value;
+        rates.tiered = true;
+      }
     }
   }
   return rates;
@@ -235,6 +231,8 @@ export function simulateSessionRunCost({
   outputTokenLimit,
   contextWindowTokens,
   rateTiers,
+  inputCacheReadRatePer1k,
+  inputCacheWriteRatePer1k,
   outputSizing = 'planned',
   targetOutputCostSharePct,
   cachedInputBillablePct,
@@ -255,7 +253,7 @@ export function simulateSessionRunCost({
   }
 
   const tiers = usableTiers(rateTiers);
-  const baseRates = { input: inputRatePer1k, output: outputRatePer1k };
+  const baseRates = { input: inputRatePer1k, output: outputRatePer1k, cacheRead: inputCacheReadRatePer1k, cacheWrite: inputCacheWriteRatePer1k };
 
   // Baseline: simple multiplication
   if (mode === 'baseline') {
@@ -345,7 +343,12 @@ export function simulateSessionRunCost({
     const cachedBilledThisTurn = reusedThisTurn * safeCachedInputBillablePct;
     const billableInputThisTurn = newPrefixTokens * safeCacheWriteMultiplier + cachedBilledThisTurn;
     const turnRates = ratesForRequest(reusedThisTurn + newPrefixTokens, baseRates, tiers);
-    const billableInputCostThisTurn = costForTokens(billableInputThisTurn, turnRates.input);
+    const cachingEnabled = safeCachedInputBillablePct < 1;
+    const readRate = cachingEnabled && isFiniteNumber(turnRates.cacheRead) ? turnRates.cacheRead : (turnRates.input ?? 0) * safeCachedInputBillablePct;
+    const writeRate = cachingEnabled && isFiniteNumber(turnRates.cacheWrite) ? turnRates.cacheWrite : (turnRates.input ?? 0) * safeCacheWriteMultiplier;
+    const billableInputCostThisTurn = isFiniteNumber(turnRates.input)
+      ? (newPrefixTokens * writeRate + reusedThisTurn * readRate) / 1000
+      : null;
 
     let outputTokensThisTurn = safeReferenceOutputTokens;
     if (outputSizing === 'costShare') {
@@ -410,7 +413,9 @@ export function simulateSessionRunCost({
         const compactionRates = ratesForRequest(historyTokens + safeTurnOverheadTokens, baseRates, tiers);
         compactionInputTokens += compactionBilledInput;
         compactionOutputTokens += summaryTokens;
-        compactionInputCostSum += costForTokens(compactionBilledInput, compactionRates.input) ?? 0;
+        const compactionReadRate = safeCachedInputBillablePct < 1 && isFiniteNumber(compactionRates.cacheRead)
+          ? compactionRates.cacheRead : (compactionRates.input ?? 0) * safeCachedInputBillablePct;
+        compactionInputCostSum += (cachedPrefixTokens * compactionReadRate + (pendingTokens + safeTurnOverheadTokens) * (compactionRates.input ?? 0)) / 1000;
         compactionOutputCostSum += costForTokens(summaryTokens, compactionRates.output) ?? 0;
         if (compactionRates.tiered) longContextRequests += 1;
         processedInputTokens += historyTokens + safeTurnOverheadTokens;

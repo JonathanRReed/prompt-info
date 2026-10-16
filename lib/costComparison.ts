@@ -80,7 +80,11 @@ function estimateFor(
       minPromptTokens: tier.minPromptTokens,
       inputRatePer1k: tier.input,
       outputRatePer1k: tier.output,
+      inputCacheReadRatePer1k: tier.inputCacheRead,
+      inputCacheWriteRatePer1k: tier.inputCacheWrite,
     })),
+    inputCacheReadRatePer1k: entry.pricing.inputCacheRead,
+    inputCacheWriteRatePer1k: entry.pricing.inputCacheWrite,
     cachedInputBillablePct: cacheReadPercent(entry) ?? scenario.cachedInputBillablePct,
     cacheWriteMultiplier: cacheWriteMultiplier(entry) ?? scenario.cacheWriteMultiplier,
   });

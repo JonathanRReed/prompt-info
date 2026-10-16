@@ -264,9 +264,37 @@ describe('long-context rate tiers', () => {
   test('ignores malformed tiers instead of zeroing the estimate', () => {
     const estimate = simulateSessionRunCost({
       mode: 'baseline', promptTokens: 300_000, referenceOutputTokens: 0, turns: 1, outputTokenLimit: 128_000, ...BASE,
-      rateTiers: [{ minPromptTokens: Number.NaN, inputRatePer1k: 0.004, outputRatePer1k: 0.015 }, { minPromptTokens: 1, inputRatePer1k: 0, outputRatePer1k: 0 }],
+      rateTiers: [{ minPromptTokens: Number.NaN, inputRatePer1k: 0.004, outputRatePer1k: 0.015 }, { minPromptTokens: 1, inputRatePer1k: -1, outputRatePer1k: -1 }],
     });
     expect(estimate.inputCost).toBeCloseTo(300 * 0.002, 10);
     expect(estimate.longContextRequests).toBe(0);
   });
+});
+
+describe('conditional pricing contract', () => {
+  const base = { mode: 'baseline' as const, promptTokens: 101, referenceOutputTokens: 10, turns: 1, outputTokenLimit: 1000, inputRatePer1k: 2, outputRatePer1k: 10 };
+  test('threshold is exclusive and partial overrides inherit base rates', () => {
+    const rateTiers = [{ minPromptTokens: 100, inputRatePer1k: 4 }];
+    expect(simulateSessionRunCost({ ...base, promptTokens: 100, rateTiers }).totalCost).toBeCloseTo(0.3, 10);
+    expect(simulateSessionRunCost({ ...base, rateTiers }).totalCost).toBeCloseTo(0.504, 10);
+  });
+  test('later matching overrides win per key without threshold sorting', () => {
+    const rateTiers = [{ minPromptTokens: 100, inputRatePer1k: 4, outputRatePer1k: 20 }, { minPromptTokens: 10, outputRatePer1k: 15 }];
+    expect(simulateSessionRunCost({ ...base, rateTiers }).totalCost).toBeCloseTo(0.554, 10);
+  });
+  test('published cache rates are not multiplied by the prompt price change', () => {
+    const result = simulateSessionRunCost({ ...base, mode: 'scenario', turns: 2, promptTokens: 100, referenceOutputTokens: 0, turnOverheadTokens: 0, cachedInputBillablePct: 10,
+      inputCacheReadRatePer1k: 0.2, inputCacheWriteRatePer1k: 2.5,
+      rateTiers: [{ minPromptTokens: 150, inputRatePer1k: 4, inputCacheReadRatePer1k: 0.3, inputCacheWriteRatePer1k: 5 }],
+    });
+    expect(result.inputCost).toBeCloseTo(0.25 + 0.5 + 0.03, 10);
+  });
+});
+
+test('absent tier cache prices inherit published base prices, including free reads', () => {
+  const result = simulateSessionRunCost({ mode: 'scenario', turns: 2, promptTokens: 100, referenceOutputTokens: 0, outputTokenLimit: 1000, turnOverheadTokens: 0,
+    inputRatePer1k: 2, outputRatePer1k: 10, cachedInputBillablePct: 0, inputCacheReadRatePer1k: 0, inputCacheWriteRatePer1k: 2.5,
+    rateTiers: [{ minPromptTokens: 150, inputRatePer1k: 4 }],
+  });
+  expect(result.inputCost).toBeCloseTo(0.5, 10);
 });

@@ -157,3 +157,11 @@ describe('context window limits', () => {
     expect(rows[0].contextWarning).toContain('about 36,000 tokens');
   });
 });
+
+test('comparison carries partial tier and exact cache rates into session billing', () => {
+  const entry: PricingEntry = { ...ECONOMY, pricing: { input: 2, output: 10, inputCacheRead: 0.2, inputCacheWrite: 2.5,
+    longContextTiers: [{ minPromptTokens: 150, input: 4, inputCacheRead: 0.3, inputCacheWrite: 5 }],
+  } };
+  const result = buildCostComparison({ models: [{ model: 'Test: Tiered', entry }], scenario: { ...scenario, mode: 'scenario', promptTokens: 100, referenceOutputTokens: 0, turnOverheadTokens: 0 }, workload: { runs: 1, cadence: 'once' } });
+  expect(result.rows[0].sessionCost).toBeCloseTo(0.78, 10);
+});

@@ -118,7 +118,22 @@ describe('OpenRouter long-context overrides', () => {
       },
     ]);
     expect(map['OpenAI: GPT-6.1 Sol'].pricing.input).toBeCloseTo(0.002, 12);
-    expect(map['OpenAI: GPT-6.1 Sol'].pricing.longContextTiers).toEqual([{ minPromptTokens: 272_000, input: 0.004, output: 0.015 }]);
+    const tier = map['OpenAI: GPT-6.1 Sol'].pricing.longContextTiers![0];
+    expect(tier.minPromptTokens).toBe(272_000);
+    expect(tier.input).toBeCloseTo(0.004, 12);
+    expect(tier.output).toBeCloseTo(0.015, 12);
+    expect(tier.inputCacheRead).toBeCloseTo(0.0002, 12);
     expect(map['Lab: Off Peak'].pricing.longContextTiers).toBeUndefined();
   });
+});
+
+test('preserves partial overrides, cache prices and source ordering', () => {
+  const entry = buildPricingMap([{ name: 'Test: Partial', pricing: { prompt: '0.000002', completion: '0.00001', overrides: [
+    { min_prompt_tokens: 200, completion: '0.00002' },
+    { min_prompt_tokens: 100, prompt: '0.000004', input_cache_read: '0', input_cache_write: '0.000005' },
+  ] } }])['Test: Partial'];
+  expect(entry.pricing.longContextTiers).toEqual([
+    { minPromptTokens: 200, output: 0.02 },
+    { minPromptTokens: 100, input: 0.004, inputCacheRead: 0, inputCacheWrite: 0.005 },
+  ]);
 });

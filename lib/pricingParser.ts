@@ -8,7 +8,7 @@ export type PricingEntry = {
     inputCacheWrite?: number;
     /**
      * Whole-request rates (per 1K tokens) that apply once a request's prompt
-     * reaches `minPromptTokens`, from OpenRouter `pricing.overrides`.
+     * exceeds `minPromptTokens`, from OpenRouter `pricing.overrides`.
      */
     longContextTiers?: LongContextTier[];
   };
@@ -22,7 +22,7 @@ export type PricingEntry = {
   openRouterId?: string;
 };
 
-export type LongContextTier = { minPromptTokens: number; input: number; output: number };
+export type LongContextTier = { minPromptTokens: number; input?: number; output?: number; inputCacheRead?: number; inputCacheWrite?: number };
 
 export type PricingMap = Record<string, PricingEntry>;
 
@@ -127,17 +127,16 @@ function readLongContextTiers(fields: Record<string, unknown>): LongContextTier[
     if (!isRecord(override)) continue;
     if ('utc_start' in override || 'utc_end' in override || 'utc_days' in override) continue;
     const minPromptTokens = parseNumberLike(override.min_prompt_tokens);
-    const perTokenIn = parseNumberLike(override.prompt);
-    const perTokenOut = parseNumberLike(override.completion);
-    if (!Number.isFinite(minPromptTokens) || minPromptTokens <= 0) continue;
-    if (!Number.isFinite(perTokenIn) || perTokenIn <= 0 || !Number.isFinite(perTokenOut) || perTokenOut <= 0) continue;
-    tiers.push({
-      minPromptTokens: Math.floor(minPromptTokens),
-      input: (perTokenIn * 1_000_000) / MILLION_TO_THOUSAND_RATIO,
-      output: (perTokenOut * 1_000_000) / MILLION_TO_THOUSAND_RATIO,
-    });
+    if (!Number.isFinite(minPromptTokens) || minPromptTokens < 0) continue;
+    const tier: LongContextTier = { minPromptTokens };
+    const keys = { prompt: 'input', completion: 'output', input_cache_read: 'inputCacheRead', input_cache_write: 'inputCacheWrite' } as const;
+    for (const [source, target] of Object.entries(keys)) {
+      const rate = parseNumberLike(override[source]);
+      if (Number.isFinite(rate) && rate >= 0) tier[target] = (rate * 1_000_000) / MILLION_TO_THOUSAND_RATIO;
+    }
+    if (Object.keys(tier).length > 1) tiers.push(tier);
   }
-  return tiers.sort((a, b) => a.minPromptTokens - b.minPromptTokens);
+  return tiers;
 }
 
 type RowShape = {
