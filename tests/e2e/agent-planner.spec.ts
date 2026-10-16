@@ -124,7 +124,6 @@ test('opening a narrow-screen model search brings results into view', async ({ p
   await page.goto('/agent-planner/');
   await page.getByRole('tab', { name: 'Compare models', exact: true }).click();
   await page.getByRole('combobox', { name: 'Comparison model 1', exact: true }).fill('Sol');
-  await page.getByRole('tab', { name: 'Compare models', exact: true }).click();
   const input = await page.getByRole('combobox', { name: 'Comparison model 1', exact: true }).boundingBox();
   const result = await page.getByRole('option', { name: /GPT-6.1 Sol/ }).first().boundingBox();
   if (page.viewportSize()!.width <= 900) {
