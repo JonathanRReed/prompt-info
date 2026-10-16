@@ -84,6 +84,7 @@ export function ModelComparison({
               </div>
               {isRecommended ? <p className="comparison-observation">Lowest estimated cost in this selection.</p> : null}
               {!row?.isUsable ? <p className="comparison-unavailable">{row?.unavailableReason ?? 'Waiting for pricing data.'}</p> : null}
+              {row?.contextWarning ? <p className="comparison-unavailable" role="note" data-testid="context-warning">{row.contextWarning}</p> : null}
             </article>
           );
         })}

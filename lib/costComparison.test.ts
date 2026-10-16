@@ -129,3 +129,31 @@ describe('long-context pricing in comparisons', () => {
     expect(rows[0].estimate?.longContextRequests).toBe(1);
   });
 });
+
+describe('context window limits', () => {
+  const small = { pricing: { input: 0.0001, output: 0.0002 }, co2eFactor: 0.0002, maxOutputTokens: 4096, contextWindowTokens: 32_000 };
+  const large = { pricing: { input: 0.002, output: 0.01 }, co2eFactor: 0.0002, maxOutputTokens: 128_000, contextWindowTokens: 1_000_000 };
+  const scenario = { mode: 'baseline' as const, promptTokens: 50_000, referenceOutputTokens: 1_000, turns: 1, outputTokenLimit: 300_000, contextWindowTokens: 1_000_000 };
+
+  test('flags a prompt larger than the context window and never recommends that model', () => {
+    const { rows, recommendation } = buildCostComparison({
+      models: [{ model: 'Small: 32K', entry: small }, { model: 'Large: 1M', entry: large }],
+      scenario,
+      workload: { runs: 1, cadence: 'once' },
+    });
+    expect(rows[0].contextWarning).toContain('larger than its 32,000-token context window');
+    expect(rows[1].contextWarning).toBeNull();
+    // Small is far cheaper per token, but it cannot take this prompt.
+    expect(rows[0].sessionCost!).toBeLessThan(rows[1].sessionCost!);
+    expect(recommendation?.model).toBe('Large: 1M');
+  });
+
+  test('applies the provider tokenizer multiplier before comparing with the window', () => {
+    const { rows } = buildCostComparison({
+      models: [{ model: 'Small: 32K', entry: small, promptTokenMultiplier: 1.2 }],
+      scenario: { ...scenario, promptTokens: 30_000 },
+      workload: { runs: 1, cadence: 'once' },
+    });
+    expect(rows[0].contextWarning).toContain('about 36,000 tokens');
+  });
+});

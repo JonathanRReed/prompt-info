@@ -123,3 +123,18 @@ test('copied receipt uses formatted currency and rates show their per-million un
   await page.getByRole('button', { name: 'Open model results' }).first().click();
   await expect(page.locator('[role="listbox"] [role="option"]').first()).toContainText(/\$[\d.,]+\/M in/);
 });
+
+test('a prompt larger than a model context window is flagged and not recommended', async ({ page }) => {
+  const catalog = {
+    ...MANY_MODELS,
+    data: {
+      'Small Lab: Tiny 32K': { pricing: { input: 0.0001, output: 0.0002 }, co2eFactor: 0.0002, maxOutputTokens: 4096, contextWindowTokens: 32000, openRouterId: 'small/tiny' },
+      'Big Lab: Wide 1M': { pricing: { input: 0.002, output: 0.01 }, co2eFactor: 0.0002, maxOutputTokens: 128000, contextWindowTokens: 1000000, openRouterId: 'big/wide' },
+    },
+  };
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(catalog) }));
+  await page.goto('/?models=small/tiny,big/wide&tokens=50000&out=1024&turns=1&mode=baseline&runs=1&cadence=once');
+  await expect(page.getByTestId('receipt-context-warning')).toContainText('larger than its 32,000-token context window');
+  await expect(page.getByTestId('context-warning')).toHaveCount(1);
+  await expect(page.locator('.receipt-criterion').filter({ hasText: 'Lowest estimated cost' })).toContainText('Big Lab: Wide 1M');
+});

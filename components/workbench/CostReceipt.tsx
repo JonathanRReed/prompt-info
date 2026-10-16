@@ -59,6 +59,9 @@ export function CostReceipt({
         <output data-testid="primary-session-cost" aria-live="polite">{estimateReady ? formatUsd(primaryValue) : 'Unavailable'}</output>
       </div>
       <p className="receipt-scope">{estimateReady ? `${workloadRuns.toLocaleString()} runs ${cadenceLabel}.` : 'Enter a prompt and complete token counting to calculate model usage.'}</p>
+      {estimateReady && row?.contextWarning ? (
+        <p className="receipt-criterion" role="note" data-testid="receipt-context-warning">{row.contextWarning}</p>
+      ) : null}
       {estimateReady && row?.estimate && row.estimate.longContextRequests > 0 ? (
         <p className="receipt-criterion" data-testid="long-context-note">
           {longContextNote(row)}

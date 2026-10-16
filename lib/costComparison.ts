@@ -24,6 +24,8 @@ export type CostComparisonRow = {
   annualCost: number | null;
   isUsable: boolean;
   unavailableReason: string | null;
+  /** Set when one request's prompt alone is larger than the model's published context window. */
+  contextWarning: string | null;
 };
 
 export type CostRecommendation = {
@@ -84,6 +86,14 @@ function estimateFor(
   });
 }
 
+function contextWarningFor(entry: PricingEntry, promptTokens: number, promptTokenMultiplier = 1) {
+  const window = entry.contextWindowTokens;
+  if (typeof window !== 'number' || !Number.isFinite(window) || window <= 0) return null;
+  const billedPrompt = Math.max(0, Math.round(promptTokens * promptTokenMultiplier));
+  if (billedPrompt <= window) return null;
+  return `The prompt (about ${billedPrompt.toLocaleString('en-US')} tokens for this model) is larger than its ${window.toLocaleString('en-US')}-token context window, so a provider would reject the request.`;
+}
+
 function unavailableRow(model: string, entry: PricingEntry | null | undefined): CostComparisonRow {
   return {
     model,
@@ -95,11 +105,13 @@ function unavailableRow(model: string, entry: PricingEntry | null | undefined): 
     annualCost: null,
     isUsable: false,
     unavailableReason: entry ? 'This model does not have positive input and output rates.' : 'Pricing is unavailable for this model.',
+    contextWarning: null,
   };
 }
 
 function chooseRecommendation(rows: CostComparisonRow[]): CostRecommendation | null {
-  const usableRows = rows.filter(row => row.isUsable);
+  // A model that would reject the prompt is not a cheaper option.
+  const usableRows = rows.filter(row => row.isUsable && row.contextWarning === null);
   const usesMonthlyCost = usableRows.length > 0 && usableRows.every(row => row.monthlyCost !== null);
   const metric = usesMonthlyCost ? 'monthlyCost' : 'sessionCost';
   const ranked = usableRows
@@ -153,6 +165,7 @@ export function buildCostComparison({
       annualCost: projection?.annualCost ?? null,
       isUsable: true,
       unavailableReason: null,
+      contextWarning: contextWarningFor(entry, scenario.promptTokens, promptTokenMultiplier),
     };
   });
 
