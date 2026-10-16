@@ -5,6 +5,8 @@ export type PlannerVolume =
   | {
       kind: 'batch' | 'monthly';
       count: number;
+      /** False when the count is not a whole number from 1 to 1,000,000. */
+      valid: boolean;
       /** Heading shown next to the multiplied total. */
       label: string;
       total: number | null;
@@ -28,13 +30,17 @@ export function plannerVolume(input: {
   batchRuns: number;
 }): PlannerVolume {
   const n = input.recurring ? input.runs : input.batchRuns;
-  if (!input.recurring && !(n > 1)) return { kind: 'single' };
+  if (!input.recurring && n === 1) return { kind: 'single' };
   const valid = Number.isInteger(n) && n > 0 && n <= 1000000;
   const kind = input.recurring ? 'monthly' : 'batch';
   const label =
     kind === 'monthly'
-      ? `${count(n)} tasks/month`
-      : `One-time batch of ${count(n)} tasks`;
+      ? valid
+        ? `${count(n)} tasks/month`
+        : 'Tasks/month'
+      : valid
+        ? `One-time batch of ${count(n)} tasks`
+        : 'One-time batch';
   const total =
     valid && input.cost !== null && Number.isFinite(input.cost)
       ? input.cost * n
@@ -46,6 +52,7 @@ export function plannerVolume(input: {
   return {
     kind,
     count: n,
+    valid,
     label,
     total,
     range,

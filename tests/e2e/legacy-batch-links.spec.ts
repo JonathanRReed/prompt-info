@@ -85,3 +85,58 @@ test('old values the planner cannot represent show a visible warning', async ({ 
   await expect(page.getByText('This older link had an unsupported runs value (runs=0). It was ignored and the default was used.', { exact: true })).toBeVisible();
   await expect(page.getByText('This older link had an unsupported cadence value (cadence=year). It was ignored and the default was used.', { exact: true })).toBeVisible();
 });
+
+test('an invalid batch size blocks copying and sharing until it is corrected', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-specific here');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await open(page, `${OLD}&runs=10&cadence=once`);
+  await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
+  await page.getByText('Optional budget planning', { exact: true }).click();
+  const field = page.getByLabel('Tasks in this one-time batch', { exact: true });
+  const share = page.getByRole('button', { name: 'Copy a link to this plan' });
+  for (const bad of ['0', '-3', '']) {
+    await field.fill(bad);
+    await expect(page.getByText('Enter 1–1,000,000 tasks for the one-time batch. The per-task estimate is unchanged.', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('agent-batch-total')).toHaveText('Unavailable');
+    await expect(share).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Copy receipt' }).first()).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Save image' })).toBeDisabled();
+  }
+  await page.evaluate(() => navigator.clipboard.writeText('untouched'));
+  await share.click({ force: true });
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('untouched');
+  await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
+  await field.fill('12');
+  await expect(page.getByTestId('agent-batch-total')).toHaveText('$12.00');
+  await expect(share).toBeEnabled();
+  await share.click();
+  await expect(page.getByText(/Copied a restorable link/)).toBeVisible();
+  const link = new URL(await page.evaluate(() => navigator.clipboard.readText()));
+  expect(JSON.parse(new URLSearchParams(link.hash.slice(1)).get('plan')!)).toMatchObject({ runs: 1, recurring: false, batchRuns: 12 });
+});
+
+test('editing the batch back to one keeps the control and prices a single task', async ({ page }) => {
+  await open(page, `${OLD}&runs=10&cadence=once`);
+  await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
+  await page.getByText('Optional budget planning', { exact: true }).click();
+  const field = page.getByLabel('Tasks in this one-time batch', { exact: true });
+  await field.fill('1');
+  await expect(field).toBeVisible();
+  await expect(page.getByTestId('agent-batch-total')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Copy a link to this plan' })).toBeEnabled();
+  await field.fill('3');
+  await expect(page.getByTestId('agent-batch-total')).toHaveText('$3.00');
+  await page.getByLabel('Estimate a monthly budget', { exact: true }).check();
+  await expect(field).toHaveCount(0);
+  await expect(page.getByTestId('agent-batch-total')).toHaveCount(0);
+  await expect(page.getByTestId('agent-monthly-total')).toBeVisible();
+  await page.getByLabel('Estimate a monthly budget', { exact: true }).uncheck();
+  await expect(page.getByTestId('agent-batch-total')).toHaveText('$3.00');
+});
+
+test('an old link with only unsupported values shows a notice', async ({ page }) => {
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CATALOG) }));
+  await page.goto('/?runs=0&cadence=year');
+  await expect(page.getByText('This older link had an unsupported runs value (runs=0). It was ignored and the default was used.', { exact: true })).toBeVisible();
+  await expect(page.getByText('This older link had an unsupported cadence value (cadence=year). It was ignored and the default was used.', { exact: true })).toBeVisible();
+});

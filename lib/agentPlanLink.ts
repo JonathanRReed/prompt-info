@@ -204,9 +204,8 @@ const PER_MONTH = { day: 365 / 12, week: 52 / 12, month: 1 } as const;
  * a monthly volume or a worker count. Values the plan cannot hold are listed
  * in `notices` so the planner can show them instead of changing them silently.
  */
-export function readLegacyAgentPlan(search: string): SharedAgentPlan | null {
+export function readLegacyNotices(search: string): string[] {
   const old = parseScenarioLink(search);
-  if (!Object.keys(old).length) return null;
   const raw = new URLSearchParams(search);
   const notices: string[] = [];
   for (const [param, key, label] of LEGACY_KEYS) {
@@ -216,6 +215,13 @@ export function readLegacyAgentPlan(search: string): SharedAgentPlan | null {
         `This older link had an unsupported ${label} value (${param}=${value.slice(0, 40)}). It was ignored and the default was used.`,
       );
   }
+  return notices;
+}
+
+export function readLegacyAgentPlan(search: string): SharedAgentPlan | null {
+  const old = parseScenarioLink(search);
+  if (!Object.keys(old).length) return null;
+  const notices = readLegacyNotices(search);
   const cadence = old.workloadCadence ?? 'once';
   const count = old.workloadRuns ?? 1;
   let runs = 1;

@@ -1,4 +1,4 @@
-import { readLegacyAgentPlan } from "./agentPlanLink";
+import { readLegacyAgentPlan, readLegacyNotices } from "./agentPlanLink";
 import { expect, test } from 'bun:test';
 import { buildAgentPlanLink, parseAgentPlan, readAgentPlanHash } from './agentPlanLink';
 const value = { version: 1 as const, plan: { instructionTokens: 100, taskTokens: 200, toolTokensPerStep: 300, visibleOutputTokens: 400, reasoningTokens: 500, steps: 6, keepHistory: true, cacheEnabled: false, cacheHitPct: 80 }, models: ['Lab: Model 6'], runs: 100, variance: 30 };
@@ -77,4 +77,9 @@ test('shared batch counts are validated and dropped for recurring plans', () => 
   expect(parseAgentPlan(JSON.stringify({ ...value, runs: 1, batchRuns: 10 }))?.batchRuns).toBe(10);
   expect(parseAgentPlan(JSON.stringify({ ...value, recurring: true, batchRuns: 10 }))?.batchRuns).toBeUndefined();
   for (const batchRuns of [0, 1.5, 1000001, '10']) expect(parseAgentPlan(JSON.stringify({ ...value, batchRuns }))).toBeNull();
+});
+test('legacy links with only unsupported values report notices without importing a plan', () => {
+  expect(readLegacyAgentPlan('?out=1000000')).toBeNull();
+  expect(readLegacyNotices('?out=1000000')).toEqual(['This older link had an unsupported output tokens value (out=1000000). It was ignored and the default was used.']);
+  expect(readLegacyNotices('?model=openai/x')).toEqual([]);
 });

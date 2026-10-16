@@ -17,3 +17,9 @@ test('an unavailable estimate never prints a multiplied number', () => {
   const v = plannerVolume({ cost: null, scenarioCosts: [], recurring: false, runs: 1, batchRuns: 10 });
   expect(v).toMatchObject({ kind: 'batch', total: null, range: null });
 });
+test('an invalid one-time batch stays a batch with no total instead of falling back to one task', () => {
+  for (const batchRuns of [0, -3, Number.NaN, 1.5]) {
+    const v = plannerVolume({ ...costs, recurring: false, runs: 1, batchRuns });
+    expect(v).toMatchObject({ kind: 'batch', valid: false, total: null, range: null, label: 'One-time batch' });
+  }
+});

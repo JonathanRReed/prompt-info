@@ -23,6 +23,7 @@ import {
   buildAgentPlanLink,
   readAgentPlanHash,
   readLegacyAgentPlan,
+  readLegacyNotices,
 } from '../../lib/agentPlanLink';
 import {
   REASONING_SCENARIOS,
@@ -168,7 +169,14 @@ export default function AgentPlannerClient() {
       const shared =
         readAgentPlanHash(window.location.hash) ??
         readLegacyAgentPlan(window.location.search);
-      if (!shared) return;
+      if (!shared) {
+        setImportNotices(
+          window.location.hash
+            ? []
+            : readLegacyNotices(window.location.search),
+        );
+        return;
+      }
       setPresetId('custom');
       setPlan(shared.plan);
       setMode(shared.mode ?? 'agent');
@@ -428,6 +436,8 @@ export default function AgentPlannerClient() {
     runs,
     batchRuns,
   });
+  const volumeValid = volume.kind === 'single' || volume.valid;
+  const canExport = ready && volumeValid;
   const breakdown = primary
     ? [
         {
@@ -498,6 +508,7 @@ export default function AgentPlannerClient() {
     budgetEnabled,
   ]);
   async function copyShareLink() {
+    if (!canExport) return;
     const link = buildAgentPlanLink(window.location.origin, {
       version: 1,
       mode,
@@ -522,6 +533,7 @@ export default function AgentPlannerClient() {
     }
   }
   async function copyPlan() {
+    if (!volumeValid) return;
     try {
       await navigator.clipboard.writeText(
         JSON.stringify(
@@ -575,6 +587,7 @@ export default function AgentPlannerClient() {
     'Editable workload scenarios, not guaranteed bounds. API model usage only.',
   ].join('\n');
   async function copyReceipt() {
+    if (!canExport) return;
     try {
       await navigator.clipboard.writeText(receiptText);
       setCopied('Receipt copied.');
@@ -583,6 +596,7 @@ export default function AgentPlannerClient() {
     }
   }
   async function saveReceipt() {
+    if (!canExport) return;
     try {
       const { downloadPlannerReceipt } =
         await import('../../lib/plannerReceipt');
@@ -1250,7 +1264,7 @@ export default function AgentPlannerClient() {
                     />
                     Estimate a monthly budget
                   </label>
-                  {!recurring && batchRuns !== 1 && (
+                  {!recurring && (
                     <Field
                       label="Tasks in this one-time batch"
                       value={batchRuns}
@@ -1538,7 +1552,7 @@ export default function AgentPlannerClient() {
                 className="planner-button"
                 type="button"
                 onClick={copyPlan}
-                disabled={!ready}
+                disabled={!canExport}
               >
                 Copy plan assumptions
               </button>
@@ -1648,7 +1662,7 @@ export default function AgentPlannerClient() {
                 className="planner-button"
                 type="button"
                 onClick={copyReceipt}
-                disabled={!ready}
+                disabled={!canExport}
               >
                 Copy receipt
               </button>
@@ -1656,7 +1670,7 @@ export default function AgentPlannerClient() {
                 className="planner-button"
                 type="button"
                 onClick={saveReceipt}
-                disabled={!ready}
+                disabled={!canExport}
               >
                 Save image
               </button>
@@ -1665,7 +1679,7 @@ export default function AgentPlannerClient() {
               className="planner-text-button planner-share"
               type="button"
               onClick={copyShareLink}
-              disabled={!ready}
+              disabled={!canExport}
             >
               Copy a link to this plan
             </button>
