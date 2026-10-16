@@ -16,3 +16,11 @@ test('output comparison uses current pricing and distinguishes missing and delib
   await expect(card.locator('output').first()).toHaveText('$0.0100');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
+
+test('per-million rates hide binary floating-point display noise',async({page})=>{
+  await page.route(/\/api\/pricing\/?(?:\?.*)?$/,r=>r.fulfill({json:{...catalog,data:{'Google: Gemini 3.8 Flash':{...catalog.data['Lab: Current model'],pricing:{input:.000825,output:.004125}}}}}));
+  await page.goto('/token-efficiency/');
+  const card=page.locator('#efficiency-lab article').first();
+  await expect(card.getByLabel('Input $ / M tokens')).toHaveValue('0.825');
+  await expect(card.getByLabel('Output $ / M tokens')).toHaveValue('4.125');
+});

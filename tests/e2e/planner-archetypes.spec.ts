@@ -166,7 +166,7 @@ test('all presets, tabs and themes render without errors or clipped controls', a
             () => document.documentElement.scrollWidth <= innerWidth + 1,
           ),
         ).toBe(true);
-        await page.screenshot({
+        await page.screenshot({animations:'disabled',
           path: `test-results/archetype-${info.project.name}-${theme}-${mode}-${panel.replaceAll(' ', '-')}.png`,
         });
       }

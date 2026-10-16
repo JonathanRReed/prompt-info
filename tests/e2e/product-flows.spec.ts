@@ -195,7 +195,7 @@ test('secondary pages remain readable in both themes and viewport sizes',async({
       const current=await page.locator('html').getAttribute('data-theme');
       if(current!==theme)await page.getByRole('button',{name:'Toggle light and dark theme'}).click();
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
-      await page.screenshot({path:`test-results/page-${info.project.name}-${route.replaceAll('/','')}-${theme}.png`,fullPage:true});
+      await page.screenshot({animations:'disabled',path:`test-results/page-${info.project.name}-${route.replaceAll('/','')}-${theme}.png`,fullPage:true});
     }
   }
 });

@@ -364,7 +364,7 @@ export default function TokenEfficiencyPageClient() {
                     className={inputClass}
                     value={
                       row[field] !== null && Number.isFinite(row[field])
-                        ? row[field]!
+                        ? field === 'tokens' ? row[field]! : Number(row[field]!.toPrecision(15))
                         : ''
                     }
                     placeholder="Not reported"
