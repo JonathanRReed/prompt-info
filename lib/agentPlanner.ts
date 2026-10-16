@@ -75,6 +75,7 @@ export function estimateAgentRun(plan: AgentPlan, model: PricingEntry): AgentEst
   };
   if (!rate(model.contextWindowTokens) || model.contextWindowTokens <= 0) warn('Context limit is unavailable; plan fit cannot be verified.', true);
   if (!count(model.maxOutputTokens)) warn('Output limit is unavailable; plan fit cannot be verified.', true);
+  if (model.supportsReasoning === false && plan.reasoningTokens > 0) warn('The catalog does not list reasoning support for this model. Set the thinking allowance to zero or choose a reasoning model.', true);
   if (model.reasoning?.mandatory && plan.reasoningTokens === 0) warn('This model requires reasoning. Budget for thinking before treating this as a complete estimate.', true);
   const outputTokens = plan.visibleOutputTokens + plan.reasoningTokens;
   if (count(model.maxOutputTokens) && outputTokens > model.maxOutputTokens) warn('Planned answer plus thinking exceeds this model’s output limit.', true);

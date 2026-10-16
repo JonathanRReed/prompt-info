@@ -35,6 +35,7 @@ export function isPricingMap(value: unknown): value is PricingMap {
 
   return Object.values(value).every(entry => {
     if (!isRecord(entry) || !isRecord(entry.pricing)) return false;
+    if (entry.supportsReasoning !== undefined && typeof entry.supportsReasoning !== 'boolean') return false;
     if (entry.reasoning !== undefined) {
       if (!isRecord(entry.reasoning) || typeof entry.reasoning.mandatory !== 'boolean' || typeof entry.reasoning.supportsMaxTokens !== 'boolean') return false;
       if (entry.reasoning.supportedEfforts !== undefined && (!Array.isArray(entry.reasoning.supportedEfforts) || !entry.reasoning.supportedEfforts.every(value => typeof value === 'string' && EFFORTS.some(e => e === value)))) return false;

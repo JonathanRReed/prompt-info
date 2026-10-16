@@ -58,3 +58,8 @@ test('mandatory reasoning cannot be presented as a complete zero-thinking plan',
   const entry = { ...model, reasoning: { mandatory: true, supportsMaxTokens: false } };
   expect(estimateAgentRun({ ...plan, reasoningTokens: 0 }, entry).feasible).toBe(false);
 });
+
+test('known non-reasoning models cannot fit a hidden-thinking workload', () => {
+  expect(estimateAgentRun(plan, { ...model, supportsReasoning: false }).feasible).toBe(false);
+  expect(estimateAgentRun({ ...plan, reasoningTokens: 0 }, { ...model, supportsReasoning: false }).feasible).toBe(true);
+});
