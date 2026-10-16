@@ -140,3 +140,30 @@ test('an old link with only unsupported values shows a notice', async ({ page })
   await expect(page.getByText('This older link had an unsupported runs value (runs=0). It was ignored and the default was used.', { exact: true })).toBeVisible();
   await expect(page.getByText('This older link had an unsupported cadence value (cadence=year). It was ignored and the default was used.', { exact: true })).toBeVisible();
 });
+
+test('the monthly explanation only appears when monthly planning is on', async ({ page }) => {
+  await open(page, `${OLD}&runs=10&cadence=once`);
+  await page.getByRole('tab', { name: 'Run settings', exact: true }).click();
+  await page.getByText('Optional budget planning', { exact: true }).click();
+  const explanation = page.getByText(/Repeat this entire conversation or task throughout a/);
+  await expect(page.getByLabel('Tasks in this one-time batch', { exact: true })).toBeVisible();
+  await expect(explanation).toHaveCount(0);
+  await page.getByLabel('Estimate a monthly budget', { exact: true }).check();
+  await expect(explanation).toBeVisible();
+  await expect(page.getByLabel('Completed tasks per month', { exact: true })).toBeVisible();
+  await page.getByLabel('Estimate a monthly budget', { exact: true }).uncheck();
+  await expect(explanation).toHaveCount(0);
+});
+
+test('the batch range sits on its own full-width line below the label and total', async ({ page }) => {
+  await open(page, `${OLD}&runs=1000000&cadence=once`);
+  const total = page.getByTestId('agent-batch-total');
+  const range = page.getByTestId('agent-batch-range');
+  await expect(total).toHaveText('$1,000,000.00');
+  await expect(range).toHaveText('Range $1,000,000.00 – $1,000,000.00');
+  const block = (await range.locator('..').boundingBox())!;
+  const t = (await total.boundingBox())!;
+  const r = (await range.boundingBox())!;
+  expect(r.y).toBeGreaterThanOrEqual(t.y + t.height - 1);
+  expect(r.width).toBeGreaterThan(block.width * 0.95);
+});

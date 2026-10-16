@@ -1273,10 +1273,12 @@ export default function AgentPlannerClient() {
                       hint="Each task runs once. Set 1 to price a single task."
                     />
                   )}
-                  <p>
-                    Repeat this entire conversation or task throughout a month.
-                    This does not change the cost of doing it once.
-                  </p>
+                  {recurring && (
+                    <p>
+                      Repeat this entire conversation or task throughout a
+                      month. This does not change the cost of doing it once.
+                    </p>
+                  )}
                   {recurring && (
                     <Field
                       label="Completed tasks per month"
@@ -1617,12 +1619,15 @@ export default function AgentPlannerClient() {
                 ))}
               </dl>
               {volume.kind === 'batch' && (
-                <div className="ticket-monthly">
+                <div className="ticket-monthly ticket-batch">
                   <span>{volume.label}</span>
                   <strong data-testid="agent-batch-total">
                     {formatUsd(volume.total)}
                   </strong>
-                  <small data-testid="agent-batch-range">
+                  <small
+                    className="ticket-batch-range"
+                    data-testid="agent-batch-range"
+                  >
                     {volume.range
                       ? `Range ${formatUsd(volume.range[0])} – ${formatUsd(volume.range[1])}`
                       : 'Range unavailable'}

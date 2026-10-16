@@ -2151,6 +2151,8 @@ body:has(.agent-planner) .grid-overlay,body:has(.agent-planner) .page-bg { displ
 .ticket-items dd { font-weight:600; white-space:nowrap; }
 .ticket-monthly { display:flex; gap:10px; justify-content:space-between; align-items:baseline; border-top:1px dashed #8b8b84; padding:16px 0; font-size:.75rem; }
 .ticket-monthly strong { font-size:1.05rem; }
+.ticket-batch { flex-wrap:wrap; row-gap:6px; }
+.ticket-batch-range { flex-basis:100%; font-size:.7rem; color:#555751; overflow-wrap:anywhere; }
 .ticket-note { font-size:.65rem; line-height:1.6; color:#555751; }
 .ticket-barcode { width:138px; height:26px; margin:20px auto 7px; background:repeating-linear-gradient(90deg,#202126 0 2px,transparent 2px 4px,#202126 4px 5px,transparent 5px 8px,#202126 8px 12px,transparent 12px 14px,#202126 14px 15px,transparent 15px 19px); }
 .ticket-footer { font-size:.6rem; text-align:center; color:#555751; }
