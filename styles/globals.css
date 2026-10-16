@@ -2121,3 +2121,10 @@ textarea:focus-visible {
 
 .agent-field select { width: 100%; min-width: 0; padding: .7rem; border: 1px solid var(--line-1); background: var(--surface-1); color: var(--ink-0); font: inherit; }
 .agent-receipt .agent-total { font-size: clamp(1.5rem, 2.3vw, 2.2rem); overflow-wrap: anywhere; }
+
+.agent-planner { width: 100%; min-width: 0; }
+.agent-planner > .agent-mode { margin: 0; padding: 1rem clamp(1rem,3vw,3rem); border-bottom: 1px solid var(--line-1); }
+.agent-planner > .agent-mode p { flex: 1 1 300px; color: var(--ink-1); font-size: .85rem; line-height: 1.5; }
+.agent-inputs,.agent-comparison,.agent-sensitivity,.agent-details,.agent-range>div { min-width: 0; }
+.agent-range strong { overflow-wrap: anywhere; }
+@media(max-width:900px) { .agent-workbench { grid-template-columns: minmax(0,1fr); } }

@@ -12,14 +12,14 @@ import { clampPrompt } from '../../lib/promptLimits';
 
 const INITIAL: AgentPlan = { instructionTokens: 1000, taskTokens: 2000, toolTokensPerStep: 1000, visibleOutputTokens: 500, reasoningTokens: 2000, steps: 8, keepHistory: true, cacheEnabled: false, cacheHitPct: 80 };
 type WorkMode = 'chat' | 'agent';
-const CHAT_INITIAL: AgentPlan = { ...INITIAL, instructionTokens: 200, taskTokens: 500, toolTokensPerStep: 100, visibleOutputTokens: 500, reasoningTokens: 0, steps: 1 };
+const CHAT_INITIAL: AgentPlan = { ...INITIAL, instructionTokens: 200, taskTokens: 500, toolTokensPerStep: 100, visibleOutputTokens: 500, reasoningTokens: 300, steps: 1 };
 const CHAT_PRESETS = [
-  { name: 'Quick question', description: 'One answer, with thinking off in this example.', plan: CHAT_INITIAL },
+  { name: 'Quick question', description: 'One answer with a small thinking allowance.', plan: CHAT_INITIAL },
   { name: 'Back-and-forth', description: 'Four user-led exchanges with retained history.', plan: { ...CHAT_INITIAL, steps: 4 } },
   { name: 'Document discussion', description: 'Six exchanges about supplied documents.', plan: { ...CHAT_INITIAL, taskTokens: 8000, visibleOutputTokens: 800, reasoningTokens: 1000, steps: 6 } },
 ];
 const PRESETS = [
-  { name: 'One response', description: 'A single answer from a short prompt.', plan: { ...INITIAL, instructionTokens: 200, taskTokens: 500, toolTokensPerStep: 0, visibleOutputTokens: 500, reasoningTokens: 0, steps: 1 } },
+  { name: 'One response', description: 'A single answer from a short prompt.', plan: { ...INITIAL, instructionTokens: 200, taskTokens: 500, toolTokensPerStep: 0, visibleOutputTokens: 500, reasoningTokens: 300, steps: 1 } },
   { name: 'Document assistant', description: 'Read documents and work through a few questions.', plan: { ...INITIAL, taskTokens: 8000, toolTokensPerStep: 1000, visibleOutputTokens: 800, reasoningTokens: 1000, steps: 4 } },
   { name: 'Autonomous agent', description: 'Several model calls with growing tool results.', plan: INITIAL },
 ];
@@ -116,6 +116,7 @@ export default function AgentPlannerClient() {
     return () => { cancelled = true; window.clearTimeout(timeout); worker?.terminate(); };
   }, [prompt, inputMode]);
 
+  const counting = inputMode === 'paste' && prompt !== '' && counted?.text !== prompt && !tokenError;
   const effectivePlan = useMemo(() => ({ ...plan, taskTokens: inputMode === 'estimate' ? plan.taskTokens : prompt === '' ? 0 : counted?.text === prompt ? counted.count : NaN }), [plan, inputMode, prompt, counted]);
   const models = Object.keys(catalog?.data ?? {});
   const estimates = useMemo(() => selected.map(name => {
@@ -187,9 +188,9 @@ export default function AgentPlannerClient() {
         <div className="agent-breakdown" aria-label="Cost composition">{breakdown.map(part => <div key={part.name}><div><span>{part.name}</span><b>{ready ? formatUsd(part.value) : '—'}</b></div><div className="agent-bar-track"><span className={`agent-bar ${part.className}`} style={{width:`${cost > 0 ? part.value / cost * 100 : 0}%`}} /></div></div>)}</div>
         <div className="agent-monthly"><span>{number(runs)} runs / month</span><strong data-testid="agent-monthly-total">{formatUsd(total)}</strong></div>
         {ready && Math.max(...scenarioCosts) > budget && <p role="note" className="agent-warning">The modeled range exceeds your {formatUsd(budget)} task budget. Reduce calls, retries or token allowances, or choose another model.</p>}
-        {primary?.expected.warnings.map(warning => <p role="note" className="agent-warning" key={warning}>{warning}</p>)}
-        {primary && !primary.expected.feasible && <strong className="agent-warning">This plan does not fit this model. The arithmetic is illustrative; do not treat it as a runnable recommendation.</strong>}
-        <p className="agent-note">API model usage only. Excludes tool services, storage, subscriptions, taxes and credit-purchase fees.</p>
+        {!counting && primary?.expected.warnings.map(warning => <p role="note" className="agent-warning" key={warning}>{warning}</p>)}
+        {primary && !counting && !primary.expected.feasible && <strong className="agent-warning">This plan does not fit this model. The arithmetic is illustrative; do not treat it as a runnable recommendation.</strong>}
+        <p className="agent-note">{counting ? "Counting your prompt locally… " : ""}API model usage only. Excludes tool services, storage, subscriptions, taxes and credit-purchase fees.</p>
       </aside>
     </div>
     <section id="agent-comparison" className="agent-comparison"><div className="agent-section-heading"><div><p className="data-label">Same workload, different models</p><h2>Compare the cost before you choose.</h2><p>Current catalog prices. Lower cost does not establish better quality or a higher success rate.</p></div><button type="button" disabled={!catalog} onClick={() => { const next=chooseDefaultModels(models,catalog!.data,6); setSelected(next); setActive(next[0]??''); }}>Compare current model families</button></div>

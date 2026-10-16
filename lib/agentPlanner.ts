@@ -66,6 +66,7 @@ export function estimateAgentRun(plan: AgentPlan, model: PricingEntry): AgentEst
     || !Number.isInteger(plan.steps) || plan.steps < 1 || plan.steps > 200
     || !rate(plan.cacheHitPct) || plan.cacheHitPct > 100) return invalid('Enter valid token counts, 1–200 steps and a cache-hit percentage from 0 to 100.');
   if (plan.retries !== undefined && (!Number.isInteger(plan.retries) || plan.retries < 0 || plan.retries > 5)) return invalid('Use 0–5 full-run retries.');
+  if ((plan.reasoningLow !== undefined && (!count(plan.reasoningLow) || plan.reasoningLow > plan.reasoningTokens)) || (plan.reasoningHigh !== undefined && (!count(plan.reasoningHigh) || plan.reasoningHigh < plan.reasoningTokens))) return invalid('Thinking scenarios must satisfy low ≤ base ≤ high.');
   if (!model?.pricing || !rate(model.pricing.input) || !rate(model.pricing.output)) return invalid('This model does not have usable published input and output rates.');
   if (model.pricing.longContextTiers !== undefined && !Array.isArray(model.pricing.longContextTiers)) return invalid('Conditional pricing data is malformed. Reload the catalog before estimating.');
   const warn = (message: string, blocking = false) => {

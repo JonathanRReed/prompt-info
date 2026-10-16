@@ -52,6 +52,9 @@ test('the planner has no page-wide overflow at the configured viewport', async (
   await page.goto('/agent-planner/');
   await expect(page.getByTestId('agent-run-total')).not.toHaveText('Unavailable');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  const bounds = await page.locator('#main-content').boundingBox();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
   await page.getByRole('button', { name: 'Compare current model families', exact: true }).click();
   await expect(page.getByRole('table').first()).toContainText('GPT-6.1 Sol');
 });
