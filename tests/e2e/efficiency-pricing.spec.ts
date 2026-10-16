@@ -7,9 +7,12 @@ test('missing model rates stay uncalculated and free rates remain usable', async
     json: {
       schemaVersion: 1,
       source: 'artificial-analysis-supabase-cache',
+      // The client now validates the same catalog envelope the API always sends.
+      sourceUrl: 'https://example.supabase.co/rest/v1/aa_models',
       retrievedAt: '2026-09-02T12:00:00.000Z',
       freshness: 'cached',
       isFallback: true,
+      fallbackReason: 'Artificial Analysis API is not configured. Using the project benchmark cache.',
       data: [
         { ...base, id: 'partial', slug: 'partial', name: 'Partial price model', displayName: 'Partial price model', inputPerMillion: null, outputPerMillion: 3 },
         { ...base, id: 'free', slug: 'free', name: 'Free price model', displayName: 'Free price model', inputPerMillion: 0, outputPerMillion: 0 },
