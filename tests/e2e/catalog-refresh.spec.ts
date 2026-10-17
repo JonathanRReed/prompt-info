@@ -257,8 +257,82 @@ test('a model returning when six are already selected is not added or labeled ab
   await expectSelected(page, PICKS.slice(0, 5));
   await expect(missing(page)).toContainText(PICKS[5]);
   await addModel(page, [...PICKS.slice(0, 5), EXTRA]);
+  await expect(page.getByText(`Removed from your choices to stay within 6 models: ${PICKS[5]}.`, { exact: true })).toBeVisible();
+  await expect(missing(page)).toHaveCount(0);
   setCatalog(entries([...PICKS, EXTRA]));
   await refresh(page);
   await expectSelected(page, [...PICKS.slice(0, 5), EXTRA]);
+  await expect(missing(page)).toHaveCount(0);
+});
+
+// Saved and shared plans record the chosen models, never the stand-ins shown
+// while those models are unavailable.
+
+async function copyPlanLink(page: Page) {
+  await page.getByRole('button', { name: 'Copy a link to this plan', exact: true }).click();
+  await expect(page.getByText('Copied a restorable link. Prompt text was excluded.', { exact: true })).toBeVisible();
+  return page.evaluate(() => navigator.clipboard.readText());
+}
+
+test('a link copied during the fallback reopens with the chosen models, not the stand-ins', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-specific here');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const setCatalog = await mockCatalog(page, entries([...PICKS, ...SPARES]));
+  await page.goto(`/${SIX_PLAN}`);
+  await expectSelected(page, PICKS);
+  setCatalog(entries(SPARES));
+  await refresh(page);
+  await expectStandIns(page, SPARES);
+  const link = await copyPlanLink(page);
+  // Reopened while the models are still unavailable: stand-ins again, and the notice.
+  await page.goto('about:blank');
+  await page.goto(link);
+  await expectStandIns(page, SPARES);
+  await expect(missing(page)).toContainText(PICKS.join(', '));
+  // Reopened once they are back.
+  setCatalog(entries([...PICKS, ...SPARES]));
+  await page.goto('about:blank');
+  await page.goto(link);
+  await expectSelected(page, PICKS);
+  await expect(missing(page)).toHaveCount(0);
+});
+
+test('leaving and returning to the planner during the fallback keeps the chosen models', async ({ page }) => {
+  const setCatalog = await mockCatalog(page, entries([...PICKS, ...SPARES]));
+  await page.goto(`/${SIX_PLAN}`);
+  await expectSelected(page, PICKS);
+  setCatalog(entries(SPARES));
+  await refresh(page);
+  await expectStandIns(page, SPARES);
+  // In-app navigation keeps the saved scenario; the planner remounts from it.
+  await page.locator('a[href="/token-efficiency/"]:visible').first().click();
+  await expect(page).toHaveURL(/\/token-efficiency\/$/);
+  await page.locator('a[href="/"]:visible').first().click();
+  await expect(page).toHaveURL(/\/$/);
+  await expectStandIns(page, SPARES);
+  await expect(missing(page)).toContainText(PICKS.join(', '));
+  setCatalog(entries([...PICKS, ...SPARES]));
+  await refresh(page);
+  await expectSelected(page, PICKS);
+});
+
+test('an edit during the fallback names the choices it gives up and the link keeps the rest', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-specific here');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const setCatalog = await mockCatalog(page, entries([...PICKS, ...SPARES]));
+  await page.goto(`/${SIX_PLAN}`);
+  setCatalog(entries(SPARES));
+  await refresh(page);
+  await page.getByRole('tab', { name: 'Compare models', exact: true }).click();
+  const standIns = await shown(page);
+  await page.getByRole('button', { name: `Remove ${standIns[3]}`, exact: true }).click();
+  await expect(page.getByText(`Removed from your choices to stay within 6 models: ${PICKS.slice(3).join(', ')}.`, { exact: true })).toBeVisible();
+  await expect(missing(page)).toContainText(PICKS.slice(0, 3).join(', '));
+  await expect(missing(page)).not.toContainText(PICKS[3]);
+  const link = await copyPlanLink(page);
+  setCatalog(entries([...PICKS, ...SPARES]));
+  await page.goto('about:blank');
+  await page.goto(link);
+  await expectSelected(page, [...standIns.slice(0, 3), ...PICKS.slice(0, 3)]);
   await expect(missing(page)).toHaveCount(0);
 });

@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test';
-import { chooseSelection, reconcileSelection, type ModelSelection } from './modelSelection';
+import { buildAgentPlanLink, readAgentPlanHash, readLegacyAgentPlan, type SharedAgentPlan } from './agentPlanLink';
+import { chooseSelection, reconcileSelection, savedModels, type ModelSelection } from './modelSelection';
+
+const PLAN: SharedAgentPlan = {
+  version: 1,
+  plan: { instructionTokens: 300, taskTokens: 200, toolTokensPerStep: 0, visibleOutputTokens: 100, reasoningTokens: 0, steps: 1, keepHistory: false, cacheEnabled: false, cacheHitPct: 0 },
+  models: [], runs: 1, variance: 30,
+};
 
 const catalog = (...names: string[]) => (name: string) => (names.includes(name) ? name : null);
 const SIX = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -37,10 +44,10 @@ describe('reconcileSelection', () => {
     expect(current).toEqual({ chosen: SIX, selected: SIX, active: 'A', missing: [] });
   });
 
-  test('a user edit during the fallback adopts the shown models; returns then fill only up to six', () => {
+  test('a user edit during the fallback adopts the shown models and names the choices that no longer fit', () => {
     const gone = refresh(start(SIX, 'A', ...SIX, ...DEFAULTS, 'V'), 'V', ...DEFAULTS);
     const edited = chooseSelection(gone, [...gone.selected, 'V'], 'X');
-    expect(edited).toEqual({ chosen: [...DEFAULTS, 'V', ...SIX], selected: [...DEFAULTS, 'V'], active: 'X', missing: SIX });
+    expect(edited).toEqual({ chosen: [...DEFAULTS, 'V', 'A'], selected: [...DEFAULTS, 'V'], active: 'X', missing: ['A'], dropped: ['B', 'C', 'D', 'E', 'F'] });
     const back = refresh(edited, ...SIX, ...DEFAULTS, 'V');
     expect(back).toEqual({ chosen: [...DEFAULTS, 'V', 'A'], selected: [...DEFAULTS, 'V', 'A'], active: 'X', missing: [] });
   });
@@ -48,13 +55,21 @@ describe('reconcileSelection', () => {
   test('pricing a stand-in makes it a choice that stays when chosen models return', () => {
     const gone = refresh(start(['A'], 'A', 'A', 'W', 'X'), 'W', 'X');
     const picked = chooseSelection(gone, gone.selected, 'X');
+    expect(picked.dropped).toEqual([]);
     expect(refresh(picked, 'A', 'W', 'X')).toEqual({ chosen: ['W', 'X', 'A'], selected: ['W', 'X', 'A'], active: 'X', missing: [] });
   });
 
-  test('at capacity a returning model is dropped, not reported absent', () => {
-    const atCap = chooseSelection(refresh(start(['G', 'A'], 'A', 'G', 'A'), 'A'), ['A', 'B', 'C', 'D', 'E', 'F'], 'A');
-    expect(atCap.missing).toEqual(['G']);
+  test('filling the last slot gives up a missing choice by name; it is never reported absent later', () => {
+    const waiting = refresh(start(['G', 'A'], 'A', 'G', 'A'), 'A');
+    expect(waiting.missing).toEqual(['G']);
+    const atCap = chooseSelection(waiting, SIX, 'A');
+    expect(atCap).toEqual({ chosen: SIX, selected: SIX, active: 'A', missing: [], dropped: ['G'] });
     expect(refresh(atCap, 'G', ...SIX)).toEqual({ chosen: SIX, selected: SIX, active: 'A', missing: [] });
+  });
+
+  test('a missing choice that still fits stays chosen through an edit', () => {
+    const waiting = refresh(start(['G', 'A'], 'A', 'G', 'A', 'B'), 'A', 'B');
+    expect(chooseSelection(waiting, ['A', 'B'], 'B')).toEqual({ chosen: ['A', 'B', 'G'], selected: ['A', 'B'], active: 'B', missing: ['G'], dropped: [] });
   });
 
   test('a link with more than six models shows the first six and labels none of the rest absent', () => {
@@ -77,6 +92,35 @@ describe('reconcileSelection', () => {
 describe('chooseSelection', () => {
   test('caps the shown models at six and keeps the priced model among them', () => {
     const current = start(['A'], 'A', 'A');
-    expect(chooseSelection(current, ['G', ...SIX], 'F')).toEqual({ chosen: ['G', 'A', 'B', 'C', 'D', 'E'], selected: ['G', 'A', 'B', 'C', 'D', 'E'], active: 'G', missing: [] });
+    expect(chooseSelection(current, ['G', ...SIX], 'F')).toEqual({ chosen: ['G', 'A', 'B', 'C', 'D', 'E'], selected: ['G', 'A', 'B', 'C', 'D', 'E'], active: 'G', missing: [], dropped: ['F'] });
+  });
+});
+
+describe('savedModels', () => {
+  test('a plan saved during the fallback records the choices, not the stand-ins', () => {
+    const gone = refresh(start(SIX, 'A', ...SIX, ...DEFAULTS), ...DEFAULTS);
+    expect(gone.selected).toEqual(DEFAULTS);
+    expect(savedModels(gone)).toEqual(SIX);
+  });
+
+  test('with no choice yet the shown models are recorded', () => {
+    const fresh = reconcileSelection({ chosen: [], active: '' }, catalog(...DEFAULTS), DEFAULTS);
+    expect(savedModels(fresh)).toEqual(DEFAULTS);
+  });
+
+  test('a saved plan read back restores the same choices and stand-ins', () => {
+    const gone = refresh(start(['A', 'B'], 'A', 'A', 'B', 'W'), 'W');
+    const link = buildAgentPlanLink('https://example.test', { ...PLAN, models: savedModels(gone) })!;
+    const read = readAgentPlanHash(new URL(link).hash)!;
+    expect(read.models).toEqual(['A', 'B']);
+    expect(refresh({ ...gone, chosen: read.models }, 'W')).toEqual(gone);
+  });
+
+  test('older saved plans and links keep importing their models as choices', () => {
+    // A version 1 plan from before this change, without mode or budget fields.
+    const old = readAgentPlanHash(`#${new URLSearchParams({ plan: JSON.stringify({ version: 1, plan: PLAN.plan, models: ['A', 'test/b'], runs: 1, variance: 30 }) })}`)!;
+    expect(old.models).toEqual(['A', 'test/b']);
+    expect(reconcileSelection({ chosen: old.models, active: '' }, catalog('A', 'W'), ['W'])).toEqual({ chosen: ['A', 'test/b'], selected: ['A'], active: 'A', missing: ['test/b'] });
+    expect(readLegacyAgentPlan('?models=a,b&tokens=500')!.models).toEqual(['a', 'b']);
   });
 });
