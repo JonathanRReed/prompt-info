@@ -105,3 +105,83 @@ export function findRequestedModel(requested: string | null, pricing: PricingMap
   });
   return byName ?? null;
 }
+
+/** The comparison holds at most this many models, however they are added. */
+export const MAX_SELECTED_MODELS = 6;
+
+export type ModelSelection = {
+  /**
+   * The models the user or a link chose, in order, as named, including ones
+   * the catalog lacks. At most MAX_SELECTED_MODELS, so every choice fits in
+   * the comparison and in a saved plan.
+   */
+  chosen: string[];
+  /** The models shown and priced: the available chosen ones, or stand-in defaults when none is available. */
+  selected: string[];
+  /** The model priced in the receipt; always one of `selected`, or '' when none. */
+  active: string;
+  /** Chosen models the current catalog lacks, as named. */
+  missing: string[];
+};
+
+/**
+ * Show a selection against a (possibly refreshed) catalog. Available chosen
+ * models are shown in chosen order; unavailable ones are `missing`. Defaults
+ * stand in only while no chosen model is available and are never added to
+ * `chosen`, so they leave as soon as a chosen model returns.
+ */
+export function reconcileSelection(
+  current: Pick<ModelSelection, 'chosen' | 'active'>,
+  resolve: (name: string) => string | null,
+  defaults: string[],
+): ModelSelection {
+  const chosen: string[] = [];
+  const shown: string[] = [];
+  const missing: string[] = [];
+  for (const name of current.chosen) {
+    if (chosen.length === MAX_SELECTED_MODELS) break;
+    const resolved = resolve(name);
+    const entry = resolved ?? name;
+    if (chosen.includes(entry)) continue;
+    chosen.push(entry);
+    (resolved ? shown : missing).push(entry);
+  }
+  const selected = shown.length
+    ? shown
+    : defaults.filter((name) => resolve(name) === name).slice(0, MAX_SELECTED_MODELS);
+  const active = selected.includes(current.active) ? current.active : (selected[0] ?? '');
+  return { chosen, selected, active, missing };
+}
+
+/**
+ * Apply a user edit (adding, removing, replacing or pricing a model). The shown
+ * list, stand-ins included, becomes the user's choice. Chosen models that are
+ * still missing stay chosen after it while they fit within the limit; the
+ * ones that no longer fit are returned as `dropped` so the page can say so.
+ */
+export function chooseSelection(
+  current: ModelSelection,
+  selected: string[],
+  active: string,
+): ModelSelection & { dropped: string[] } {
+  const unique = [...new Set(selected)];
+  const shown = unique.slice(0, MAX_SELECTED_MODELS);
+  const waiting = current.missing.filter((name) => !shown.includes(name));
+  const room = MAX_SELECTED_MODELS - shown.length;
+  return {
+    chosen: [...shown, ...waiting.slice(0, room)],
+    selected: shown,
+    active: shown.includes(active) ? active : (shown[0] ?? ''),
+    missing: waiting.slice(0, room),
+    dropped: [...unique.slice(MAX_SELECTED_MODELS), ...waiting.slice(room)],
+  };
+}
+
+/**
+ * The models a saved or shared plan records: the user's choices, including
+ * ones the catalog currently lacks, never the stand-ins shown in their place.
+ * With no choice yet, the shown models are recorded so a link stays complete.
+ */
+export function savedModels(selection: Pick<ModelSelection, 'chosen' | 'selected'>): string[] {
+  return selection.chosen.length ? selection.chosen : selection.selected;
+}
