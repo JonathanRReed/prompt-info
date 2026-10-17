@@ -24,6 +24,7 @@ import {
   readAgentPlanHash,
   readLegacyAgentPlan,
   readLegacyNotices,
+  type SharedAgentPlan,
 } from '../../lib/agentPlanLink';
 import {
   REASONING_SCENARIOS,
@@ -164,18 +165,74 @@ export default function AgentPlannerClient() {
   const [tokenError, setTokenError] = useState('');
   const [copied, setCopied] = useState('');
   const [missingModels, setMissingModels] = useState<string[]>([]);
+  // The link state currently applied. `key` names its source so a section
+  // anchor (which changes the hash but not the source) never re-imports.
+  const applied = useRef<{ key: string; shared: SharedAgentPlan | null }>({
+    key: '',
+    shared: null,
+  });
+  const pricingData = useRef<PricingCatalogResponse['data'] | null>(null);
+  // `keepCurrent` is a price refresh: the user's selection stands while its
+  // models still exist; only an import or the first price load chooses models.
+  function selectModels(
+    shared: SharedAgentPlan | null,
+    data: PricingCatalogResponse['data'],
+    keepCurrent = false,
+  ) {
+    const names = Object.keys(data);
+    const defaults = chooseDefaultModels(names, data, 4);
+    const requested = findRequestedModel(
+      new URLSearchParams(window.location.search).get('model'),
+      data,
+    );
+    const linked = (shared?.models ?? [])
+      .map((name) => findRequestedModel(name, data))
+      .filter((name): name is string => Boolean(name));
+    if (!keepCurrent)
+      setMissingModels(
+        (shared?.models ?? []).filter(
+          (name) => !findRequestedModel(name, data),
+        ),
+      );
+    const next = linked.length
+      ? linked
+      : requested
+        ? [requested, ...defaults.filter((name) => name !== requested)].slice(
+            0,
+            4,
+          )
+        : defaults;
+    const keep = keepCurrent || (!shared && !requested);
+    setSelected((current) => {
+      const known = current.filter((name) => names.includes(name));
+      return keep && known.length ? known : next;
+    });
+    setActive((current) =>
+      keep && names.includes(current) ? current : (next[0] ?? ''),
+    );
+  }
   useEffect(() => {
-    function restore() {
-      const shared =
-        readAgentPlanHash(window.location.hash) ??
-        readLegacyAgentPlan(window.location.search);
-      if (!shared) {
-        // Only a valid encoded plan in the hash replaces the query. Any other
-        // hash (such as the #agent-price receipt anchor) leaves the legacy
-        // query's notices in place.
-        setImportNotices(readLegacyNotices(window.location.search));
-        return;
-      }
+    // Each history entry records which plan source it showed, in
+    // history.state (Next.js merges its own router state into it). Traversing
+    // back or forward to an entry restores that source; a new anchor entry
+    // inherits the current one.
+    const SOURCE = 'promptInfoPlanSource';
+    const entrySource = (): string | undefined =>
+      window.history.state?.[SOURCE];
+    const stampEntry = (key: string) => {
+      if (entrySource() === key) return;
+      window.history.replaceState(
+        { ...(window.history.state ?? {}), [SOURCE]: key },
+        '',
+        window.location.href,
+      );
+    };
+    const sharedFor = (key: string) =>
+      key.startsWith('hash:')
+        ? readAgentPlanHash(key.slice('hash:'.length))
+        : readLegacyAgentPlan(key.slice('query:'.length));
+    function importShared(key: string, shared: SharedAgentPlan) {
+      applied.current = { key, shared };
       setPresetId('custom');
       setPlan(shared.plan);
       setMode(shared.mode ?? 'agent');
@@ -188,12 +245,47 @@ export default function AgentPlannerClient() {
       setVariance(shared.variance);
       setBudget(shared.budget ?? 1);
       setInputMode('estimate');
-      setSelected(shared.models);
-      setActive(shared.models[0] ?? '');
+      if (pricingData.current) selectModels(shared, pricingData.current);
+      else {
+        setSelected(shared.models);
+        setActive(shared.models[0] ?? '');
+      }
     }
-    restore();
-    window.addEventListener('hashchange', restore);
-    return () => window.removeEventListener('hashchange', restore);
+    const { hash, search } = window.location;
+    const initial = readAgentPlanHash(hash);
+    const legacy = readLegacyAgentPlan(search);
+    if (initial) importShared(`hash:${hash}`, initial);
+    else if (legacy) importShared(`query:${search}`, legacy);
+    else {
+      // Only unsupported old values: nothing is applied, so only notices show.
+      applied.current = { key: `query:${search}`, shared: null };
+      setImportNotices(readLegacyNotices(search));
+    }
+    stampEntry(applied.current.key);
+
+    // A stamped entry is history traversal: restore the source it showed. An
+    // unstamped entry is new: a valid encoded plan (or a bare return to the
+    // old query) imports; any other hash is a section anchor and keeps the
+    // current state.
+    function onHashChange() {
+      const recorded = entrySource();
+      if (recorded !== undefined) {
+        const shared = sharedFor(recorded);
+        if (recorded !== applied.current.key && shared)
+          importShared(recorded, shared);
+        return;
+      }
+      const { hash: nextHash, search: nextSearch } = window.location;
+      const fromHash = readAgentPlanHash(nextHash);
+      const fromQuery =
+        nextHash === '' ? readLegacyAgentPlan(nextSearch) : null;
+      const key = fromHash ? `hash:${nextHash}` : `query:${nextSearch}`;
+      const next = fromHash ?? fromQuery;
+      if (next && key !== applied.current.key) importShared(key, next);
+      stampEntry(applied.current.key);
+    }
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
   const update = (key: keyof AgentPlan, value: number | boolean) => {
     setPresetId('custom');
@@ -215,44 +307,12 @@ export default function AgentPlannerClient() {
       .then((result) => {
         if (cancelled) return;
         setCatalog(result);
-        const names = Object.keys(result.data);
-        const defaults = chooseDefaultModels(names, result.data, 4);
-        const requested = findRequestedModel(
-          new URLSearchParams(window.location.search).get('model'),
+        const firstLoad = pricingData.current === null;
+        pricingData.current = result.data;
+        selectModels(
+          firstLoad ? applied.current.shared : null,
           result.data,
-        );
-        const shared =
-          readAgentPlanHash(window.location.hash) ??
-          readLegacyAgentPlan(window.location.search);
-        const linked = (shared?.models ?? [])
-          .map((name) => findRequestedModel(name, result.data))
-          .filter((name): name is string => Boolean(name));
-        setMissingModels(
-          (shared?.models ?? []).filter(
-            (name) => !findRequestedModel(name, result.data),
-          ),
-        );
-        const next = linked.length
-          ? linked
-          : requested
-            ? [
-                requested,
-                ...defaults.filter((name) => name !== requested),
-              ].slice(0, 4)
-            : defaults;
-        setSelected((current) =>
-          shared || requested
-            ? next
-            : current.filter((name) => names.includes(name)).length
-              ? current.filter((name) => names.includes(name))
-              : next,
-        );
-        setActive((current) =>
-          shared || requested
-            ? (next[0] ?? '')
-            : names.includes(current)
-              ? current
-              : (next[0] ?? ''),
+          !firstLoad,
         );
       })
       .catch((reason) => {
