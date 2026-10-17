@@ -145,3 +145,72 @@ test('refreshing prices after the receipt anchor keeps the encoded plan models',
   await expect(page.getByRole('button', { name: 'Refresh prices', exact: true })).toBeEnabled();
   await expect(total(page)).toHaveText('$2.00');
 });
+
+async function followSkipLink(page: Page) {
+  const skip = page.getByRole('link', { name: 'Skip to content', exact: true });
+  await skip.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#main-content$/);
+}
+
+for (const [name, enterAnchor, anchorUrl] of [
+  ['skip link', (page: Page) => followSkipLink(page), /#main-content$/],
+  ['receipt anchor', (page: Page, isMobile: boolean) => openReceiptAnchor(page, isMobile), /#agent-price$/],
+] as const) {
+  test(`back to the ${name} entry of plan A after opening plan B restores plan A`, async ({ page, isMobile }) => {
+    await mockPricing(page);
+    await page.goto(`/${UNSUPPORTED}${PLAN_A}`);
+    await expect(total(page)).toHaveText('$1.00');
+    // Traversal must stay in the same document, not reload and re-read the URL.
+    await page.evaluate(() => { (window as unknown as { sameDocument: boolean }).sameDocument = true; });
+    await enterAnchor(page, isMobile);
+    await expect(total(page)).toHaveText('$1.00');
+    await navigateHash(page, PLAN_B);
+    await expect(total(page)).toHaveText('$2.00');
+    await page.goBack();
+    await expect(page).toHaveURL(anchorUrl);
+    await expect(total(page)).toHaveText('$1.00');
+    await expect(page.getByText(RUNS_NOTICE, { exact: true })).toHaveCount(0);
+    await page.goForward();
+    await expect(total(page)).toHaveText('$2.00');
+    await page.goBack();
+    await page.goBack();
+    await expect(total(page)).toHaveText('$1.00');
+    await expect(page.getByText(RUNS_NOTICE, { exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => (window as unknown as { sameDocument?: boolean }).sameDocument)).toBe(true);
+  });
+}
+
+test('edits survive back to an anchor entry of the same plan, and a different plan entry restores its own plan', async ({ page }) => {
+  await mockPricing(page);
+  await page.goto(`/${PLAN_A}`);
+  await expect(total(page)).toHaveText('$1.00');
+  await page.getByText('Customize context assumptions', { exact: true }).click();
+  await page.getByLabel('Task and document tokens', { exact: true }).fill('5200');
+  const edited = (await total(page).textContent())!;
+  expect(edited).not.toBe('$1.00');
+  await followSkipLink(page);
+  await page.evaluate(() => { window.location.hash = 'agent-price'; });
+  await page.goBack();
+  await expect(page).toHaveURL(/#main-content$/);
+  await expect(total(page)).toHaveText(edited);
+  await navigateHash(page, PLAN_B);
+  await expect(total(page)).toHaveText('$2.00');
+  await page.goBack();
+  await expect(page).toHaveURL(/#main-content$/);
+  await expect(total(page)).toHaveText('$1.00');
+});
+
+test('refreshing prices keeps a model chosen after importing a link', async ({ page }) => {
+  await mockPricing(page);
+  await page.goto(`/${PLAN_A}`);
+  await expect(total(page)).toHaveText('$1.00');
+  await page.getByRole('combobox', { name: 'Model to price', exact: true }).fill('Other');
+  await page.getByRole('option', { name: /Test Lab: Other/ }).first().click();
+  // 500 in at $2/1K + 100 out at $10/1K on Other.
+  await expect(total(page)).toHaveText('$2.00');
+  await page.getByText('Prices, sources and calculation details', { exact: true }).click();
+  await page.getByRole('button', { name: 'Refresh prices', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Refresh prices', exact: true })).toBeEnabled();
+  await expect(total(page)).toHaveText('$2.00');
+});
