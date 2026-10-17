@@ -106,37 +106,70 @@ export function findRequestedModel(requested: string | null, pricing: PricingMap
   return byName ?? null;
 }
 
+/** The comparison holds at most this many models, however they are added. */
+export const MAX_SELECTED_MODELS = 6;
+
 export type ModelSelection = {
-  /** Catalog names in the comparison, in order. */
+  /** The models the user or a link chose, in order, as named; may include ones the catalog lacks. */
+  chosen: string[];
+  /** The models shown and priced: the available chosen ones, or stand-in defaults when none is available. */
   selected: string[];
   /** The model priced in the receipt; always one of `selected`, or '' when none. */
   active: string;
-  /** Models the user or link chose that the current catalog lacks, as originally named. */
+  /** Chosen models the current catalog lacks, as named. */
   missing: string[];
 };
 
 /**
- * Re-apply a selection to a refreshed catalog. Models the user chose stay in
- * order while available; ones that disappear move to `missing`, and ones that
- * reappear come back from `missing`. Defaults fill in only when nothing chosen
- * is available, and `active` is always kept inside the resulting selection.
+ * Show a selection against a (possibly refreshed) catalog. Available chosen
+ * models are shown in chosen order up to the cap; chosen models past the cap
+ * are dropped rather than reported absent. Defaults stand in only while no
+ * chosen model is available and are never added to `chosen`, so they leave as
+ * soon as a chosen model returns.
  */
 export function reconcileSelection(
-  current: ModelSelection,
+  current: Pick<ModelSelection, 'chosen' | 'active'>,
   resolve: (name: string) => string | null,
   defaults: string[],
 ): ModelSelection {
-  const selected: string[] = [];
+  const shown: string[] = [];
+  const chosen: string[] = [];
   const missing: string[] = [];
-  for (const name of [...current.selected, ...current.missing]) {
+  for (const name of current.chosen) {
     const resolved = resolve(name);
     if (!resolved) {
-      if (!missing.includes(name)) missing.push(name);
-    } else if (!selected.includes(resolved)) {
-      selected.push(resolved);
+      if (!missing.includes(name)) {
+        missing.push(name);
+        chosen.push(name);
+      }
+    } else if (!shown.includes(resolved) && shown.length < MAX_SELECTED_MODELS) {
+      shown.push(resolved);
+      chosen.push(resolved);
     }
   }
-  const kept = selected.length ? selected : defaults.filter((name) => resolve(name) === name);
-  const active = kept.includes(current.active) ? current.active : (kept[0] ?? '');
-  return { selected: kept, active, missing };
+  const selected = shown.length
+    ? shown
+    : defaults.filter((name) => resolve(name) === name).slice(0, MAX_SELECTED_MODELS);
+  const active = selected.includes(current.active) ? current.active : (selected[0] ?? '');
+  return { chosen, selected, active, missing };
+}
+
+/**
+ * Apply a user edit (adding, removing, replacing or pricing a model). The shown
+ * list, stand-ins included, becomes the user's choice; chosen models that are
+ * still missing stay chosen after it and return when the catalog has them and
+ * the cap allows.
+ */
+export function chooseSelection(
+  current: ModelSelection,
+  selected: string[],
+  active: string,
+): ModelSelection {
+  const shown = [...new Set(selected)].slice(0, MAX_SELECTED_MODELS);
+  return {
+    chosen: [...shown, ...current.missing.filter((name) => !shown.includes(name))],
+    selected: shown,
+    active: shown.includes(active) ? active : (shown[0] ?? ''),
+    missing: current.missing,
+  };
 }

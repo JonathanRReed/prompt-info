@@ -12,6 +12,8 @@ import {
 import {
   chooseDefaultModels,
   findRequestedModel,
+  chooseSelection,
+  MAX_SELECTED_MODELS,
   reconcileSelection,
   type ModelSelection,
 } from '../../lib/modelSelection';
@@ -167,6 +169,10 @@ export default function AgentPlannerClient() {
   const [tokenError, setTokenError] = useState('');
   const [copied, setCopied] = useState('');
   const [missingModels, setMissingModels] = useState<string[]>([]);
+  // The models the user or a link chose; `selected` may show stand-ins instead.
+  const [chosenModels, setChosenModels] = useState<string[]>(
+    persisted?.planner?.models ?? [],
+  );
   // The link state currently applied. `key` names its source so a section
   // anchor (which changes the hash but not the source) never re-imports.
   const applied = useRef<{ key: string; shared: SharedAgentPlan | null }>({
@@ -176,13 +182,30 @@ export default function AgentPlannerClient() {
   const pricingData = useRef<PricingCatalogResponse['data'] | null>(null);
   // The latest selection, read when a price refresh re-applies it.
   const selection = useRef<ModelSelection>({
+    chosen: chosenModels,
     selected,
     active,
     missing: missingModels,
   });
   useEffect(() => {
-    selection.current = { selected, active, missing: missingModels };
-  }, [selected, active, missingModels]);
+    selection.current = {
+      chosen: chosenModels,
+      selected,
+      active,
+      missing: missingModels,
+    };
+  }, [chosenModels, selected, active, missingModels]);
+  function showSelection(next: ModelSelection) {
+    selection.current = next;
+    setChosenModels(next.chosen);
+    setSelected(next.selected);
+    setActive(next.active);
+    setMissingModels(next.missing);
+  }
+  // Every user change to the comparison or the priced model goes through here.
+  function editSelection(nextSelected: string[], nextActive: string) {
+    showSelection(chooseSelection(selection.current, nextSelected, nextActive));
+  }
   // An import (or the first price load for a link or ?model=) chooses models.
   // Anything else, including every price refresh (`keepCurrent`), re-applies
   // the current selection to the new catalog.
@@ -193,6 +216,7 @@ export default function AgentPlannerClient() {
   ) {
     const applySelection = (next: ModelSelection) => {
       selection.current = next;
+      setChosenModels(next.chosen);
       setSelected(next.selected);
       setActive(next.active);
       setMissingModels(next.missing);
@@ -209,22 +233,17 @@ export default function AgentPlannerClient() {
       applySelection(reconcileSelection(selection.current, resolve, defaults));
       return;
     }
-    const linked = (shared?.models ?? [])
-      .map(resolve)
-      .filter((name): name is string => Boolean(name));
-    const next = linked.length
-      ? [...new Set(linked)]
+    // A link's models are its choices; with only ?model=, the requested model
+    // and the defaults shown beside it are.
+    const chosen = shared?.models.length
+      ? shared.models
       : requested
         ? [requested, ...defaults.filter((name) => name !== requested)].slice(
             0,
             4,
           )
-        : defaults;
-    applySelection({
-      selected: next,
-      active: next[0] ?? '',
-      missing: (shared?.models ?? []).filter((name) => !resolve(name)),
-    });
+        : [];
+    applySelection(reconcileSelection({ chosen, active: '' }, resolve, defaults));
   }
   useEffect(() => {
     // Each history entry records which plan source it showed, in
@@ -262,8 +281,10 @@ export default function AgentPlannerClient() {
       setInputMode('estimate');
       if (pricingData.current) selectModels(shared, pricingData.current);
       else {
+        setChosenModels(shared.models);
         setSelected(shared.models);
         setActive(shared.models[0] ?? '');
+        setMissingModels([]);
       }
     }
     const { hash, search } = window.location;
@@ -762,11 +783,9 @@ export default function AgentPlannerClient() {
                 pricing={catalog?.data}
                 loading={loading}
                 onChange={(name) => {
-                  setActive(name);
-                  setSelected((current) =>
-                    current.includes(name)
-                      ? current
-                      : [name, ...current].slice(0, 6),
+                  editSelection(
+                    selected.includes(name) ? selected : [name, ...selected],
+                    name,
                   );
                 }}
               />
@@ -1409,8 +1428,7 @@ export default function AgentPlannerClient() {
                   disabled={!catalog}
                   onClick={() => {
                     const next = chooseDefaultModels(models, catalog!.data, 6);
-                    setSelected(next);
-                    setActive(next[0] ?? '');
+                    editSelection(next, next[0] ?? '');
                   }}
                 >
                   Compare current model families
@@ -1431,8 +1449,10 @@ export default function AgentPlannerClient() {
                             const rest = selected.filter(
                               (item) => item !== name,
                             );
-                            setSelected(rest);
-                            if (active === name) setActive(rest[0] ?? '');
+                            editSelection(
+                              rest,
+                              active === name ? (rest[0] ?? '') : active,
+                            );
                           }}
                         >
                           Remove
@@ -1448,12 +1468,12 @@ export default function AgentPlannerClient() {
                         pricing={catalog?.data}
                         loading={loading}
                         onChange={(value) => {
-                          setSelected((current) =>
-                            current.map((item, i) =>
+                          editSelection(
+                            selected.map((item, i) =>
                               i === index ? value : item,
                             ),
+                            active === name ? value : active,
                           );
-                          if (active === name) setActive(value);
                         }}
                       />
                     </div>
@@ -1463,13 +1483,13 @@ export default function AgentPlannerClient() {
                   className="planner-button"
                   type="button"
                   disabled={
-                    selected.length >= 6 || models.length <= selected.length
+                    selected.length >= MAX_SELECTED_MODELS || models.length <= selected.length
                   }
                   onClick={() => {
                     const next = models.find(
                       (name) => !selected.includes(name),
                     );
-                    if (next) setSelected((current) => [...current, next]);
+                    if (next) editSelection([...selected, next], active);
                   }}
                 >
                   Add model
@@ -1498,7 +1518,7 @@ export default function AgentPlannerClient() {
                           <th>
                             <button
                               type="button"
-                              onClick={() => setActive(row.name)}
+                              onClick={() => editSelection(selected, row.name)}
                             >
                               {row.name}
                             </button>

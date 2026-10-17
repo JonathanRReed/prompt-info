@@ -57,6 +57,15 @@ async function addModel(page: Page, after: string[]) {
   await expectSelected(page, after);
 }
 
+const shown = (page: Page) => page.locator('button[aria-label^="Remove "]').evaluateAll(
+  nodes => nodes.map(node => node.getAttribute('aria-label')!.slice('Remove '.length)),
+);
+
+// Stand-ins come from the default-model ranking, so only their set is checked.
+async function expectStandIns(page: Page, names: string[]) {
+  await expect.poll(async () => (await shown(page)).sort()).toEqual([...names].sort());
+}
+
 async function expectSelected(page: Page, names: string[]) {
   await expect.poll(() => page.locator('button[aria-label^="Remove "]').evaluateAll(
     nodes => nodes.map(node => node.getAttribute('aria-label')!.slice('Remove '.length)),
@@ -97,7 +106,7 @@ test('a missing model that reappears returns to the selection and clears its not
   await expect(missing(page)).toContainText('Test Lab: Flat');
   setCatalog(ALL);
   await refresh(page);
-  await expectSelected(page, ['Test Lab: Other', 'Test Lab: Flat']);
+  await expectSelected(page, ['Test Lab: Flat', 'Test Lab: Other']);
   await expect(total(page)).toHaveText('$2.00');
   await expect(missing(page)).toHaveCount(0);
 });
@@ -109,7 +118,7 @@ test('a link model missing on first load is restored when the catalog gains it',
   await expect(missing(page)).toContainText('Test Lab: Flat');
   setCatalog(ALL);
   await refresh(page);
-  await expectSelected(page, ['Test Lab: Other', 'Test Lab: Flat']);
+  await expectSelected(page, ['Test Lab: Flat', 'Test Lab: Other']);
   await expect(missing(page)).toHaveCount(0);
 });
 
@@ -156,7 +165,7 @@ test('a model the user switches to stays priced across refreshes that drop anoth
   setCatalog(ALL);
   await refresh(page);
   await expect(total(page)).toHaveText('$2.00');
-  await expectSelected(page, ['Test Lab: Other', 'Test Lab: Flat']);
+  await expectSelected(page, ['Test Lab: Flat', 'Test Lab: Other']);
 });
 
 test('an empty catalog keeps the current selection and a later catalog still applies', async ({ page }) => {
@@ -173,4 +182,83 @@ test('an empty catalog keeps the current selection and a later catalog still app
   await expectSelected(page, ['Test Lab: Other']);
   await expect(total(page)).toHaveText('$2.00');
   await expect(missing(page)).toContainText('Test Lab: Flat');
+});
+
+// Six chosen models, four stand-ins the defaults can come from, and one extra.
+const PICKS = [1, 2, 3, 4, 5, 6].map(n => `Test Lab: Pick ${n}`);
+const SPARES = [1, 2, 3, 4].map(n => `Test Lab: Spare ${n}`);
+const EXTRA = 'Test Lab: Extra';
+const entries = (names: string[]) => Object.fromEntries(names.map((name, i) => [name, model(1 + i, 5, `test/m${i}`)]));
+const SIX_PLAN = planHash(PICKS);
+
+test('all chosen models gone then back restores exactly the six chosen models', async ({ page }) => {
+  const setCatalog = await mockCatalog(page, entries([...PICKS, ...SPARES]));
+  await page.goto(`/${SIX_PLAN}`);
+  await expectSelected(page, PICKS);
+  setCatalog(entries(SPARES));
+  await refresh(page);
+  await expectStandIns(page, SPARES);
+  await expect(missing(page)).toContainText(PICKS.join(', '));
+  setCatalog(entries([...PICKS, ...SPARES]));
+  await refresh(page);
+  await expectSelected(page, PICKS);
+  await expect(missing(page)).toHaveCount(0);
+});
+
+test('a partial return shows only the returning chosen model, not the stand-ins', async ({ page }) => {
+  const setCatalog = await mockCatalog(page, entries([...PICKS, ...SPARES]));
+  await page.goto(`/${SIX_PLAN}`);
+  await expectSelected(page, PICKS);
+  setCatalog(entries(SPARES));
+  await refresh(page);
+  setCatalog(entries([PICKS[2], ...SPARES]));
+  await refresh(page);
+  await expectSelected(page, [PICKS[2]]);
+  await expect(missing(page)).toContainText([...PICKS.slice(0, 2), ...PICKS.slice(3)].join(', '));
+});
+
+test('repeated catalog churn never accumulates stand-ins', async ({ page }) => {
+  const setCatalog = await mockCatalog(page, entries([...PICKS, ...SPARES]));
+  await page.goto(`/${SIX_PLAN}`);
+  for (let i = 0; i < 3; i += 1) {
+    setCatalog(entries(SPARES));
+    await refresh(page);
+    await expectStandIns(page, SPARES);
+    setCatalog(entries([...PICKS.slice(0, 2), ...SPARES]));
+    await refresh(page);
+    await expectSelected(page, PICKS.slice(0, 2));
+  }
+  setCatalog(entries([...PICKS, ...SPARES]));
+  await refresh(page);
+  await expectSelected(page, PICKS);
+});
+
+test('an edit during the fallback keeps the edited list and returning models fill only to six', async ({ page }) => {
+  const setCatalog = await mockCatalog(page, entries([...PICKS, ...SPARES]));
+  await page.goto(`/${SIX_PLAN}`);
+  setCatalog(entries(SPARES));
+  await refresh(page);
+  await expectStandIns(page, SPARES);
+  await page.getByRole('tab', { name: 'Compare models', exact: true }).click();
+  const standIns = await shown(page);
+  await page.getByRole('button', { name: `Remove ${standIns[3]}`, exact: true }).click();
+  await expectSelected(page, standIns.slice(0, 3));
+  setCatalog(entries([...PICKS, ...SPARES]));
+  await refresh(page);
+  // The kept stand-ins are now choices; the first three chosen models fill the remaining slots.
+  await expectSelected(page, [...standIns.slice(0, 3), ...PICKS.slice(0, 3)]);
+  await expect(missing(page)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add model', exact: true })).toBeDisabled();
+});
+
+test('a model returning when six are already selected is not added or labeled absent', async ({ page }) => {
+  const setCatalog = await mockCatalog(page, entries([...PICKS.slice(0, 5), EXTRA]));
+  await page.goto(`/${SIX_PLAN}`);
+  await expectSelected(page, PICKS.slice(0, 5));
+  await expect(missing(page)).toContainText(PICKS[5]);
+  await addModel(page, [...PICKS.slice(0, 5), EXTRA]);
+  setCatalog(entries([...PICKS, EXTRA]));
+  await refresh(page);
+  await expectSelected(page, [...PICKS.slice(0, 5), EXTRA]);
+  await expect(missing(page)).toHaveCount(0);
 });
