@@ -12,6 +12,8 @@ import {
 import {
   chooseDefaultModels,
   findRequestedModel,
+  reconcileSelection,
+  type ModelSelection,
 } from '../../lib/modelSelection';
 import {
   estimateAgentRun,
@@ -172,44 +174,57 @@ export default function AgentPlannerClient() {
     shared: null,
   });
   const pricingData = useRef<PricingCatalogResponse['data'] | null>(null);
-  // `keepCurrent` is a price refresh: the user's selection stands while its
-  // models still exist; only an import or the first price load chooses models.
+  // The latest selection, read when a price refresh re-applies it.
+  const selection = useRef<ModelSelection>({
+    selected,
+    active,
+    missing: missingModels,
+  });
+  useEffect(() => {
+    selection.current = { selected, active, missing: missingModels };
+  }, [selected, active, missingModels]);
+  // An import (or the first price load for a link or ?model=) chooses models.
+  // Anything else, including every price refresh (`keepCurrent`), re-applies
+  // the current selection to the new catalog.
   function selectModels(
     shared: SharedAgentPlan | null,
     data: PricingCatalogResponse['data'],
     keepCurrent = false,
   ) {
+    const applySelection = (next: ModelSelection) => {
+      selection.current = next;
+      setSelected(next.selected);
+      setActive(next.active);
+      setMissingModels(next.missing);
+    };
     const names = Object.keys(data);
     const defaults = chooseDefaultModels(names, data, 4);
+    const resolve = (name: string) =>
+      names.includes(name) ? name : findRequestedModel(name, data);
     const requested = findRequestedModel(
       new URLSearchParams(window.location.search).get('model'),
       data,
     );
+    if (keepCurrent || (!shared && !requested)) {
+      applySelection(reconcileSelection(selection.current, resolve, defaults));
+      return;
+    }
     const linked = (shared?.models ?? [])
-      .map((name) => findRequestedModel(name, data))
+      .map(resolve)
       .filter((name): name is string => Boolean(name));
-    if (!keepCurrent)
-      setMissingModels(
-        (shared?.models ?? []).filter(
-          (name) => !findRequestedModel(name, data),
-        ),
-      );
     const next = linked.length
-      ? linked
+      ? [...new Set(linked)]
       : requested
         ? [requested, ...defaults.filter((name) => name !== requested)].slice(
             0,
             4,
           )
         : defaults;
-    const keep = keepCurrent || (!shared && !requested);
-    setSelected((current) => {
-      const known = current.filter((name) => names.includes(name));
-      return keep && known.length ? known : next;
+    applySelection({
+      selected: next,
+      active: next[0] ?? '',
+      missing: (shared?.models ?? []).filter((name) => !resolve(name)),
     });
-    setActive((current) =>
-      keep && names.includes(current) ? current : (next[0] ?? ''),
-    );
   }
   useEffect(() => {
     // Each history entry records which plan source it showed, in
@@ -1412,11 +1427,13 @@ export default function AgentPlannerClient() {
                           type="button"
                           disabled={selected.length === 1}
                           aria-label={`Remove ${name}`}
-                          onClick={() =>
-                            setSelected((current) =>
-                              current.filter((item) => item !== name),
-                            )
-                          }
+                          onClick={() => {
+                            const rest = selected.filter(
+                              (item) => item !== name,
+                            );
+                            setSelected(rest);
+                            if (active === name) setActive(rest[0] ?? '');
+                          }}
                         >
                           Remove
                         </button>
@@ -1430,13 +1447,14 @@ export default function AgentPlannerClient() {
                         )}
                         pricing={catalog?.data}
                         loading={loading}
-                        onChange={(value) =>
+                        onChange={(value) => {
                           setSelected((current) =>
                             current.map((item, i) =>
                               i === index ? value : item,
                             ),
-                          )
-                        }
+                          );
+                          if (active === name) setActive(value);
+                        }}
                       />
                     </div>
                   ))}

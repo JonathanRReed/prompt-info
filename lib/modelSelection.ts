@@ -105,3 +105,38 @@ export function findRequestedModel(requested: string | null, pricing: PricingMap
   });
   return byName ?? null;
 }
+
+export type ModelSelection = {
+  /** Catalog names in the comparison, in order. */
+  selected: string[];
+  /** The model priced in the receipt; always one of `selected`, or '' when none. */
+  active: string;
+  /** Models the user or link chose that the current catalog lacks, as originally named. */
+  missing: string[];
+};
+
+/**
+ * Re-apply a selection to a refreshed catalog. Models the user chose stay in
+ * order while available; ones that disappear move to `missing`, and ones that
+ * reappear come back from `missing`. Defaults fill in only when nothing chosen
+ * is available, and `active` is always kept inside the resulting selection.
+ */
+export function reconcileSelection(
+  current: ModelSelection,
+  resolve: (name: string) => string | null,
+  defaults: string[],
+): ModelSelection {
+  const selected: string[] = [];
+  const missing: string[] = [];
+  for (const name of [...current.selected, ...current.missing]) {
+    const resolved = resolve(name);
+    if (!resolved) {
+      if (!missing.includes(name)) missing.push(name);
+    } else if (!selected.includes(resolved)) {
+      selected.push(resolved);
+    }
+  }
+  const kept = selected.length ? selected : defaults.filter((name) => resolve(name) === name);
+  const active = kept.includes(current.active) ? current.active : (kept[0] ?? '');
+  return { selected: kept, active, missing };
+}
