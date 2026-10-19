@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import locationNavigation from './no-location-assign-relative-destination.mjs';
 
@@ -6,6 +6,8 @@ import locationNavigation from './no-location-assign-relative-destination.mjs';
 // utils/url, Copyright (c) 2025 Vercel, Inc. MIT; see THIRD_PARTY_NOTICES.md.
 // Walk explicit roots with node:fs and recognize page endpoints rather than
 // arbitrary app source files. No glob parser is needed.
+const RESERVED_PAGES = new Set(['_app', '_document', '_error']);
+
 function routePattern(segments) {
   let pattern = '';
   for (const segment of segments) {
@@ -24,12 +26,12 @@ function discoverRoutes(root, customPages) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) {
-        if (entry.name.startsWith('_') || (!app && entry.name === 'api')) continue;
+        if ((app && entry.name.startsWith('_')) || (!app && entry.name === 'api')) continue;
         const transparent = app && (entry.name.startsWith('@') || /^\(.*\)$/.test(entry.name));
         walk(join(directory, entry.name), transparent ? segments : [...segments, entry.name], app);
       } else if (entry.isFile() && /\.[jt]sx?$/.test(entry.name)) {
         const name = entry.name.replace(/\.[jt]sx?$/, '');
-        if (app ? name === 'page' : !name.startsWith('_')) {
+        if (app ? name === 'page' : !RESERVED_PAGES.has(name)) {
           routes.push(routePattern(app || name === 'index' ? segments : [...segments, name]));
         }
       }
@@ -50,8 +52,10 @@ const htmlLinks = {
   create(context) {
     const configured = context.settings.next?.rootDir ?? context.cwd;
     const roots = Array.isArray(configured) ? configured : [configured];
-    // Silently treating future glob roots as nonexistent would disable coverage.
-    if (roots.some(root => typeof root !== 'string' || /[*?{}\[\]]/.test(root))) {
+    // Existing literal directories can contain glob punctuation, including cwd.
+    // Unsupported patterns must still fail instead of silently losing coverage.
+    if (roots.some(root => typeof root !== 'string' ||
+      (/[*?{}\[\]]/.test(root) && !statSync(resolve(context.cwd,root),{throwIfNoEntry:false})?.isDirectory()))) {
       throw new Error('next-local requires explicit root directories, not glob rootDir patterns');
     }
     const option=context.options[0];

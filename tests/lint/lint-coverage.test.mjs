@@ -1,5 +1,5 @@
 import { expect, test, afterAll } from 'bun:test';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +9,10 @@ import { cases, routeFiles } from './cases.mjs';
 
 const repo = fileURLToPath(new URL('../../',import.meta.url));
 const root = mkdtempSync(join(tmpdir(),'prompt-info-lint-'));
-for (const file of [...routeFiles, 'app/contact/page.tsx','app/contact/helper.tsx','app/(group)/grouped/page.tsx','app/@slot/parallel/page.tsx','app/_private/page.tsx','app/api/route.ts','pages/api/health.ts']) {
+for (const file of [...routeFiles, 'app/contact/page.tsx','app/contact/helper.tsx','app/(group)/grouped/page.tsx','app/@slot/parallel/page.tsx','app/_private/page.tsx','app/api/route.ts','pages/api/health.ts',
+  'pages/_reports/index.tsx','pages/_reports/detail.tsx','pages/_history/[year].tsx',
+  'pages/_status.tsx','pages/_apple.tsx','pages/_error-help.tsx','pages/reports/_summary.tsx',
+  'pages/_app.tsx','pages/_document.tsx','pages/_error.tsx']) {
   const path=join(root,file); mkdirSync(dirname(path),{recursive:true});
   writeFileSync(path,'export default function Page() { return null }');
 }
@@ -98,3 +101,62 @@ test('the moved Next errors still run across all original file extensions',async
     expect(await diagnostics(fixture)).toEqual([{rule:fixture.rule,severity:2}]);
   }
 });
+
+for (const [href,expected] of [
+  ['/_reports',1], ['/_reports/detail',1], ['/_history/2026',1],
+  ['/_status',1], ['/_apple',1], ['/_error-help',1], ['/reports/_summary',1],
+  ['/_app',0], ['/_document',0], ['/_error',0],
+]) {
+  test(`Pages Router underscores preserve ordinary pages and reserved files: ${href}`,async()=>{
+    const fixture={name:href,filename:'components/pages-links.tsx',rule:'no-html-link-for-pages',code:`const x = <a href=${JSON.stringify(href)}>Link</a>;`};
+    expect(await diagnostics(fixture)).toEqual(expected?[{rule:fixture.rule,severity:2}]:[]);
+  });
+}
+
+for (const explicitRoot of [false,true]) {
+  test(`literal bracketed checkout works with ${explicitRoot?'explicit rootDir':'implicit cwd'}`,async()=>{
+    const checkout=join(root,`checkout[review-${explicitRoot}]`);
+    mkdirSync(join(checkout,'app/known'),{recursive:true});
+    writeFileSync(join(checkout,'app/known/page.tsx'),'export default function Page() { return null }');
+    const editor=new ESLint({cwd:checkout,overrideConfigFile:join(repo,'eslint.config.mjs'),
+      ...(explicitRoot?{overrideConfig:{settings:{next:{rootDir:checkout}}}}:{}),
+    });
+    const [result]=await editor.lintText('const x = <a href="/known">Known</a>;',
+      {filePath:join(checkout,'components/link.tsx')});
+    expect(result.messages.map(({ruleId,severity})=>({ruleId,severity})))
+      .toEqual([{ruleId:'next-local/no-html-link-for-pages',severity:2}]);
+  });
+}
+
+test('unsupported rootDir glob still fails visibly',async()=>{
+  const editor=new ESLint({cwd:root,overrideConfigFile:join(repo,'eslint.config.mjs'),
+    overrideConfig:{settings:{next:{rootDir:'packages/*'}}}});
+  await expect(editor.lintText('const x = <a href="/about">About</a>;',
+    {filePath:join(root,'components/glob-link.tsx')}))
+    .rejects.toThrow('next-local requires explicit root directories, not glob rootDir patterns');
+});
+
+for (const router of ['app','pages']) {
+  test(`long-lived editor sees ${router} route additions, renames and removals`,async()=>{
+    const checkout=join(root,`editor-${router}`);
+    const pagePath=name=>join(checkout,router,router==='app'?`nested/${name}/page.tsx`:`nested/${name}.tsx`);
+    // Prepare parents before the first lint. Later changes only touch nested
+    // directories, so caching solely by the route root's mtime would be stale.
+    for(const name of ['first','second']) mkdirSync(dirname(pagePath(name)),{recursive:true});
+    const editor=new ESLint({cwd:checkout,overrideConfigFile:join(repo,'eslint.config.mjs')});
+    const code='const x = <><a href="/nested/first">First</a><a href="/nested/second">Second</a></>;';
+    async function lintLinks() {
+      const [result]=await editor.lintText(code,{filePath:join(checkout,'components/links.tsx')});
+      return result.messages.map(({ruleId,severity,message})=>({ruleId,severity,message}));
+    }
+    const finding=href=>({ruleId:'next-local/no-html-link-for-pages',severity:2,
+      message:`Do not use an \`<a>\` element to navigate to \`${href}\`. Use \`<Link />\` from \`next/link\` instead.`});
+    expect(await lintLinks()).toEqual([]);
+    writeFileSync(pagePath('first'),'export default function Page() { return null }');
+    expect(await lintLinks()).toEqual([finding('/nested/first')]);
+    renameSync(pagePath('first'),pagePath('second'));
+    expect(await lintLinks()).toEqual([finding('/nested/second')]);
+    rmSync(pagePath('second'));
+    expect(await lintLinks()).toEqual([]);
+  });
+}
