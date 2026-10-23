@@ -26,7 +26,7 @@ Without live data, a dated three-model snapshot keeps the comparison usable. The
 
 ## Develop
 
-Requires Bun 1.4 and Node 22.12+. The app uses Next.js 16, React 19, TypeScript, and Tailwind CSS 4.
+Requires Bun 1.4.4 and Node 22.12+. Use Node 24.22.1 LTS from `.nvmrc` for development. The Verify workflow targets Node 22.23.4 and 24.22.1 explicitly. The app uses Next.js 16.4.3, React 19.3.1, TypeScript, and Tailwind CSS 4.
 
 ```bash
 bun install --frozen-lockfile

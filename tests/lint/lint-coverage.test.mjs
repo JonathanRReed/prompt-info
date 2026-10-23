@@ -20,6 +20,11 @@ const eslint = new ESLint({cwd:root,overrideConfigFile:join(repo,'eslint.config.
 const upstream = JSON.parse(readFileSync(new URL('./upstream-diagnostics.json',import.meta.url)));
 afterAll(()=>rmSync(root,{recursive:true,force:true}));
 
+// Resolve the shared ESLint/plugin configuration during suite setup, not
+// inside the first five-second fixture. Assertions and per-test deadlines
+// stay unchanged, including both ESLint and Oxlint differential checks.
+await eslint.calculateConfigForFile(join(root, 'components/setup.tsx'));
+
 async function diagnostics(fixture) {
   const file=join(root,fixture.filename);
   mkdirSync(dirname(file),{recursive:true}); writeFileSync(file,fixture.code);
