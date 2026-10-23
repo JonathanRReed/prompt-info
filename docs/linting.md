@@ -24,9 +24,19 @@ Two Next rules stay in the attributed local ESLint plugin:
   parallel routes, query strings and fragments. Public assets, API handlers,
   private app directories and non-route helpers are not page routes. Download
   links and `_blank` retain their exemptions. It accepts explicit project roots;
-  a future glob `settings.next.rootDir` fails visibly rather than disabling the
-  rule. This single-root repository does not configure a root glob or custom
-  page extensions.
+  an existing literal root directory, including one with brackets in its name,
+  is accepted. An unsupported glob `settings.next.rootDir` fails visibly rather
+  than disabling the rule. Pages Router underscore directories and ordinary
+  underscore pages remain routes; only `_app`, `_document` and `_error` files
+  are reserved. App Router underscore directories remain private. This
+  single-root repository does not configure a root glob or custom page extensions.
+
+Route discovery is deliberately uncached across linted files. A cache keyed
+only by roots and options can miss additions, renames and deletions in a
+long-lived editor process. Regression tests reuse the same ESLint instance
+while changing nested App and Pages endpoints inside existing directories.
+Any future cache must preserve that freshness; root-directory timestamps alone
+do not track every nested change.
 
 The local route check deliberately catches static App Router page links that
 the installed Next 16.3.8 rule missed in the differential fixtures. It also
