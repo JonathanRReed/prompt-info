@@ -341,3 +341,26 @@ test('delegated anchor handling preserves modified, cancelled and non-self activ
   }
   await expect(total(page)).toHaveText('$1.00');
 });
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`consecutive fragment controls honor the latest target with motion ${reducedMotion}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion });
+    await mockPricing(page);
+    await page.goto(`/${PLAN_A}`);
+    await expect(total(page)).toHaveText('$1.00');
+    // Activate both real controls in one task, before the first native smooth
+    // scroll can settle. The hidden desktop receipt control uses the same path.
+    await page.evaluate(() => {
+      document.querySelector<HTMLAnchorElement>('a.eco-skip')!.click();
+      document.querySelector<HTMLAnchorElement>('.agent-mobile-total a[href="#agent-price"]')!.click();
+    });
+    await expect(page).toHaveURL(/#agent-price$/);
+    await expect.poll(async () => {
+      const box = await page.locator('#agent-price .ticket-brand').boundingBox();
+      return Boolean(box && box.y >= 56 && box.y < 160);
+    }).toBe(true);
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Copy receipt', exact: true })).toBeFocused();
+    await expect(total(page)).toHaveText('$1.00');
+  });
+}

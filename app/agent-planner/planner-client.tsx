@@ -310,13 +310,15 @@ export default function AgentPlannerClient() {
         (anchor.target && anchor.target !== '_self')) return;
       const href = anchor.getAttribute('href');
       if (href !== '#main-content' && href !== '#agent-price') return;
+      const target = document.getElementById(href.slice(1));
+      if (!target) return;
       // The native default action would create an unstamped entry, leaving a
       // race until hashchange. Use native fragment navigation here instead,
       // then stamp its new entry before another navigation can leave it.
       event.preventDefault();
       // Settle an explicit URL whose hashchange has not run yet, too.
       onHashChange();
-      followPlanAnchor(href, applied.current.key, window.location, window.history);
+      followPlanAnchor(href, applied.current.key, window.location, window.history, target);
     }
     window.addEventListener('hashchange', onHashChange);
     document.addEventListener('click', onAnchorClick);
