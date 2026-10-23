@@ -38,6 +38,7 @@ import {
 import { TASK_PRESETS, type TaskPreset } from '../../lib/taskPresets';
 import { clampPrompt } from '../../lib/promptLimits';
 import { resolvePlanNavigation } from '../../lib/planNavigation';
+import { followPlanAnchor } from '../../lib/planAnchorNavigation';
 
 type WorkMode = 'chat' | 'agent';
 const presetPlan = (preset: TaskPreset): AgentPlan => ({
@@ -300,8 +301,29 @@ export default function AgentPlannerClient() {
       if (next.shared) importShared(next.source, next.shared);
       if (next.stamp) stampEntry(next.source);
     }
+    function onAnchorClick(event: MouseEvent) {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
+        event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = event.target instanceof Element
+        ? event.target.closest('a') : null;
+      if (!anchor || anchor.hasAttribute('download') ||
+        (anchor.target && anchor.target !== '_self')) return;
+      const href = anchor.getAttribute('href');
+      if (href !== '#main-content' && href !== '#agent-price') return;
+      // The native default action would create an unstamped entry, leaving a
+      // race until hashchange. Use native fragment navigation here instead,
+      // then stamp its new entry before another navigation can leave it.
+      event.preventDefault();
+      // Settle an explicit URL whose hashchange has not run yet, too.
+      onHashChange();
+      followPlanAnchor(href, applied.current.key, window.location, stampEntry);
+    }
     window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    document.addEventListener('click', onAnchorClick);
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+      document.removeEventListener('click', onAnchorClick);
+    };
   }, []);
   const update = (key: keyof AgentPlan, value: number | boolean) => {
     setPresetId('custom');
