@@ -6,6 +6,7 @@ export function followPlanAnchor(
   source: string,
   location: Pick<Location, 'hash'>,
   history: Pick<History, 'state' | 'replaceState'>,
+  target?: Pick<Element, 'scrollIntoView'>,
 ) {
   // Native fragment entries may start with null state. Retain the current
   // router/user metadata before creating that entry, not after it is gone.
@@ -17,4 +18,7 @@ export function followPlanAnchor(
     { ...(previousState ?? {}), ...(history.state ?? {}), [SOURCE]: source },
     '',
   );
+  // A rapid second fragment activation can leave the previous smooth scroll
+  // running. Retarget it explicitly; auto respects the existing motion CSS.
+  target?.scrollIntoView({ block: 'start', behavior: 'auto' });
 }

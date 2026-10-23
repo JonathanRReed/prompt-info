@@ -82,3 +82,24 @@ for (const previousState of [null, 7]) {
     expect(hash).toBe('#main-content');
   });
 }
+
+test('the latest anchor scroll target wins after native navigation and metadata stamping', () => {
+  const operations: string[] = [];
+  const history = {
+    state: { __NA: true },
+    replaceState() { operations.push('stamp'); },
+  };
+  const location = {
+    get hash() { return A; },
+    set hash(value: string) { operations.push(`navigate:${value}`); },
+  };
+  const target = {
+    scrollIntoView(options?: boolean | ScrollIntoViewOptions) {
+      operations.push('scroll-latest-target');
+      // auto preserves computed smooth/reduced-motion behavior and margins.
+      expect(options).toEqual({ block: 'start', behavior: 'auto' });
+    },
+  };
+  followPlanAnchor('#agent-price', `hash:${A}`, location, history, target);
+  expect(operations).toEqual(['navigate:#agent-price', 'stamp', 'scroll-latest-target']);
+});
