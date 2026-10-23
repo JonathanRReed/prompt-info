@@ -214,3 +214,130 @@ test('refreshing prices keeps a model chosen after importing a link', async ({ p
   await expect(page.getByRole('button', { name: 'Refresh prices', exact: true })).toBeEnabled();
   await expect(total(page)).toHaveText('$2.00');
 });
+
+test('a valid new plan overrides stale source metadata inherited from an anchor entry', async ({ page, isMobile }) => {
+  await mockPricing(page);
+  await page.goto(`/${UNSUPPORTED}${PLAN_A}`);
+  await expect(total(page)).toHaveText('$1.00');
+  await openReceiptAnchor(page, isMobile);
+  // Reproduce the inherited-state race deterministically through the real
+  // hashchange handler, rather than relying on router/browser event timing.
+  await page.evaluate(({ hash, source }) => {
+    const oldURL = window.location.href;
+    window.history.pushState({ ...window.history.state, promptInfoPlanSource: source }, '', hash);
+    window.dispatchEvent(new HashChangeEvent('hashchange', { oldURL, newURL: window.location.href }));
+  }, { hash: PLAN_B, source: `hash:${PLAN_A}` });
+  await expect(total(page)).toHaveText('$2.00');
+  expect(await page.evaluate(() => window.history.state.promptInfoPlanSource)).toBe(`hash:${PLAN_B}`);
+  await page.goBack();
+  await expect(page).toHaveURL(/#agent-price$/);
+  await expect(total(page)).toHaveText('$1.00');
+  await page.goForward();
+  await expect(total(page)).toHaveText('$2.00');
+});
+
+for (const [name, selector, hash] of [
+  ['skip link', 'a.eco-skip', '#main-content'],
+  ['receipt link', '.agent-mobile-total a[href="#agent-price"]', '#agent-price'],
+] as const) {
+  test(`${name} stamps A before a delayed anchor event and restores it after B`, async ({ page }) => {
+    // Delay only the first anchor event, before the app's listener sees it.
+    // This makes the fast anchor -> B race deterministic, not timing-based.
+    await page.addInitScript((anchorHash) => {
+      let held = false;
+      window.addEventListener('hashchange', (event) => {
+        if (!held && new URL(event.newURL).hash === anchorHash) {
+          held = true;
+          event.stopImmediatePropagation();
+          (window as unknown as { releaseAnchor: () => void }).releaseAnchor = () => {
+            window.dispatchEvent(new HashChangeEvent('hashchange', {
+              oldURL: event.oldURL, newURL: event.newURL,
+            }));
+          };
+        }
+      }, true);
+    }, hash);
+    await mockPricing(page);
+    await page.goto(`/${UNSUPPORTED}${PLAN_A}`);
+    await expect(total(page)).toHaveText('$1.00');
+    // .click() also exercises the receipt control on desktop, where it is
+    // hidden. It invokes the same real delegated click/navigation path.
+    await page.locator(selector).evaluate((link: HTMLAnchorElement) => link.click());
+    await expect(page).toHaveURL(new RegExp(`${hash}$`));
+    await navigateHash(page, PLAN_B);
+    await expect(total(page)).toHaveText('$2.00');
+    await page.evaluate(() => (window as unknown as { releaseAnchor: () => void }).releaseAnchor());
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`${hash}$`));
+    await expect(total(page)).toHaveText('$1.00');
+    await expect(page.getByText(RUNS_NOTICE, { exact: true })).toHaveCount(0);
+    await page.goForward();
+    await expect(total(page)).toHaveText('$2.00');
+  });
+}
+
+test('keyboard fragment controls retain main and receipt focus navigation', async ({ page, isMobile }) => {
+  await mockPricing(page);
+  await page.goto(`/${PLAN_A}`);
+  await expect(total(page)).toHaveText('$1.00');
+  await followSkipLink(page);
+  // main is not itself tabbable. Native fragment navigation must move the
+  // sequential focus starting point there, rather than back into the header.
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.getElementById('main-content')!.contains(document.activeElement))).toBe(true);
+  if (isMobile) {
+    const receiptLink = page.locator('.agent-mobile-total a[href="#agent-price"]');
+    await receiptLink.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#agent-price$/);
+    await expect.poll(async () => {
+      const box = await page.locator('#agent-price .ticket-brand').boundingBox();
+      return Boolean(box && box.y >= 56 && box.y < 160);
+    }).toBe(true);
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Copy receipt', exact: true })).toBeFocused();
+  }
+  await expect(total(page)).toHaveText('$1.00');
+});
+
+test('delegated anchor handling preserves modified, cancelled and non-self activations', async ({ page }) => {
+  await mockPricing(page);
+  await page.goto(`/${PLAN_A}`);
+  await expect(total(page)).toHaveText('$1.00');
+  const results = await page.evaluate(() => {
+    const cases = [
+      { name: 'ctrl', ctrlKey: true }, { name: 'meta', metaKey: true },
+      { name: 'shift', shiftKey: true }, { name: 'alt', altKey: true },
+      { name: 'middle button', button: 1 }, { name: 'new tab', target: '_blank' },
+      { name: 'download', download: true }, { name: 'cancelled', cancelled: true },
+      { name: 'unrelated fragment', href: '#not-a-plan-control' },
+    ];
+    return cases.map((item) => {
+      const link = document.createElement('a');
+      link.href = item.href ?? '#main-content';
+      if (item.target) link.target = item.target;
+      if ('download' in item) link.setAttribute('download', 'receipt');
+      if ('cancelled' in item) link.addEventListener('click', event => event.preventDefault());
+      document.body.append(link);
+      const before = window.location.href;
+      let preventedByApp = false;
+      // Observe after the actual document handler, then cancel the native
+      // action so this guard check opens no tabs or downloads.
+      window.addEventListener('click', (event) => {
+        preventedByApp = event.defaultPrevented;
+        event.preventDefault();
+      }, { once: true });
+      link.dispatchEvent(new MouseEvent('click', {
+        bubbles: true, cancelable: true, ...item,
+      }));
+      link.remove();
+      return { name: item.name, prevented: preventedByApp,
+        expectedPrevented: 'cancelled' in item, unchanged: window.location.href === before };
+    });
+  });
+  for (const result of results) {
+    expect(result.prevented, result.name).toBe(result.expectedPrevented);
+    expect(result.unchanged, result.name).toBe(true);
+  }
+  await expect(total(page)).toHaveText('$1.00');
+});

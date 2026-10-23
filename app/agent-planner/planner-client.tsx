@@ -37,6 +37,8 @@ import {
 } from '../../lib/reasoningOptions';
 import { TASK_PRESETS, type TaskPreset } from '../../lib/taskPresets';
 import { clampPrompt } from '../../lib/promptLimits';
+import { resolvePlanNavigation } from '../../lib/planNavigation';
+import { followPlanAnchor } from '../../lib/planAnchorNavigation';
 
 type WorkMode = 'chat' | 'agent';
 const presetPlan = (preset: TaskPreset): AgentPlan => ({
@@ -250,10 +252,6 @@ export default function AgentPlannerClient() {
         window.location.href,
       );
     };
-    const sharedFor = (key: string) =>
-      key.startsWith('hash:')
-        ? readAgentPlanHash(key.slice('hash:'.length))
-        : readLegacyAgentPlan(key.slice('query:'.length));
     function importShared(key: string, shared: SharedAgentPlan) {
       applied.current = { key, shared };
       setPresetId('custom');
@@ -291,29 +289,41 @@ export default function AgentPlannerClient() {
     }
     stampEntry(applied.current.key);
 
-    // A stamped entry is history traversal: restore the source it showed. An
-    // unstamped entry is new: a valid encoded plan (or a bare return to the
-    // old query) imports; any other hash is a section anchor and keeps the
-    // current state.
+    // A valid encoded URL wins over inherited history metadata. Plain
+    // anchors keep edits or restore their stamped source during traversal.
     function onHashChange() {
-      const recorded = entrySource();
-      if (recorded !== undefined) {
-        const shared = sharedFor(recorded);
-        if (recorded !== applied.current.key && shared)
-          importShared(recorded, shared);
-        return;
-      }
-      const { hash: nextHash, search: nextSearch } = window.location;
-      const fromHash = readAgentPlanHash(nextHash);
-      const fromQuery =
-        nextHash === '' ? readLegacyAgentPlan(nextSearch) : null;
-      const key = fromHash ? `hash:${nextHash}` : `query:${nextSearch}`;
-      const next = fromHash ?? fromQuery;
-      if (next && key !== applied.current.key) importShared(key, next);
-      stampEntry(applied.current.key);
+      const next = resolvePlanNavigation({
+        hash: window.location.hash,
+        search: window.location.search,
+        recordedSource: entrySource(),
+        activeSource: applied.current.key,
+      });
+      if (next.shared) importShared(next.source, next.shared);
+      if (next.stamp) stampEntry(next.source);
+    }
+    function onAnchorClick(event: MouseEvent) {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
+        event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = event.target instanceof Element
+        ? event.target.closest('a') : null;
+      if (!anchor || anchor.hasAttribute('download') ||
+        (anchor.target && anchor.target !== '_self')) return;
+      const href = anchor.getAttribute('href');
+      if (href !== '#main-content' && href !== '#agent-price') return;
+      // The native default action would create an unstamped entry, leaving a
+      // race until hashchange. Use native fragment navigation here instead,
+      // then stamp its new entry before another navigation can leave it.
+      event.preventDefault();
+      // Settle an explicit URL whose hashchange has not run yet, too.
+      onHashChange();
+      followPlanAnchor(href, applied.current.key, window.location, window.history);
     }
     window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    document.addEventListener('click', onAnchorClick);
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+      document.removeEventListener('click', onAnchorClick);
+    };
   }, []);
   const update = (key: keyof AgentPlan, value: number | boolean) => {
     setPresetId('custom');
