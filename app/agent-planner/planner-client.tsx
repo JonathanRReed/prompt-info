@@ -37,6 +37,7 @@ import {
 } from '../../lib/reasoningOptions';
 import { TASK_PRESETS, type TaskPreset } from '../../lib/taskPresets';
 import { clampPrompt } from '../../lib/promptLimits';
+import { resolvePlanNavigation } from '../../lib/planNavigation';
 
 type WorkMode = 'chat' | 'agent';
 const presetPlan = (preset: TaskPreset): AgentPlan => ({
@@ -250,10 +251,6 @@ export default function AgentPlannerClient() {
         window.location.href,
       );
     };
-    const sharedFor = (key: string) =>
-      key.startsWith('hash:')
-        ? readAgentPlanHash(key.slice('hash:'.length))
-        : readLegacyAgentPlan(key.slice('query:'.length));
     function importShared(key: string, shared: SharedAgentPlan) {
       applied.current = { key, shared };
       setPresetId('custom');
@@ -291,26 +288,17 @@ export default function AgentPlannerClient() {
     }
     stampEntry(applied.current.key);
 
-    // A stamped entry is history traversal: restore the source it showed. An
-    // unstamped entry is new: a valid encoded plan (or a bare return to the
-    // old query) imports; any other hash is a section anchor and keeps the
-    // current state.
+    // A valid encoded URL wins over inherited history metadata. Plain
+    // anchors keep edits or restore their stamped source during traversal.
     function onHashChange() {
-      const recorded = entrySource();
-      if (recorded !== undefined) {
-        const shared = sharedFor(recorded);
-        if (recorded !== applied.current.key && shared)
-          importShared(recorded, shared);
-        return;
-      }
-      const { hash: nextHash, search: nextSearch } = window.location;
-      const fromHash = readAgentPlanHash(nextHash);
-      const fromQuery =
-        nextHash === '' ? readLegacyAgentPlan(nextSearch) : null;
-      const key = fromHash ? `hash:${nextHash}` : `query:${nextSearch}`;
-      const next = fromHash ?? fromQuery;
-      if (next && key !== applied.current.key) importShared(key, next);
-      stampEntry(applied.current.key);
+      const next = resolvePlanNavigation({
+        hash: window.location.hash,
+        search: window.location.search,
+        recordedSource: entrySource(),
+        activeSource: applied.current.key,
+      });
+      if (next.shared) importShared(next.source, next.shared);
+      if (next.stamp) stampEntry(next.source);
     }
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);

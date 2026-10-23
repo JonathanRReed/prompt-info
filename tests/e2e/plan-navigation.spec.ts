@@ -214,3 +214,24 @@ test('refreshing prices keeps a model chosen after importing a link', async ({ p
   await expect(page.getByRole('button', { name: 'Refresh prices', exact: true })).toBeEnabled();
   await expect(total(page)).toHaveText('$2.00');
 });
+
+test('a valid new plan overrides stale source metadata inherited from an anchor entry', async ({ page, isMobile }) => {
+  await mockPricing(page);
+  await page.goto(`/${UNSUPPORTED}${PLAN_A}`);
+  await expect(total(page)).toHaveText('$1.00');
+  await openReceiptAnchor(page, isMobile);
+  // Reproduce the inherited-state race deterministically through the real
+  // hashchange handler, rather than relying on router/browser event timing.
+  await page.evaluate(({ hash, source }) => {
+    const oldURL = window.location.href;
+    window.history.pushState({ ...window.history.state, promptInfoPlanSource: source }, '', hash);
+    window.dispatchEvent(new HashChangeEvent('hashchange', { oldURL, newURL: window.location.href }));
+  }, { hash: PLAN_B, source: `hash:${PLAN_A}` });
+  await expect(total(page)).toHaveText('$2.00');
+  expect(await page.evaluate(() => window.history.state.promptInfoPlanSource)).toBe(`hash:${PLAN_B}`);
+  await page.goBack();
+  await expect(page).toHaveURL(/#agent-price$/);
+  await expect(total(page)).toHaveText('$1.00');
+  await page.goForward();
+  await expect(total(page)).toHaveText('$2.00');
+});
