@@ -316,7 +316,7 @@ export default function AgentPlannerClient() {
       event.preventDefault();
       // Settle an explicit URL whose hashchange has not run yet, too.
       onHashChange();
-      followPlanAnchor(href, applied.current.key, window.location, stampEntry);
+      followPlanAnchor(href, applied.current.key, window.location, window.history);
     }
     window.addEventListener('hashchange', onHashChange);
     document.addEventListener('click', onAnchorClick);

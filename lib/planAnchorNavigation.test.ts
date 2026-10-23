@@ -20,34 +20,65 @@ for (const anchor of ['#main-content', '#agent-price'] as const) {
     // Native fragment navigation creates an entry synchronously, but its
     // hashchange task can run after another navigation. Deliberately never
     // flush that task before leaving A's anchor entry.
-    const entries: { hash: string; source?: string; router: string }[] = [
-      { hash: A, source: `hash:${A}`, router: 'preserve-router-state' },
+    const routerTree = { tree: 'preserve-router-tree' };
+    const entries: { hash: string; state: Record<string, unknown> | null }[] = [
+      { hash: A, state: { promptInfoPlanSource: `hash:${A}`,
+        __NA: true, __PRIVATE_NEXTJS_INTERNALS_TREE: routerTree, user: 'preserve-user-state' } },
     ];
     let index = 0;
+    const calls: Parameters<History['replaceState']>[] = [];
+    const history = {
+      get state() { return entries[index].state; },
+      replaceState(...args: Parameters<History['replaceState']>) {
+        calls.push(args);
+        entries[index].state = args[0];
+      },
+    };
     const location = {
       get hash() { return entries[index].hash; },
       set hash(hash: string) {
-        entries.push({ hash, router: 'preserve-router-state' });
+        entries.push({ hash, state: null });
         index += 1;
       },
     };
-    followPlanAnchor(anchor, `hash:${A}`, location, (source) => {
-      entries[index] = { ...entries[index], source };
-    });
+    followPlanAnchor(anchor, `hash:${A}`, location, history);
     location.hash = B;
     const importedB = resolvePlanNavigation({
       hash: location.hash, search: '', activeSource: `hash:${A}`,
-      recordedSource: entries[index].source,
+      recordedSource: entries[index].state?.promptInfoPlanSource as string | undefined,
     });
     expect(importedB.shared?.plan.taskTokens).toBe(1200);
     index -= 1;
     const restoredA = resolvePlanNavigation({
       hash: location.hash, search: '', activeSource: importedB.source,
-      recordedSource: entries[index].source,
+      recordedSource: entries[index].state?.promptInfoPlanSource as string | undefined,
     });
     expect(restoredA.shared?.plan.taskTokens).toBe(200);
     expect(restoredA.source).toBe(`hash:${A}`);
-    expect(entries[1].source).toBe(`hash:${A}`);
-    expect(entries[1].router).toBe('preserve-router-state');
+    // Omit the unchanged URL rather than initiating a router restore.
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toHaveLength(2);
+    expect(entries[1].state?.promptInfoPlanSource).toBe(`hash:${A}`);
+    expect(entries[1].state?.__NA).toBe(true);
+    expect(entries[1].state?.__PRIVATE_NEXTJS_INTERNALS_TREE).toBe(routerTree);
+    expect(entries[1].state?.user).toBe('preserve-user-state');
+  });
+}
+
+for (const previousState of [null, 7]) {
+  test(`a historical ${previousState === null ? 'null' : 'nonobject'} state can receive anchor metadata`, () => {
+    let state: unknown = previousState;
+    let hash = A;
+    const history = {
+      get state() { return state; },
+      replaceState(data: unknown) { state = data; },
+    };
+    const location = {
+      get hash() { return hash; },
+      set hash(value: string) { hash = value; state = null; },
+    };
+    followPlanAnchor('#main-content', `hash:${A}`, location, history);
+    expect(state).toEqual({ promptInfoPlanSource: `hash:${A}` });
+    expect(hash).toBe('#main-content');
   });
 }
