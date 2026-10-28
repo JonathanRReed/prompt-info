@@ -36,13 +36,14 @@ export default function MeasuredUsage({
   ]);
   const [usageJson, setUsageJson] = useState('');
   const [importStatus, setImportStatus] = useState('');
+  const [importFailed, setImportFailed] = useState(false);
   const [nextId, setNextId] = useState(2);
   const [model, setModel] = useState('');
   const [comparison, setComparison] = useState('');
   const [copied, setCopied] = useState('');
   const name = model || initialModel;
   const entry = catalog?.data[name];
-  const estimate = entry ? priceMeasuredUsage(rows, entry) : null;
+  const estimate = entry && !importFailed ? priceMeasuredUsage(rows, entry) : null;
   const alternatives = Object.keys(catalog?.data ?? {}).filter(
     (candidate) => candidate !== name,
   );
@@ -53,12 +54,17 @@ export default function MeasuredUsage({
         ? (chooseDefaultModels(alternatives, catalog.data, 1)[0] ?? '')
         : '';
   const other =
-    comparisonName && catalog?.data[comparisonName]
+    !importFailed && comparisonName && catalog?.data[comparisonName]
       ? priceMeasuredUsage(rows, catalog.data[comparisonName])
       : null;
   const input = rows.reduce((sum, row) => sum + row.input, 0);
   const output = rows.reduce((sum, row) => sum + row.output, 0);
   const receipt = `Prompt Info: observed usage repriced\n${name}\n${rows.length} requests\nInput: ${input} tokens\nOutput including thinking: ${output} tokens\nCost at current catalog rates: ${formatUsd(estimate?.total ?? null)}\nModel token charges only. This is not a provider invoice.`;
+  function resumeManualEntry() {
+    setImportFailed(false);
+    setImportStatus('');
+    setCopied('');
+  }
   async function copy() {
     try {
       await navigator.clipboard.writeText(receipt);
@@ -104,7 +110,8 @@ export default function MeasuredUsage({
                 <li>
                   Claude: add input_tokens, cache_read_input_tokens and
                   cache_creation_input_tokens for total input. Use output_tokens
-                  for total output.
+                  for total output. Records with iterations are not supported;
+                  their top-level totals may omit compaction or advisor work.
                 </li>
                 <li>
                   Gemini: use promptTokenCount for input. Add
@@ -152,6 +159,7 @@ export default function MeasuredUsage({
                 className="planner-button"
                 type="button"
                 onClick={() => {
+                  setCopied('');
                   try {
                     const imported = importUsage(usageJson);
                     setRows(
@@ -159,10 +167,12 @@ export default function MeasuredUsage({
                     );
                     setNextId(imported.length + 1);
                     setUsageJson('');
+                    setImportFailed(false);
                     setImportStatus(
                       `Imported ${imported.length} ${imported.length === 1 ? 'request' : 'requests'}. Previous rows were replaced.`,
                     );
                   } catch (error) {
+                    setImportFailed(true);
                     setImportStatus(
                       error instanceof Error
                         ? error.message
@@ -190,6 +200,7 @@ export default function MeasuredUsage({
                         step={1}
                         value={Number.isFinite(row[key]) ? row[key] : ''}
                         onChange={(event) => {
+                          resumeManualEntry();
                           const value =
                             event.target.value === ''
                               ? NaN
@@ -210,11 +221,12 @@ export default function MeasuredUsage({
                   className="planner-text-button"
                   type="button"
                   disabled={rows.length === 1}
-                  onClick={() =>
+                  onClick={() => {
+                    resumeManualEntry();
                     setRows((current) =>
                       current.filter((item) => item.id !== row.id),
-                    )
-                  }
+                    );
+                  }}
                 >
                   Remove request {index + 1}
                 </button>
@@ -225,6 +237,7 @@ export default function MeasuredUsage({
               type="button"
               disabled={rows.length >= 200}
               onClick={() => {
+                resumeManualEntry();
                 setRows((current) => [...current, { ...EMPTY, id: nextId }]);
                 setNextId((current) => current + 1);
               }}
@@ -300,14 +313,15 @@ export default function MeasuredUsage({
             <div className="ticket-monthly">
               <span>Total token usage</span>
               <strong>
-                {Number.isFinite(input + output)
+                {!importFailed && Number.isFinite(input + output)
                   ? (input + output).toLocaleString()
                   : '—'}
               </strong>
             </div>
             <p className="ticket-note">
-              These counts are priced directly. An unknown thinking split does
-              not change the total output charge.
+              {importFailed
+                ? 'Import failed. Previous rows are kept for editing, but their receipt is hidden. Import supported usage or edit the rows to calculate again.'
+                : 'These counts are priced directly. An unknown thinking split does not change the total output charge.'}
             </p>
             <p className="ticket-source">
               {catalog?.freshness === 'live'
@@ -325,7 +339,7 @@ export default function MeasuredUsage({
           >
             Copy usage receipt
           </button>
-          <p role="status">{copied}</p>
+          <p role="status">{importFailed ? '' : copied}</p>
           {estimate?.warnings.map((warning) => (
             <p className="agent-warning" role="note" key={warning}>
               {warning}
