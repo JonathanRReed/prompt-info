@@ -1,6 +1,6 @@
 'use client';
 import { importUsage } from '../../lib/importUsage';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ModelSelect from '../../components/ModelSelect';
 import { chooseDefaultModels } from '../../lib/modelSelection';
 import { formatUsd } from '../../components/charts/chartFormat';
@@ -40,7 +40,8 @@ export default function MeasuredUsage({
   const [nextId, setNextId] = useState(2);
   const [model, setModel] = useState('');
   const [comparison, setComparison] = useState('');
-  const [copied, setCopied] = useState('');
+  const [copied, setCopied] = useState<{ receipt: string; message: string } | null>(null);
+  const copyGeneration = useRef(0);
   const name = model || initialModel;
   const entry = catalog?.data[name];
   const estimate = entry && !importFailed ? priceMeasuredUsage(rows, entry) : null;
@@ -60,17 +61,30 @@ export default function MeasuredUsage({
   const input = rows.reduce((sum, row) => sum + row.input, 0);
   const output = rows.reduce((sum, row) => sum + row.output, 0);
   const receipt = `Prompt Info: observed usage repriced\n${name}\n${rows.length} requests\nInput: ${input} tokens\nOutput including thinking: ${output} tokens\nCost at current catalog rates: ${formatUsd(estimate?.total ?? null)}\nModel token charges only. This is not a provider invoice.`;
+  // Catalog/initial-model updates can change the receipt without an input event.
+  useEffect(() => {
+    copyGeneration.current += 1;
+  }, [receipt]);
+  function invalidateCopy() {
+    copyGeneration.current += 1;
+    setCopied(null);
+  }
   function resumeManualEntry() {
     setImportFailed(false);
     setImportStatus('');
-    setCopied('');
+    invalidateCopy();
   }
   async function copy() {
+    const generation = ++copyGeneration.current;
     try {
       await navigator.clipboard.writeText(receipt);
-      setCopied('Receipt copied.');
+      if (generation === copyGeneration.current) {
+        setCopied({ receipt, message: 'Receipt copied.' });
+      }
     } catch {
-      setCopied('Could not copy. Select the receipt text instead.');
+      if (generation === copyGeneration.current) {
+        setCopied({ receipt, message: 'Could not copy. Select the receipt text instead.' });
+      }
     }
   }
   return (
@@ -85,7 +99,10 @@ export default function MeasuredUsage({
               models={Object.keys(catalog?.data ?? {})}
               pricing={catalog?.data}
               loading={!catalog}
-              onChange={setModel}
+              onChange={(value) => {
+                invalidateCopy();
+                setModel(value);
+              }}
             />
           </section>
           <section className="planner-editor planner-panel">
@@ -159,7 +176,7 @@ export default function MeasuredUsage({
                 className="planner-button"
                 type="button"
                 onClick={() => {
-                  setCopied('');
+                  invalidateCopy();
                   try {
                     const imported = importUsage(usageJson);
                     setRows(
@@ -339,7 +356,7 @@ export default function MeasuredUsage({
           >
             Copy usage receipt
           </button>
-          <p role="status">{importFailed ? '' : copied}</p>
+          <p role="status">{!importFailed && copied?.receipt === receipt ? copied.message : ''}</p>
           {estimate?.warnings.map((warning) => (
             <p className="agent-warning" role="note" key={warning}>
               {warning}

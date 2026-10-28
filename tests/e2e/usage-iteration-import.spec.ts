@@ -127,3 +127,93 @@ test('clipboard completion from the previous receipt stays hidden after import r
   await expect(page.getByTestId('measured-total')).toHaveText('Unavailable');
   await expect(copy).toBeDisabled();
 });
+
+test('old clipboard completion stays hidden after manual recovery', async ({ page }) => {
+  await page.evaluate(() => {
+    const state = window as Window & { finishUsageCopy?: () => void };
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: () => new Promise<void>((resolve) => {
+          state.finishUsageCopy = resolve;
+        }),
+      },
+    });
+  });
+  const copy = page.getByRole('button', { name: 'Copy usage receipt', exact: true });
+  await copy.click();
+  await expect.poll(() => page.evaluate(() =>
+    typeof (window as Window & { finishUsageCopy?: () => void }).finishUsageCopy,
+  )).toBe('function');
+
+  await importValue(page, fixtures.threshold);
+  await expect(page.getByRole('status').filter({ hasText: /Request 1:.*Iteration/i })).toBeVisible();
+  await page.getByLabel('Total input', { exact: true }).fill('1100');
+  await expect(page.getByTestId('measured-total')).toHaveText('$0.0072');
+  await page.evaluate(async () => {
+    (window as Window & { finishUsageCopy?: () => void }).finishUsageCopy!();
+    // Let the fulfilled clipboard handler and its React render reach a paint.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  });
+  await expect(page.getByText('Receipt copied.', { exact: true })).toHaveCount(0);
+  await expect(copy).toBeEnabled();
+});
+
+test('old clipboard completion stays hidden after successful reimport', async ({ page }) => {
+  await page.evaluate(() => {
+    const state = window as Window & { finishUsageCopy?: () => void };
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: () => new Promise<void>((resolve) => {
+          state.finishUsageCopy = resolve;
+        }),
+      },
+    });
+  });
+  const copy = page.getByRole('button', { name: 'Copy usage receipt', exact: true });
+  await copy.click();
+  await expect.poll(() => page.evaluate(() =>
+    typeof (window as Window & { finishUsageCopy?: () => void }).finishUsageCopy,
+  )).toBe('function');
+
+  await importValue(page, fixtures.threshold);
+  await expect(page.getByRole('status').filter({ hasText: /Request 1:.*Iteration/i })).toBeVisible();
+  await importValue(page, { input: 2000, output: 1000 });
+  await expect(page.getByTestId('measured-total')).toHaveText('$0.0140');
+  await page.evaluate(async () => {
+    (window as Window & { finishUsageCopy?: () => void }).finishUsageCopy!();
+    // Let the fulfilled clipboard handler and its React render reach a paint.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  });
+  await expect(page.getByText('Receipt copied.', { exact: true })).toHaveCount(0);
+  await expect(copy).toBeEnabled();
+});
+
+test('an older clipboard failure cannot overwrite a newer successful copy', async ({ page }) => {
+  await page.evaluate(() => {
+    const state = window as Window & { usageCopies?: { resolve: () => void; reject: () => void }[] };
+    state.usageCopies = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => new Promise<void>((resolve, reject) => {
+        state.usageCopies!.push({ resolve, reject: () => reject(new Error('old copy failed')) });
+      }) },
+    });
+  });
+  const copy = page.getByRole('button', { name: 'Copy usage receipt', exact: true });
+  await copy.click();
+  await copy.click();
+  await page.evaluate(() => {
+    (window as Window & { usageCopies: { resolve: () => void }[] }).usageCopies[1].resolve();
+  });
+  await expect(page.getByText('Receipt copied.', { exact: true })).toBeVisible();
+  await page.evaluate(async () => {
+    (window as Window & { usageCopies: { reject: () => void }[] }).usageCopies[0].reject();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  });
+  await expect(page.getByText('Receipt copied.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Could not copy. Select the receipt text instead.', { exact: true })).toHaveCount(0);
+});
