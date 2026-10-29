@@ -35,6 +35,11 @@ export function importUsage(text: string): MeasuredRequest[] {
     const row = object(envelope.usage ?? envelope.usageMetadata ?? entry);
     let value: MeasuredRequest;
     try {
+      if ('iterations' in row) {
+        throw new Error(
+          'Iteration-based usage is not supported yet. Compaction or advisor work may be missing from top-level totals; no cost can be calculated for this import.',
+        );
+      }
       if ('tool_use_input_tokens' in row || 'thoughts_tokens' in row) {
         throw new Error(
           'Gemini Interactions usage is not supported yet. Use generateContent usageMetadata or normalized input/output totals, including tool input and thinking.',

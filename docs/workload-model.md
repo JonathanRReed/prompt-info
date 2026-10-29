@@ -34,6 +34,15 @@ Reviewed October 16, 2026:
 
 The presets are independent hypothetical scenarios, not reproductions of that compiler experiment. A large bill does not establish quality. Tokenizer estimates, cache behavior, changing rates, task complexity and stopping conditions all introduce uncertainty. Hosted tools, infrastructure, explicit Gemini cache storage, batch/service-tier discounts, taxes and platform fees require separate accounting.
 
+## Iteration-based usage imports
+
+Usage records containing `iterations` are rejected, including empty or malformed
+iteration lists. Top-level Claude totals can omit compaction or advisor work;
+advisor iterations can also use a different model. Summing everything at one
+selected model's rate would not be reliable support. No price is calculated for
+these imports. A rejected import keeps previous rows available for editing but
+hides their receipt until supported usage is imported or the rows are edited.
+
 ## Gemini usage imports
 
 For generateContent, input is `promptTokenCount + toolUsePromptTokenCount`;

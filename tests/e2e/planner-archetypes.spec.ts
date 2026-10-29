@@ -117,7 +117,10 @@ test('engineer imports real usage and compares current rates privately', async (
       exact: true,
     })
     .click();
-  await expect(page.getByTestId('measured-total')).toHaveText('$0.0055');
+  await expect(page.getByTestId('measured-total')).toHaveText('Unavailable');
+  await expect(page.getByRole('button', { name: 'Copy usage receipt', exact: true })).toBeDisabled();
+  await expect(page.getByLabel('Total input', { exact: true })).toHaveValue('1000');
+  await expect(page.getByLabel('Total output, including thinking', { exact: true })).toHaveValue('500');
   await expect(page.getByText(/Request 1: Token counts/)).toBeVisible();
 });
 test('all presets, tabs and themes render without errors or clipped controls', async ({
@@ -217,5 +220,8 @@ test('Gemini tool input is priced and unsupported Interactions cannot replace va
   }}));
   await apply.click();
   await expect(page.getByText(/Gemini Interactions usage is not supported/)).toBeVisible();
-  await expect(page.getByTestId('measured-total')).toHaveText('$0.0214');
+  await expect(page.getByTestId('measured-total')).toHaveText('Unavailable');
+  await expect(page.getByRole('button', { name: 'Copy usage receipt', exact: true })).toBeDisabled();
+  await expect(page.getByLabel('Total input', { exact: true })).toHaveValue('10336');
+  await expect(page.getByLabel('Total output, including thinking', { exact: true })).toHaveValue('76');
 });
