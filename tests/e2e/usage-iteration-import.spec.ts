@@ -207,11 +207,11 @@ test('an older clipboard failure cannot overwrite a newer successful copy', asyn
   await copy.click();
   await copy.click();
   await page.evaluate(() => {
-    (window as Window & { usageCopies: { resolve: () => void }[] }).usageCopies[1].resolve();
+    (window as Window & { usageCopies?: { resolve: () => void }[] }).usageCopies![1].resolve();
   });
   await expect(page.getByText('Receipt copied.', { exact: true })).toBeVisible();
   await page.evaluate(async () => {
-    (window as Window & { usageCopies: { reject: () => void }[] }).usageCopies[0].reject();
+    (window as Window & { usageCopies?: { reject: () => void }[] }).usageCopies![0].reject();
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   });
   await expect(page.getByText('Receipt copied.', { exact: true })).toBeVisible();
